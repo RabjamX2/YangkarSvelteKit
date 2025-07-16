@@ -1,0 +1,19 @@
+# Dependencies
+/node_modules
+/.pnpm-lock.yaml
+
+# SvelteKit build artifacts
+/apps/frontend/.svelte-kit
+/apps/frontend/build
+
+# Express build artifacts
+/apps/backend/dist
+
+# IDE & OS files
+.vscode
+.DS_Store
+
+# Environment variables
+.env
+.env.*
+!/.env.example
