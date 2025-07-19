@@ -1,40 +1,33 @@
 <script>
-  let username = '';
-  let password = '';
-  let error = '';
-  let user = null;
-
-  async function handleLogin() {
-    error = '';
-    const res = await fetch('http://localhost:3000/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-      credentials: 'include' // Ensure cookies are sent/received
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      error = data.error || 'Login failed';
-    } else {
-      // Fetch current user info after login
-      const userRes = await fetch('http://localhost:3000/api/me', {
-        credentials: 'include'
-      });
-      const userData = await userRes.json();
-      user = userData.user;
-    }
-  }
+    // The `form` prop contains the data returned from the server action
+    // if it fails.
+    /** @type {import('./$types').ActionData} */
+    export let form;
 </script>
 
-{#if user}
-  <p>Welcome, {user.username}!</p>
-{:else}
-  <form on:submit|preventDefault={handleLogin}>
-    <input type="text" bind:value={username} placeholder="Username" required />
-    <input type="password" bind:value={password} placeholder="Password" required />
-    <button type="submit">Login</button>
-    {#if error}
-      <p style="color:red">{error}</p>
+<!-- No need for {#if user} here, the redirect will handle it -->
+
+<!-- Use method="POST" to trigger the server action -->
+<form method="POST">
+    <div>
+        <label for="username">Username</label>
+        <input 
+            type="text" 
+            name="username" 
+            id="username" 
+            value={form?.username ?? ''} 
+            required 
+        />
+    </div>
+    <div>
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" required />
+    </div>
+
+    <!-- Display the error message from the form action -->
+    {#if form?.error}
+        <p style="color:red">{form.error}</p>
     {/if}
-  </form>
-{/if}
+
+    <button type="submit">Login</button>
+</form>

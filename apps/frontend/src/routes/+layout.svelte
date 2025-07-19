@@ -1,43 +1,41 @@
-<script>
-    import { page } from '$app/stores';
-    import { enhance } from '$app/forms';
+<script lang="ts">
+    import './layout.css';
 
-    // The user data is passed from the server hook to the page data
-    $: user = $page.data.user;
+    export let data;
+    const { user } = data;
 
-    function handleLogout(event) {
+    function handleLogout(event: Event) {
         event.preventDefault();
         fetch('http://localhost:3000/api/logout', {
             method: 'POST',
             credentials: 'include'
         }).then(() => {
-            location.reload(); // Reload to update UI
+            location.reload();
         });
     }
 </script>
 
-<nav>
-    <a href="/">Home</a>
-    <a href="/products">Products</a>
-    {#if user}
-        {#if user.role === 'ADMIN'}
-            <a href="/admin/add-product">Admin</a>
+<nav class="navbar">
+    <div class="nav-left">
+        <a class="logo" href="/">Yangkar</a>
+        <a class="nav-link" href="/products">Products</a>
+        {#if user && user.role === 'ADMIN'}
+            <a class="nav-link" href="/admin/add-product">Admin</a>
         {/if}
-        <span>Welcome, {user.username}!</span>
-        <form on:submit={handleLogout}>
-            <button>Log Out</button>
-        </form>
-    {:else}
-        <a href="/login">Login</a>
-        <a href="/signup">Sign Up</a>
-    {/if}
-    
+    </div>
+    <div class="nav-right">
+        {#if user}
+            <span class="user-badge">Welcome, {user.username}!</span>
+            <form class="logout-form" on:submit={handleLogout}>
+                <button class="logout-btn">Log Out</button>
+            </form>
+        {:else}
+            <a class="nav-link" href="/login">Login</a>
+            <a class="nav-link signup" href="/signup">Sign Up</a>
+        {/if}
+    </div>
 </nav>
 
 <main>
     <slot />
 </main>
-
-<style>
-    nav { display: flex; gap: 1rem; padding: 1rem; border-bottom: 1px solid #ccc; }
-</style>

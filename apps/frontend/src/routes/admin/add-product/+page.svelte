@@ -1,12 +1,19 @@
 <script>
     import { enhance } from '$app/forms';
-    import { page } from '$app/stores';
-    import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
+    import { onMount } from 'svelte';
+
+    import './add-product.css';
+
+    export let data;
+
+    // The 'user' object returned from your load function
+    // is available here inside 'data'.
+    const { user } = data;
 
     // Protect the page on the client-side as a fallback
     onMount(() => {
-        if ($page.data.user?.role !== 'ADMIN') {
+        if (user?.role !== 'ADMIN') {
             goto('/'); // Redirect non-admins to the homepage
         }
     });
@@ -21,7 +28,7 @@
 <div class="container">
     <h1>Add New Product</h1>
 
-    {#if $page.data.user?.role === 'ADMIN'}
+    {#if user?.role === 'ADMIN'}
         <form
             method="POST"
             action="http://localhost:3000/api/products"
@@ -60,13 +67,3 @@
         <p class="error">You are not authorized to view this page.</p>
     {/if}
 </div>
-
-<style>
-    .container { max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
-    form { display: flex; flex-direction: column; gap: 1rem; }
-    label { display: flex; flex-direction: column; gap: 0.25rem; }
-    input, textarea { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
-    button { padding: 0.75rem; background-color: #333; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .message { margin-top: 1rem; }
-    .error { color: red; }
-</style>

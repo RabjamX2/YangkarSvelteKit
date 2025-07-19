@@ -1,8 +1,3 @@
-/**
- * This JSDoc comment tells the editor what to expect for `event.locals`.
- * It's the JavaScript equivalent of TypeScript's type declarations.
- * @type {import('@sveltejs/kit').Handle}
- */
 export const handle = async ({ event, resolve }) => {
     // Get the session cookie from the browser
     const sessionToken = event.cookies.get("session_token");
@@ -16,7 +11,7 @@ export const handle = async ({ event, resolve }) => {
     const response = await fetch("http://localhost:3000/api/me", {
         headers: {
             // Forward the cookie to the backend API
-            Cookie: `session_token=${sessionToken}`,
+            cookie: `session_token=${sessionToken}`,
         },
     });
 

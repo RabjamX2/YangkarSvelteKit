@@ -1,5 +1,6 @@
 <script>
     export let data;
+    import './products.css';
 </script>
 
 <svelte:head>
@@ -30,49 +31,5 @@
 </div>
 
 <style>
-    .container {
-        max-width: 1200px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-    }
-    .product-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1.5rem;
-    }
-    .product-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        transition: transform 0.2s;
-    }
-    .product-card:hover {
-        transform: translateY(-5px);
-    }
-    .product-card img {
-        width: 100%;
-        height: 200px;
-        object-fit: cover;
-    }
-    .card-content {
-        padding: 1rem;
-    }
-    .card-content h2 {
-        font-size: 1.2rem;
-        margin: 0 0 0.5rem 0;
-    }
-    .card-content p {
-        font-size: 0.9rem;
-        color: #666;
-        margin-bottom: 1rem;
-    }
-    .price {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #333;
-    }
-    .error {
-        color: red;
-    }
+    @import './products.css';
 </style>
