@@ -1,12 +1,58 @@
+:root {
+    --color-bg: #fff;
+    --color-nav-bg: #fff;
+    --color-border: #e5e7eb;
+    --color-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    --color-logo: #2d3748;
+    --color-logo-hover: #2563eb;
+    --color-link: #374151;
+    --color-link-hover: #2563eb;
+    --color-link-bg-hover: #f1f5f9;
+    --color-signup-bg: #2563eb;
+    --color-signup-bg-hover: #1e40af;
+    --color-signup: #fff;
+    --color-user-badge-bg: #f1f5f9;
+    --color-user-badge: #2563eb;
+    --color-logout-bg: #e53e3e;
+    --color-logout-bg-hover: #b91c1c;
+    --color-logout: #fff;
+}
+
+.dark {
+    --color-bg: #18181b;
+    --color-nav-bg: #23232a;
+    --color-border: #27272a;
+    --color-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --color-logo: #e0e7ef;
+    --color-logo-hover: #60a5fa;
+    --color-link: #e0e7ef;
+    --color-link-hover: #60a5fa;
+    --color-link-bg-hover: #23232a;
+    --color-signup-bg: #60a5fa;
+    --color-signup-bg-hover: #2563eb;
+    --color-signup: #23232a;
+    --color-user-badge-bg: #23232a;
+    --color-user-badge: #60a5fa;
+    --color-logout-bg: #ef4444;
+    --color-logout-bg-hover: #991b1b;
+    --color-logout: #fff;
+}
+
+body,
+html {
+    background: var(--color-bg);
+    color: var(--color-link);
+}
+
 nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
     padding: 1rem 2rem;
-    background: #fff;
-    border-bottom: 1px solid #e5e7eb;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    background: var(--color-nav-bg);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--color-shadow);
     font-family: "Inter", Arial, sans-serif;
 }
 
@@ -19,7 +65,7 @@ nav {
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #2d3748;
+    color: var(--color-logo);
     text-decoration: none;
     letter-spacing: 1px;
     margin-right: 1.5rem;
@@ -27,11 +73,11 @@ nav {
 }
 
 .logo:hover {
-    color: #2563eb;
+    color: var(--color-logo-hover);
 }
 
 .nav-link {
-    color: #374151;
+    color: var(--color-link);
     text-decoration: none;
     font-size: 1rem;
     padding: 0.5rem 1rem;
@@ -40,21 +86,21 @@ nav {
 }
 
 .nav-link:hover {
-    background: #f1f5f9;
-    color: #2563eb;
+    background: var(--color-link-bg-hover);
+    color: var(--color-link-hover);
 }
 
 .signup {
-    background: #2563eb;
-    color: #fff;
+    background: var(--color-signup-bg);
+    color: var(--color-signup);
     margin-left: 0.5rem;
     font-weight: 500;
     transition: background 0.2s, color 0.2s;
 }
 
 .signup:hover {
-    background: #1e40af;
-    color: #fff;
+    background: var(--color-signup-bg-hover);
+    color: var(--color-signup);
 }
 
 .nav-right {
@@ -64,8 +110,8 @@ nav {
 }
 
 .user-badge {
-    background: #f1f5f9;
-    color: #2563eb;
+    background: var(--color-user-badge-bg);
+    color: var(--color-user-badge);
     padding: 0.4rem 1rem;
     border-radius: 999px;
     font-size: 1rem;
@@ -78,8 +124,8 @@ nav {
 }
 
 .logout-btn {
-    background: #e53e3e;
-    color: #fff;
+    background: var(--color-logout-bg);
+    color: var(--color-logout);
     border: none;
     padding: 0.5rem 1.2rem;
     border-radius: 6px;
@@ -90,5 +136,19 @@ nav {
 }
 
 .logout-btn:hover {
-    background: #b91c1c;
+    background: var(--color-logout-bg-hover);
+}
+
+.theme-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+    cursor: pointer;
+    color: var(--color-link);
+    transition: color 0.2s;
+}
+
+.theme-toggle:hover {
+    color: var(--color-link-hover);
 }

@@ -5,38 +5,40 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js" 
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 enum Role {
-  USER
-  ADMIN
+    USER
+    ADMIN
 }
 
 model User {
-  id       String    @id @default(cuid())
-  username String    @unique
-  password String
-  role     Role      @default(USER) // Add this line
-  sessions Session[]
+    id       String    @id @default(cuid())
+    username String    @unique
+    email    String   @unique
+    name     String?
+    password String
+    role     Role      @default(USER)
+    sessions Session[]
 }
 
 model Session {
-  id        String   @id // This will be our secure session token
-  userId    String
-  expiresAt DateTime
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id        String   @id // This will be our secure session token
+    userId    String
+    expiresAt DateTime
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  price       Int      // Storing price in cents to avoid floating point issues
-  imageUrl    String
+    id          String   @id @default(cuid())
+    name        String
+    description String
+    price       Int      // Storing price in cents to avoid floating point issues
+    imageUrl    String
 }

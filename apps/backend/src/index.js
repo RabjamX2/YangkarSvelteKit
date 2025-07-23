@@ -109,7 +109,7 @@ app.get("/api/me", async (req, res) => {
 
     const session = await prisma.session.findUnique({
         where: { id: sessionToken, expiresAt: { gt: new Date() } },
-        include: { user: { select: { id: true, username: true } } },
+        include: { user: { select: { id: true, username: true, role: true, name: true } } },
     });
 
     if (session && session.user) {
