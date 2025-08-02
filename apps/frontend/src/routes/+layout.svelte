@@ -37,15 +37,22 @@
     }
 </script>
 
-<nav class="navbar">
-    <div class="nav-top">
-        <img class="logo" src="/Logo/Logo Text - English Long.png" alt="Logo" />
-    </div>
-    <div class="nav-main">
-        <div class="nav-left">
-            <a class="nav-link" href="/products">Products</a>
+<header class="header-section">
+    <!-- <div class="header-mobile">
+        <figure>
+            <img class="logo" src="/Logo/Circle Logo - Only Logo.png" alt="Logo" />
+        </figure>
+    </div> -->
+    <div class="main-header">
+        <div class="main-header-left">
+            <a class="nav-link" href="/">
+                <span class="nav-link-text">Home</span>
+            </a>
         </div>
-        <div class="nav-right">
+        <figure class="header-logo">
+            <img class="logo" src="/Logo/Logo Text - English Long.png" alt="Logo" />
+        </figure>
+        <div class="main-header-right">
             <button class="theme-toggle" on:click={toggleDarkMode} aria-label="Toggle dark mode">
                 {#if darkMode}
                     🌙
@@ -62,12 +69,38 @@
                     <button class="logout-btn">Log Out</button>
                 </form>
             {:else}
-                <a class="nav-link" href="/login">Login</a>
-                <a class="nav-link signup" href="/signup">Sign Up</a>
+                <!-- <a class="nav-link" href="/login">Login</a> -->
+                <!-- <a class="nav-link signup" href="/signup">Sign Up</a> -->
             {/if}
         </div>
     </div>
-</nav>
+    <div class="header-nav">
+        <nav class="nav">
+            <div class="nav-list">
+                <div class="nav-item">
+                    <a class="nav-link" href="/products/Chupa">
+                        <span class="nav-link-text">Clothing</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="/products/Accessories">
+                        <span class="nav-link-text">Accessories</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="/products/Jewelry">
+                        <span class="nav-link-text">Jewelry</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" href="/products/PhoneCases">
+                        <span class="nav-link-text">Phone Cases</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
 
 <main>
     <slot />

@@ -35,10 +35,145 @@ model Session {
     user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// Represents a supplier or seller from whom you purchase goods.
+model Supplier {
+  id            Int             @id @default(autoincrement())
+  idString      String          @unique // e.g., "bt", "ptl"
+  name          String          @unique
+  tibetanName   String?
+  contactPerson String?
+  contactMethod String?
+  products      Product[]
+  purchaseOrders PurchaseOrder[] // A supplier can have many purchase orders
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Product categories like "Chupa", "Jewelry", etc.
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Represents the core product concept, like "Metok Wonju" or "plaindhi".
+/// Price is stored in the ProductVariant model to allow for differences.
 model Product {
-    id          String   @id @default(cuid())
-    name        String
-    description String
-    price       Int      // Storing price in cents to avoid floating point issues
-    imageUrl    String
+  id         Int        @id @default(autoincrement())
+  skuBase    String     @unique // e.g., "ptlMetok"
+  name       String     // e.g., "Metok Wonju"
+  style      String?    // e.g., "Metok"
+  notes      String?
+
+  // Relationships
+  supplierName String 
+  supplier   Supplier @relation(fields: [supplierName], references: [name])
+  categoryName String
+  category   Category @relation(fields: [categoryName], references: [name])
+  
+  variants   ProductVariant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Represents a specific, sellable version of a Product.
+/// This is the level where you will track inventory AND price.
+model ProductVariant {
+  id    Int    @id @default(autoincrement())
+  sku   String? @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
+  color String
+  size  String?
+  imgUrl String? @default("/Placeholder4-5.png") // Default image URL
+  
+  costCny    Decimal
+  costUsd    Decimal
+  salePrice  Decimal?
+  
+  // The actual number of items you have on hand
+  stock Int    @default(0)
+
+  // Foreign key to the parent Product
+  productSkuBase String
+  product   Product @relation(fields: [productSkuBase], references: [skuBase], onDelete: Cascade)
+  
+  purchaseOrderItems PurchaseOrderItem[]
+  customerOrderItems CustomerOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Represents a purchase order you place with a Supplier.
+/// Corresponds to your "Order List.csv".
+model PurchaseOrder {
+  id           Int                 @id @default(autoincrement())
+  batchNumber  Int
+  orderDate    DateTime
+  hasArrived   Boolean             @default(false)
+  
+  // Foreign key to the Supplier
+  supplierId   Int
+  supplier     Supplier            @relation(fields: [supplierId], references: [id])
+  
+  // A purchase order is composed of multiple line items
+  items        PurchaseOrderItem[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// A specific line item within a PurchaseOrder.
+/// e.g., 6 units of "Metok Wonju, Red, XL"
+model PurchaseOrderItem {
+  id                Int      @id @default(autoincrement())
+  quantityOrdered   Int
+  arrived           Boolean  @default(false)
+  costPerItemCny    Decimal
+  costPerItemUsd    Decimal
+  
+  // Foreign key to the PurchaseOrder it belongs to
+  purchaseOrderId   Int
+  order             PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  
+  // Foreign key to the specific ProductVariant being ordered
+  productVariantId  Int
+  variant           ProductVariant @relation(fields: [productVariantId], references: [id])
+
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  // etc.
+  orders    CustomerOrder[]
+}
+
+model CustomerOrder {
+  id         Int      @id @default(autoincrement())
+  orderDate  DateTime @default(now())
+  total      Decimal
+  // etc.
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+  items      CustomerOrderItem[]
+}
+
+model CustomerOrderItem {
+  id                 Int      @id @default(autoincrement())
+  quantity           Int
+  priceAtTimeOfSale  Decimal // Crucial: store the price at the time of sale
+  orderId            Int
+  order              CustomerOrder @relation(fields: [orderId], references: [id])
+  productVariantId   Int
+  variant            ProductVariant @relation(fields: [productVariantId], references: [id])
 }

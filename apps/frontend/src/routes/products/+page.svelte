@@ -18,7 +18,7 @@
         <div class="product-grid">
             {#each data.products as product}
                 <div class="product-card">
-                    <img src={product.imageUrl} alt={product.name} />
+                    <img src={product.imageUrl} alt={product.name} /> 
                     <div class="card-content">
                         <h2>{product.name}</h2>
                         <p>{product.description}</p>

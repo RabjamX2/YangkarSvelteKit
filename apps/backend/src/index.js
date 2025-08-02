@@ -18,43 +18,43 @@ app.use(
 app.use(express.json());
 app.use(cookieParser()); // Middleware to parse cookies from requests
 
-// --- SIGNUP ROUTE ---
-app.post("/api/signup", async (req, res) => {
-    const { username, password } = req.body;
+// // --- SIGNUP ROUTE ---
+// app.post("/api/signup", async (req, res) => {
+//     const { username, password } = req.body;
 
-    if (!username || typeof username !== "string" || username.length < 3) {
-        return res.status(400).json({ error: "Invalid username" });
-    }
-    if (!password || typeof password !== "string" || password.length < 6) {
-        return res.status(400).json({ error: "Invalid password" });
-    }
+//     if (!username || typeof username !== "string" || username.length < 3) {
+//         return res.status(400).json({ error: "Invalid username" });
+//     }
+//     if (!password || typeof password !== "string" || password.length < 6) {
+//         return res.status(400).json({ error: "Invalid password" });
+//     }
 
-    try {
-        const hashedPassword = await argon2.hash(password);
-        const user = await prisma.user.create({
-            data: { username, password: hashedPassword },
-        });
+//     try {
+//         const hashedPassword = await argon2.hash(password);
+//         const user = await prisma.user.create({
+//             data: { username, password: hashedPassword },
+//         });
 
-        const sessionToken = uuidv4();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+//         const sessionToken = uuidv4();
+//         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-        await prisma.session.create({
-            data: { id: sessionToken, userId: user.id, expiresAt },
-        });
+//         await prisma.session.create({
+//             data: { id: sessionToken, userId: user.id, expiresAt },
+//         });
 
-        res.cookie("session_token", sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            expires: expiresAt,
-        });
+//         res.cookie("session_token", sessionToken, {
+//             httpOnly: true,
+//             secure: process.env.NODE_ENV === "production",
+//             sameSite: "lax",
+//             expires: expiresAt,
+//         });
 
-        return res.status(201).json({ id: user.id, username: user.username });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ error: "Username likely already taken" });
-    }
-});
+//         return res.status(201).json({ id: user.id, username: user.username });
+//     } catch (e) {
+//         console.error(e);
+//         return res.status(500).json({ error: "Username likely already taken" });
+//     }
+// });
 
 // --- LOGIN ROUTE ---
 app.post("/api/login", async (req, res) => {
