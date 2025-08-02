@@ -93,16 +93,16 @@ async function main() {
                     name: item["Item Name"],
                     style: item["Types"],
                     notes: item["Notes"],
-                    supplierId: supplier.id,
-                    categoryId: category.id,
+                    supplierName: supplier.name,
+                    categoryName: category.name,
                 },
                 create: {
                     skuBase: item["SKU Name"],
                     name: item["Item Name"],
                     style: item["Types"],
                     notes: item["Notes"],
-                    supplierId: supplier.id,
-                    categoryId: category.id,
+                    supplierName: supplier.name,
+                    categoryName: category.name,
                 },
             });
 
@@ -115,8 +115,8 @@ async function main() {
                     costCny: parseFloat(item["Price"]) || 0,
                     costUsd: parseFloat(item["Price USD"]) || 0,
                     salePrice: parseFloat(item["Sale Price"]) || 0,
-                    stock: parseInt(item["Stock"], 10) || 0,
-                    productId: product.id,
+                    stock: parseInt(item["Quantity in Stock"], 10) || 0,
+                    productSkuBase: product.skuBase,
                 },
                 create: {
                     sku: item["Full SKU"],
@@ -125,8 +125,8 @@ async function main() {
                     costCny: parseFloat(item["Price"]) || 0,
                     costUsd: parseFloat(item["Price USD"]) || 0,
                     salePrice: parseFloat(item["Sale Price"]) || 0,
-                    stock: parseInt(item["Stock"], 10) || 0,
-                    productId: product.id,
+                    stock: parseInt(item["Quantity in Stock"], 10) || 0,
+                    productSkuBase: product.skuBase,
                 },
             });
         } catch (err) {
