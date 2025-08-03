@@ -1,5 +1,5 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import argon2 from "argon2";
 import { v4 as uuidv4 } from "uuid";
 import cors from "cors";
@@ -119,14 +119,78 @@ app.get("/api/me", async (req, res) => {
     }
 });
 
-// --- GET ALL PRODUCTS ROUTE ---
 app.get("/api/products", async (req, res) => {
+    // --- Pagination ---
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 24;
+    const offset = (page - 1) * limit;
+
+    // --- Sorting ---
+    const sort = req.query.sort || "default";
+
+    // Determine the sorting order for the SQL query
+    let orderBy;
+    switch (sort) {
+        case "price_asc":
+            orderBy = Prisma.sql`"minSalePrice" ASC`;
+            break;
+        case "price_desc":
+            orderBy = Prisma.sql`"minSalePrice" DESC`;
+            break;
+        case "alpha":
+            orderBy = Prisma.sql`p.name ASC`;
+            break;
+        default:
+            // 'default' sort is by newest product
+            orderBy = Prisma.sql`p."createdAt" DESC`;
+            break;
+    }
+
     try {
-        const products = await prisma.product.findMany();
-        res.status(200).json(products);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: "An error occurred while fetching products." });
+        // This raw SQL query is powerful. It gets each product and calculates
+        // its minimum sale price from its variants in a new `minSalePrice` column.
+        // It also gets the image from that cheapest variant.
+        const products = await prisma.$queryRaw`
+      SELECT
+        p.id,
+        p."skuBase",
+        p.name,
+        p."createdAt",
+        (
+          SELECT MIN(pv."salePrice")
+          FROM "ProductVariant" pv
+          WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL
+        ) as "minSalePrice",
+        (
+          SELECT pv."imgUrl"
+          FROM "ProductVariant" pv
+          WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL
+          ORDER BY pv."salePrice" ASC
+          LIMIT 1
+        ) as "displayImageUrl"
+      FROM
+        "Product" p
+      ORDER BY
+        ${orderBy}
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+
+        // We also need the total count of all products for pagination metadata
+        const totalProductsResult = await prisma.product.count();
+
+        // --- Response ---
+        res.json({
+            data: products,
+            meta: {
+                totalProducts: totalProductsResult,
+                currentPage: page,
+                totalPages: Math.ceil(totalProductsResult / limit),
+            },
+        });
+    } catch (error) {
+        console.error("Failed to fetch products with variant prices:", error);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
