@@ -1,5 +1,5 @@
 <script lang="ts">
-    import './layout.css';
+    import "./layout.css";
 
     export let data;
     const { user } = data;
@@ -7,19 +7,19 @@
     let darkMode = false;
 
     // On mount, check cookie for dark mode preference
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
         const match = document.cookie.match(/(^|;)\s*darkMode=([^;]*)/);
-        if (match && match[2] === 'true') {
+        if (match && match[2] === "true") {
             darkMode = true;
-            document.documentElement.classList.add('dark');
+            document.documentElement.classList.add("dark");
         }
     }
 
     function handleLogout(event: Event) {
         event.preventDefault();
-        fetch('http://localhost:3000/api/logout', {
-            method: 'POST',
-            credentials: 'include'
+        fetch("http://localhost:3000/api/logout", {
+            method: "POST",
+            credentials: "include",
         }).then(() => {
             location.reload();
         });
@@ -28,9 +28,9 @@
     function toggleDarkMode() {
         darkMode = !darkMode;
         if (darkMode) {
-            document.documentElement.classList.add('dark');
+            document.documentElement.classList.add("dark");
         } else {
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
         }
         // Set cookie for 1 year
         document.cookie = `darkMode=${darkMode}; path=/; max-age=31536000`;
@@ -62,7 +62,7 @@
             </button>
             {#if user}
                 <span class="user-badge">Welcome, {user.username}!</span>
-                {#if user.role === 'ADMIN'}
+                {#if user.role === "ADMIN"}
                     <a class="nav-link" href="/admin/add-product">Admin</a>
                 {/if}
                 <form class="logout-form" on:submit={handleLogout}>
@@ -78,25 +78,25 @@
         <nav class="nav">
             <div class="nav-list">
                 <div class="nav-item">
-                    <a class="nav-link" href="/products/Chupa">
+                    <a class="nav-link" href="/products?sort=default&category=Chupa%2CWonju">
                         <span class="nav-link-text">Clothing</span>
                     </a>
                 </div>
-                <div class="nav-item">
+                <!-- <div class="nav-item">
                     <a class="nav-link" href="/products/Accessories">
                         <span class="nav-link-text">Accessories</span>
                     </a>
-                </div>
+                </div> -->
                 <div class="nav-item">
-                    <a class="nav-link" href="/products/Jewelry">
+                    <a class="nav-link" href="/products?sort=default&category=Jewelry">
                         <span class="nav-link-text">Jewelry</span>
                     </a>
                 </div>
-                <div class="nav-item">
+                <!-- <div class="nav-item">
                     <a class="nav-link" href="/products/PhoneCases">
                         <span class="nav-link-text">Phone Cases</span>
                     </a>
-                </div>
+                </div> -->
             </div>
         </nav>
     </div>

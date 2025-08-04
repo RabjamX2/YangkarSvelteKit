@@ -96,25 +96,27 @@
     }
 </script>
 
-<!-- UI for Category Filters -->
-<div class="filter-controls">
-    <span>Category:</span>
-    {#each allCategories as category (category.id)}
-        <button on:click={() => toggleCategory(category.name)} class:active={activeCategories.has(category.name)}>
-            {category.name}
-        </button>
-    {/each}
-</div>
+<!-- Controls Row: Filter left, Sort right -->
+<div class="controls-row">
+    <!-- UI for Category Filters -->
+    <div class="filter-controls">
+        {#each allCategories as category (category.id)}
+            <button on:click={() => toggleCategory(category.name)} class:active={activeCategories.has(category.name)}>
+                {category.name}
+            </button>
+        {/each}
+    </div>
 
-<!-- UI for changing sort order -->
-<div class="sort-controls">
-    <button on:click={() => handleSortChange("default")} class:active={sortKey === "default"}> Newest </button>
-    <button on:click={() => handleSortChange("price_asc")} class:active={sortKey === "price_asc"}>
-        Price: Low to High
-    </button>
-    <button on:click={() => handleSortChange("price_desc")} class:active={sortKey === "price_desc"}>
-        Price: High to Low
-    </button>
+    <!-- UI for changing sort order -->
+    <div class="sort-controls">
+        <button on:click={() => handleSortChange("default")} class:active={sortKey === "default"}> Newest </button>
+        <button on:click={() => handleSortChange("price_asc")} class:active={sortKey === "price_asc"}>
+            Price: Low to High
+        </button>
+        <button on:click={() => handleSortChange("price_desc")} class:active={sortKey === "price_desc"}>
+            Price: High to Low
+        </button>
+    </div>
 </div>
 
 <!-- Product grid iterates over our local `products` array -->
@@ -157,12 +159,26 @@
 {/if}
 
 <style>
-    .filter-controls,
+    .controls-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 15px;
+        margin-right: auto;
+        margin-left: auto;
+        max-width: 1920px;
+    }
+    .filter-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
     .sort-controls {
         display: flex;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
+        align-items: center;
+        gap: 0.25rem;
         flex-wrap: wrap;
     }
     button {
