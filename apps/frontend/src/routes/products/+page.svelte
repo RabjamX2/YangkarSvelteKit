@@ -108,21 +108,35 @@
 <div class="product-grid">
     {#each products as product (product.id)}
         <!-- Your ProductCard component here -->
-        <a href="/products/{product.skuBase}" class="product-card">
-            <img
-                src={product.displayImageUrl || "https://placehold.co/400x400/eee/ccc?text=Product"}
-                alt={product.name}
-            />
-            <h2>{product.name}</h2>
-            <h3>{product.skuBase}</h3>
-
-            <!-- Display the minimum price. Add a check in case a product has no variants with a price yet -->
-            {#if product.minSalePrice}
-                <p>From ${product.minSalePrice}</p>
-            {:else}
-                <p>Price not available</p>
-            {/if}
-        </a>
+        <div class="product-card">
+            <div class="product-card-media">
+                <a href="/products/{product.skuBase}" class="product-card-img-link">
+                    <figure class="product-card-img-holder">
+                        <img
+                            src={product.displayImageUrl || "https://placehold.co/400x400/eee/ccc?text=Product"}
+                            alt={product.name}
+                        />
+                    </figure>
+                </a>
+            </div>
+            <div class="product-card-info">
+                <a href="/products/{product.skuBase}" class="product-card-info-title">{product.name}</a>
+                <div class="product-card-meta">
+                    <span class="product-card-sku">{product.skuBase}</span>
+                    <!-- Display the minimum price. Add a check in case a product has no variants with a price yet -->
+                    {#if product.minSalePrice}
+                        <p>${product.minSalePrice}</p>
+                    {:else}
+                        <p>Price not available</p>
+                    {/if}
+                </div>
+                <div class="product-card-swatches">
+                    {#each product.variants as variant (variant.id)}
+                        <span class="product-card-swatch" style="background-color: {variant.color}"></span>
+                    {/each}
+                </div>
+            </div>
+        </div>
     {/each}
 </div>
 
@@ -166,33 +180,66 @@
     }
 
     .product-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0rem;
+        display: flex;
+        flex-wrap: wrap;
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 1920px;
+        border: 1px solid #1900ff;
+        border-right: 0;
     }
-    @media (min-width: 732px) {
-        .product-grid {
-            grid-template-columns: repeat(3, 1fr);
+    .product-card {
+        flex: 1 0 50%; /* 2 columns by default */
+        max-width: 50%;
+        box-sizing: border-box;
+        text-decoration: none;
+        color: inherit;
+        border-bottom: 1px solid #1900ff;
+        border-right: 1px solid #1900ff;
+        padding: 0;
+        margin: 0;
+    }
+    @media (min-width: 732px) and (max-width: 1000px) {
+        .product-card {
+            flex: 1 0 33.3333%; /* 3 columns */
+            max-width: 33.3333%;
         }
     }
     @media (min-width: 1001px) {
+        .product-card {
+            flex: 1 0 25%; /* 4 columns */
+            max-width: 25%;
+        }
         .product-grid {
-            grid-template-columns: repeat(4, 1fr);
             margin-left: auto;
             margin-right: auto;
             max-width: 1920px;
         }
     }
-    .product-card {
-        text-decoration: none;
-        color: inherit;
+
+    .product-card-media {
+        width: 100%;
+        border-bottom: 1px solid #1900ff;
+    }
+    .product-card-img-holder {
+        width: 100%;
+        height: 100%;
+        padding: 0 0;
+        margin: 0 0;
     }
     .product-card img {
+        display: block;
+        /* position: absolute; */
+        /* top: 0;
+        left: 0; */
         width: 100%;
-        aspect-ratio: 1 / 1;
+        height: 100%;
+        aspect-ratio: 4 / 5;
         object-fit: cover;
-        border-radius: 0.5rem;
-        margin-bottom: 0.5rem;
+        object-position: center center;
+    }
+    .product-card-info {
+        border: 0;
     }
 
     .loading-indicator,
