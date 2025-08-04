@@ -2,7 +2,6 @@
     import "./layout.css";
 
     export let data;
-    const { user } = data;
 
     let darkMode = false;
 
@@ -45,14 +44,27 @@
     </div> -->
     <div class="main-header">
         <div class="main-header-left">
-            <a class="nav-link" href="/">
+            <!-- TODO: Maybe add language selection here -->
+            <!-- <a class="nav-link" href="/">
                 <span class="nav-link-text">Home</span>
-            </a>
+            </a> -->
         </div>
         <figure class="header-logo">
             <img class="logo" src="/Logo/Logo Text - English Long.png" alt="Logo" />
         </figure>
         <div class="main-header-right">
+            {#if data.user}
+                <span class="user-badge">{data.user.username}</span>
+                {#if data.user.role === "ADMIN"}
+                    <a class="nav-link" href="/admin/add-product">Admin</a>
+                {/if}
+                <form class="logout-form" on:submit={handleLogout}>
+                    <button class="logout-btn">Log Out</button>
+                </form>
+            {:else}
+                <a class="nav-link" href="/login">Login</a>
+                <a class="nav-link signup" href="/signup">Sign Up</a>
+            {/if}
             <button class="theme-toggle" on:click={toggleDarkMode} aria-label="Toggle dark mode">
                 {#if darkMode}
                     🌙
@@ -60,18 +72,6 @@
                     ☀️
                 {/if}
             </button>
-            {#if user}
-                <span class="user-badge">Welcome, {user.username}!</span>
-                {#if user.role === "ADMIN"}
-                    <a class="nav-link" href="/admin/add-product">Admin</a>
-                {/if}
-                <form class="logout-form" on:submit={handleLogout}>
-                    <button class="logout-btn">Log Out</button>
-                </form>
-            {:else}
-                <!-- <a class="nav-link" href="/login">Login</a> -->
-                <!-- <a class="nav-link signup" href="/signup">Sign Up</a> -->
-            {/if}
         </div>
     </div>
     <div class="header-nav">
