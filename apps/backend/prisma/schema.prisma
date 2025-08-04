@@ -107,6 +107,9 @@ model ProductVariant {
   purchaseOrderItems PurchaseOrderItem[]
   customerOrderItems CustomerOrderItem[]
 
+  // This line adds the index to the productSkuBase field for faster lookups.
+  @@index([productSkuBase])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
