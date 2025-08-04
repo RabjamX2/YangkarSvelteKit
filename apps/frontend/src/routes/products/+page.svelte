@@ -1,101 +1,114 @@
 <script>
-    import { onMount } from "svelte";
     import { goto } from "$app/navigation";
 
-    // 1. Get the initial data (page 1) from the `load` function.
     export let data;
 
-    // 2. Create local, reactive state based on the initial data.
-    // We use `let` because these variables will be updated as we load more.
+    // --- Component State ---
     let products = data.products;
     let meta = data.meta;
+    let isLoading = false;
+    let hasMore = data.meta.currentPage < data.meta.totalPages;
+
+    // --- Filter & Sort State ---
+    // Use a Set for efficient management of active categories
+    let activeCategories = new Set(data.activeCategories);
     let sortKey = data.sortKey;
+    let allCategories = data.allCategories;
 
-    let isLoading = false; // Prevents fetching multiple pages at once.
-    let hasMore = meta.currentPage < meta.totalPages; // Is there more data to load?
-
-    // 3. When `data` from the `load` function changes (i.e., on sort change),
-    // we MUST reset the component's state to reflect the new data.
+    // This reactive block resets the component's state when navigation occurs
     $: if (data) {
         products = data.products;
         meta = data.meta;
-        sortKey = data.sortKey;
         hasMore = meta.currentPage < meta.totalPages;
-        // Ensure loading is reset for the new list
+        isLoading = false;
+        sortKey = data.sortKey;
+        // Re-initialize the Set from the new `data` prop
+        activeCategories = new Set(data.activeCategories);
+    }
+
+    // --- Data Fetching ---
+    async function loadMore() {
+        if (isLoading || !hasMore) return;
+        isLoading = true;
+
+        const nextPage = meta.currentPage + 1;
+        const params = new URLSearchParams();
+        params.set("page", String(nextPage));
+        params.set("sort", sortKey);
+
+        if (activeCategories.size > 0) {
+            params.set("category", Array.from(activeCategories).join(","));
+        }
+
+        const response = await fetch(`/api/products?${params.toString()}`);
+        const newData = await response.json();
+
+        products = [...products, ...newData.data];
+        meta = newData.meta;
+        hasMore = meta.currentPage < meta.totalPages;
         isLoading = false;
     }
 
-    // 4. This function fetches the next page of products.
-    async function loadMore() {
-        // Don't load if we're already loading or if there are no more pages.
-        if (isLoading || !hasMore) return;
+    // --- Navigation ---
+    function handleFilterChange() {
+        const params = new URLSearchParams();
+        params.set("sort", sortKey);
 
-        isLoading = true;
-        const nextPage = meta.currentPage + 1;
-
-        try {
-            // Fetch the next page with the current sort order.
-            const response = await fetch(`/api/products?page=${nextPage}&sort=${sortKey}`);
-            if (!response.ok) throw new Error("Failed to fetch products");
-
-            const newData = await response.json();
-
-            // Append the new products to our existing list.
-            products = [...products, ...newData.data];
-
-            // Update the metadata (current page, total pages).
-            meta = newData.meta;
-
-            // Re-evaluate if there are still more pages to load.
-            hasMore = meta.currentPage < meta.totalPages;
-        } catch (error) {
-            console.error("Error loading more products:", error);
-            // Optionally show an error message to the user
-        } finally {
-            isLoading = false;
+        if (activeCategories.size > 0) {
+            params.set("category", Array.from(activeCategories).join(","));
         }
+
+        // Use goto to re-run the `load` function with the new URL
+        goto(`?${params.toString()}`, { noScroll: true, keepFocus: true });
     }
 
-    // 5. This is a Svelte Action that uses the IntersectionObserver API.
-    // It's a clean and reusable way to detect when an element enters the screen.
+    function handleSortChange(newSort) {
+        sortKey = newSort;
+        handleFilterChange(); // Re-run the filter change to navigate
+    }
+
+    function toggleCategory(categoryName) {
+        if (activeCategories.has(categoryName)) {
+            activeCategories.delete(categoryName);
+        } else {
+            activeCategories.add(categoryName);
+        }
+        // After changing the category, trigger navigation
+        handleFilterChange();
+    }
+
+    // --- Intersection Observer ---
     function observe(node) {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting) {
-                    // The sentinel is visible, so load more products.
                     loadMore();
                 }
             },
-            { rootMargin: "200px" } // Optional: start loading 200px before the user reaches the bottom.
+            { rootMargin: "200px" }
         );
-
         observer.observe(node);
-
         return {
             destroy() {
                 observer.unobserve(node);
             },
         };
     }
-
-    // 6. When a user clicks a sort button, navigate. SvelteKit re-runs `load`.
-    function handleSortChange(newSort) {
-        // Avoid navigating if the sort is already active.
-        if (newSort === sortKey) return;
-
-        // Using `goto` tells SvelteKit to re-run the `load` function on this page.
-        // This will fetch page 1 of the new sort order and reset our component.
-        goto(`/products?sort=${newSort}`, {
-            noScroll: true, // Prevents the page from jumping to the top.
-        });
-    }
 </script>
+
+<!-- UI for Category Filters -->
+<div class="filter-controls">
+    <span>Category:</span>
+    {#each allCategories as category (category.id)}
+        <button on:click={() => toggleCategory(category.name)} class:active={activeCategories.has(category.name)}>
+            {category.name}
+        </button>
+    {/each}
+</div>
 
 <!-- UI for changing sort order -->
 <div class="sort-controls">
-    <span>Sort by:</span>
     <button on:click={() => handleSortChange("default")} class:active={sortKey === "default"}> Newest </button>
-    <button on:click={() => handleSortChange("alpha")} class:active={sortKey === "alpha"}> Alphabetical </button>
     <button on:click={() => handleSortChange("price_asc")} class:active={sortKey === "price_asc"}>
         Price: Low to High
     </button>
@@ -107,7 +120,6 @@
 <!-- Product grid iterates over our local `products` array -->
 <div class="product-grid">
     {#each products as product (product.id)}
-        <!-- Your ProductCard component here -->
         <div class="product-card">
             <div class="product-card-media">
                 <a href="/products/{product.skuBase}" class="product-card-img-link">
@@ -122,31 +134,22 @@
             <div class="product-card-info">
                 <a href="/products/{product.skuBase}" class="product-card-info-title">{product.name}</a>
                 <div class="product-card-meta">
-                    <span class="product-card-sku">{product.skuBase}</span>
-                    <!-- Display the minimum price. Add a check in case a product has no variants with a price yet -->
+                    <p class="product-card-sku">{product.skuBase}</p>
                     {#if product.minSalePrice}
-                        <p>${product.minSalePrice}</p>
+                        <span class="product-card-price">${product.minSalePrice}</span>
                     {:else}
-                        <p>Price not available</p>
+                        <span class="product-card-price">Coming Soon</span>
                     {/if}
-                </div>
-                <div class="product-card-swatches">
-                    {#each product.variants as variant (variant.id)}
-                        <span class="product-card-swatch" style="background-color: {variant.color}"></span>
-                    {/each}
                 </div>
             </div>
         </div>
     {/each}
 </div>
 
-<!-- This invisible element is the "sentinel". When it comes into view,
-     the `observe` action will call `loadMore`. -->
 {#if hasMore}
     <div class="sentinel" use:observe></div>
 {/if}
 
-<!-- A loading indicator shown at the bottom while fetching. -->
 {#if isLoading}
     <div class="loading-indicator">
         <p>Loading more products...</p>
@@ -154,14 +157,15 @@
 {/if}
 
 <style>
+    .filter-controls,
     .sort-controls {
         display: flex;
         justify-content: center;
         gap: 0.5rem;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
         flex-wrap: wrap;
     }
-    .sort-controls button {
+    button {
         padding: 0.5rem 1rem;
         border: 1px solid #ccc;
         background-color: #fff;
@@ -169,16 +173,15 @@
         border-radius: 999px;
         transition: all 0.2s ease;
     }
-    .sort-controls button:hover {
+    button:hover {
         background-color: #f0f0f0;
         border-color: #999;
     }
-    .sort-controls button.active {
+    button.active {
         background-color: #333;
         color: #fff;
         border-color: #333;
     }
-
     .product-grid {
         display: flex;
         flex-wrap: wrap;
@@ -187,6 +190,10 @@
         max-width: 1920px;
         border: 1px solid #1900ff;
         border-right: 0;
+        font-family: var(--font-primary);
+        font-size: 14px;
+        letter-spacing: var(--custom-letter-spacing);
+        line-height: 1.58333;
     }
     .product-card {
         flex: 1 0 50%; /* 2 columns by default */
@@ -210,13 +217,7 @@
             flex: 1 0 25%; /* 4 columns */
             max-width: 25%;
         }
-        .product-grid {
-            margin-left: auto;
-            margin-right: auto;
-            max-width: 1920px;
-        }
     }
-
     .product-card-media {
         width: 100%;
         border-bottom: 1px solid #1900ff;
@@ -224,14 +225,11 @@
     .product-card-img-holder {
         width: 100%;
         height: 100%;
-        padding: 0 0;
-        margin: 0 0;
+        padding: 0;
+        margin: 0;
     }
     .product-card img {
         display: block;
-        /* position: absolute; */
-        /* top: 0;
-        left: 0; */
         width: 100%;
         height: 100%;
         aspect-ratio: 4 / 5;
@@ -239,9 +237,25 @@
         object-position: center center;
     }
     .product-card-info {
-        border: 0;
+        padding: 15px 15px;
+        word-wrap: break-word;
+        word-break: break-word;
     }
-
+    .product-card-info-title {
+        font-weight: bold;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        font-size: 14px;
+    }
+    .product-card-sku {
+        font-size: 14px;
+        color: #666;
+    }
+    .product-card-price {
+        font-weight: bold;
+        font-size: 14px;
+    }
     .loading-indicator,
     .sentinel {
         height: 50px;

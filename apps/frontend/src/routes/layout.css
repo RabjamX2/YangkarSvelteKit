@@ -19,6 +19,8 @@
     --font-size-small: 0.875rem; /* 14px */
     --font-size-medium: 1rem; /* 16px */
     --font-size-large: 1.25rem; /* 20px */
+    --custom-letter-spacing: 0.8px;
+    --font-primary: "Inter", Arial, sans-serif;
 }
 
 .dark {
@@ -41,6 +43,69 @@
     --color-logout: #fff;
 }
 
+a,
+abbr,
+acronym,
+address,
+article,
+aside,
+audio,
+blockquote,
+body,
+canvas,
+cite,
+code,
+div,
+dd,
+dl,
+dt,
+em,
+figcaption,
+figure,
+fieldset,
+footer,
+form,
+header,
+hgroup,
+html,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+iframe,
+img,
+label,
+li,
+mark,
+menu,
+nav,
+ol,
+optgroup,
+p,
+pre,
+q,
+span,
+strong,
+sub,
+sup,
+table,
+tbody,
+td,
+textarea,
+tfoot,
+th,
+thead,
+tr,
+section,
+time,
+ul,
+video {
+    margin: 0;
+    padding: 0;
+}
+
 body,
 html {
     background: var(--color-bg);
@@ -55,7 +120,9 @@ html {
     color: var(--color-signup);
     margin-left: 0.5rem;
     font-weight: 500;
-    transition: background 0.2s, color 0.2s;
+    transition:
+        background 0.2s,
+        color 0.2s;
 }
 
 .signup:hover {
@@ -172,7 +239,9 @@ html {
     font-size: var(--font-size-medium);
     padding: 0.5rem 1rem;
     border-radius: 6px;
-    transition: background 0.2s, color 0.2s;
+    transition:
+        background 0.2s,
+        color 0.2s;
 }
 
 .nav-link-text {

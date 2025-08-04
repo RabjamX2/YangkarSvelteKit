@@ -125,61 +125,52 @@ app.get("/api/products", async (req, res) => {
     const limit = parseInt(req.query.limit) || 24;
     const offset = (page - 1) * limit;
 
-    // --- Sorting ---
+    // --- Sorting & Filtering ---
     const sort = req.query.sort || "default";
+    // Accept a comma-separated string of categories
+    const categories = req.query.category ? req.query.category.split(",") : [];
 
-    // Determine the sorting order for the SQL query
     let orderBy;
     switch (sort) {
         case "price_asc":
-            orderBy = Prisma.sql`"minSalePrice" ASC`;
+            orderBy = Prisma.sql`"minSalePrice" ASC NULLS LAST`;
             break;
         case "price_desc":
-            orderBy = Prisma.sql`"minSalePrice" DESC`;
+            orderBy = Prisma.sql`"minSalePrice" DESC NULLS LAST`;
             break;
         case "alpha":
             orderBy = Prisma.sql`p.name ASC`;
             break;
         default:
-            // 'default' sort is by newest product
             orderBy = Prisma.sql`p."createdAt" DESC`;
             break;
     }
 
+    // --- Dynamic WHERE Clause for Multiple Categories ---
+    const whereClauses = [];
+    if (categories.length > 0) {
+        // Use a WHERE ... IN clause for multiple categories
+        whereClauses.push(Prisma.sql`p."categoryName" IN (${Prisma.join(categories)})`);
+    }
+
+    const where = whereClauses.length > 0 ? Prisma.sql`WHERE ${Prisma.join(whereClauses, " AND ")}` : Prisma.empty;
+
     try {
-        // This raw SQL query is powerful. It gets each product and calculates
-        // its minimum sale price from its variants in a new `minSalePrice` column.
-        // It also gets the image from that cheapest variant.
         const products = await prisma.$queryRaw`
       SELECT
-        p.id,
-        p."skuBase",
-        p.name,
-        p."createdAt",
-        (
-          SELECT MIN(pv."salePrice")
-          FROM "ProductVariant" pv
-          WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL
-        ) as "minSalePrice",
-        (
-          SELECT pv."imgUrl"
-          FROM "ProductVariant" pv
-          WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL
-          ORDER BY pv."salePrice" ASC
-          LIMIT 1
-        ) as "displayImageUrl"
-      FROM
-        "Product" p
-      ORDER BY
-        ${orderBy}
-      LIMIT ${limit}
-      OFFSET ${offset}
+        p.id, p."skuBase", p.name, p."createdAt",
+        (SELECT MIN(pv."salePrice") FROM "ProductVariant" pv WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL) as "minSalePrice",
+        (SELECT pv."imgUrl" FROM "ProductVariant" pv WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL ORDER BY pv."salePrice" ASC LIMIT 1) as "displayImageUrl"
+      FROM "Product" p
+      ${where}
+      ORDER BY ${orderBy}
+      LIMIT ${limit} OFFSET ${offset}
     `;
 
-        // We also need the total count of all products for pagination metadata
-        const totalProductsResult = await prisma.product.count();
+        // The total count must also respect the filter
+        const whereFilter = categories.length > 0 ? { categoryName: { in: categories } } : {};
+        const totalProductsResult = await prisma.product.count({ where: whereFilter });
 
-        // --- Response ---
         res.json({
             data: products,
             meta: {
@@ -189,8 +180,19 @@ app.get("/api/products", async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Failed to fetch products with variant prices:", error);
+        console.error("Failed to fetch products:", error);
         res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+app.get("/api/categories", async (req, res) => {
+    try {
+        const categories = await prisma.category.findMany({
+            orderBy: { name: "asc" },
+        });
+        res.json(categories);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch categories" });
     }
 });
 

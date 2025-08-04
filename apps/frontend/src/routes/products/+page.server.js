@@ -1,26 +1,53 @@
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ url, fetch }) {
-    // Get the 'sort' parameter from the URL, e.g., /products?sort=alpha
+    // 1. Read both sort and category parameters from the page's URL.
+    // The 'category' param can be a comma-separated list.
     const sort = url.searchParams.get("sort") || "default";
+    const categoriesParam = url.searchParams.get("category");
 
-    // Always fetch page 1 for the initial server-side render.
-    // The `fetch` function here is provided by SvelteKit and can make direct API requests.
-    // Ensure the URL points to your running Express backend.
-    const response = await fetch(`http://localhost:3000/api/products?page=1&sort=${sort}`);
+    // 2. Build the API request URL safely using URLSearchParams.
+    const apiParams = new URLSearchParams();
+    apiParams.set("page", "1"); // Always fetch page 1 for the initial load
+    apiParams.set("sort", sort);
 
-    if (!response.ok) {
-        // Handle errors appropriately, e.g., by returning an error status
-        // that you can display in an +error.svelte file.
-        console.error(`Failed to fetch initial products: ${response.statusText}`);
-        return { products: [], meta: { totalPages: 0 }, sortKey: sort };
+    // Only add the category parameter to the API call if it actually exists.
+    if (categoriesParam) {
+        apiParams.set("category", categoriesParam);
     }
 
-    const productData = await response.json();
+    try {
+        // 3. Fetch the initial products and the list of all categories in parallel.
+        // This is more efficient than fetching them one after another.
+        const [productResponse, categoriesResponse] = await Promise.all([
+            fetch(`http://localhost:3000/api/products?${apiParams.toString()}`),
+            fetch(`http://localhost:3000/api/categories`), // You'll need to create this API route
+        ]);
 
-    // The object returned here is the `data` prop in your +page.svelte component.
-    return {
-        products: productData.data,
-        meta: productData.meta,
-        sortKey: sort, // Pass the current sort key to the component
-    };
+        if (!productResponse.ok || !categoriesResponse.ok) {
+            throw new Error("Failed to fetch initial data from the API");
+        }
+
+        const productData = await productResponse.json();
+        const allCategories = await categoriesResponse.json();
+
+        // 4. Return all the data the component needs to render.
+        return {
+            products: productData.data,
+            meta: productData.meta,
+            allCategories: allCategories, // The full list for building filter buttons
+            sortKey: sort, // The currently active sort
+            // Convert the URL parameter string into an array of active categories
+            activeCategories: categoriesParam ? categoriesParam.split(",") : [],
+        };
+    } catch (error) {
+        console.error("Error in server load function:", error);
+        // Return a safe, empty state if the API call fails
+        return {
+            products: [],
+            meta: { totalPages: 0 },
+            allCategories: [],
+            sortKey: sort,
+            activeCategories: [],
+        };
+    }
 }
