@@ -4,33 +4,32 @@
 </script>
 
 <svelte:head>
-    <title>Login</title>
+    <title>Forgot Password</title>
 </svelte:head>
 
 <div class="auth-container">
-    <h2>Login to Your Account</h2>
-    <form method="POST">
-        {#if form?.error}
-            <p class="error">{form.error}</p>
-        {/if}
+    <h2>Reset Your Password</h2>
 
-        <div class="form-group">
-            <label for="username">Username</label>
-            <input id="username" type="text" name="username" value={form?.username ?? ""} required />
-        </div>
-
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input id="password" type="password" name="password" required />
-        </div>
-
-        <div class="form-actions">
-            <a href="/forgot-password" class="forgot-password-link">Forgot Password?</a>
-            <button type="submit" class="submit-btn">Login</button>
-        </div>
-    </form>
+    {#if form?.success}
+        <p class="success">
+            {form.message}
+        </p>
+        <p>Please check your terminal console (where the backend is running) for the password reset link.</p>
+    {:else}
+        <p class="instructions">Enter your email address and we will send you a link to reset your password.</p>
+        <form method="POST">
+            {#if form?.error}
+                <p class="error">{form.error}</p>
+            {/if}
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" required value={form?.email ?? ""} />
+            </div>
+            <button type="submit" class="submit-btn">Send Reset Link</button>
+        </form>
+    {/if}
     <p class="auth-switch">
-        Don't have an account? <a href="/signup">Sign up</a>
+        Remembered your password? <a href="/login">Log in</a>
     </p>
 </div>
 
@@ -45,10 +44,15 @@
     }
     h2 {
         text-align: center;
+        margin-bottom: 1rem;
+    }
+    .instructions {
+        text-align: center;
         margin-bottom: 1.5rem;
+        color: #666;
     }
     .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
     }
     label {
         display: block;
@@ -61,17 +65,6 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         box-sizing: border-box;
-    }
-    .form-actions {
-        margin-top: 1.5rem;
-    }
-    .forgot-password-link {
-        display: block;
-        text-align: right;
-        font-size: 0.875rem;
-        color: var(--color-link-hover);
-        text-decoration: none;
-        margin-bottom: 1rem;
     }
     .submit-btn {
         width: 100%;
@@ -88,14 +81,22 @@
     .submit-btn:hover {
         background-color: var(--color-signup-bg-hover);
     }
-    .error {
-        color: #e53e3e;
-        background-color: #fef2f2;
-        border: 1px solid #fecaca;
+    .error,
+    .success {
         padding: 0.75rem;
         border-radius: 4px;
         margin-bottom: 1rem;
         text-align: center;
+    }
+    .error {
+        color: #e53e3e;
+        background-color: #fef2f2;
+        border: 1px solid #fecaca;
+    }
+    .success {
+        color: #2f855a;
+        background-color: #f0fff4;
+        border: 1px solid #9ae6b4;
     }
     .auth-switch {
         text-align: center;

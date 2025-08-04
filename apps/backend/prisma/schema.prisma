@@ -26,6 +26,9 @@ model User {
     password String
     role     Role      @default(USER)
     sessions Session[]
+
+    passwordResetToken   String?   @unique
+    passwordResetExpires DateTime?
 }
 
 model Session {

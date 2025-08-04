@@ -1,12 +1,15 @@
 import express from "express";
-import { PrismaClient, Prisma } from "@prisma/client";
-import argon2 from "argon2";
-import { v4 as uuidv4 } from "uuid";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
+// Import route handlers
+import authRoutes from "./routes/auth.routes.js";
+import productRoutes from "./routes/product.routes.js";
+
+// Import middleware
+import errorHandler from "./middleware/errorHandler.js";
+
 const app = express();
-const prisma = new PrismaClient();
 
 // --- Middleware Setup ---
 app.use(
@@ -16,226 +19,17 @@ app.use(
     })
 );
 app.use(express.json());
-app.use(cookieParser()); // Middleware to parse cookies from requests
+app.use(cookieParser());
 
-// // --- SIGNUP ROUTE ---
-// app.post("/api/signup", async (req, res) => {
-//     const { username, password } = req.body;
+// --- API Routes ---
+// All authentication routes will be prefixed with /api
+app.use("/api", authRoutes);
+// All product-related routes will be prefixed with /api
+app.use("/api", productRoutes);
 
-//     if (!username || typeof username !== "string" || username.length < 3) {
-//         return res.status(400).json({ error: "Invalid username" });
-//     }
-//     if (!password || typeof password !== "string" || password.length < 6) {
-//         return res.status(400).json({ error: "Invalid password" });
-//     }
-
-//     try {
-//         const hashedPassword = await argon2.hash(password);
-//         const user = await prisma.user.create({
-//             data: { username, password: hashedPassword },
-//         });
-
-//         const sessionToken = uuidv4();
-//         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-//         await prisma.session.create({
-//             data: { id: sessionToken, userId: user.id, expiresAt },
-//         });
-
-//         res.cookie("session_token", sessionToken, {
-//             httpOnly: true,
-//             secure: process.env.NODE_ENV === "production",
-//             sameSite: "lax",
-//             expires: expiresAt,
-//         });
-
-//         return res.status(201).json({ id: user.id, username: user.username });
-//     } catch (e) {
-//         console.error(e);
-//         return res.status(500).json({ error: "Username likely already taken" });
-//     }
-// });
-
-// --- LOGIN ROUTE ---
-app.post("/api/login", async (req, res) => {
-    const { username, password } = req.body;
-
-    try {
-        const user = await prisma.user.findUnique({ where: { username } });
-        if (!user || !(await argon2.verify(user.password, password))) {
-            return res.status(400).json({ error: "Invalid username or password" });
-        }
-
-        const sessionToken = uuidv4();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-        await prisma.session.create({
-            data: { id: sessionToken, userId: user.id, expiresAt },
-        });
-
-        res.cookie("session_token", sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            expires: expiresAt,
-        });
-        return res.status(200).json({ id: user.id, username: user.username });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ error: "An error occurred" });
-    }
-});
-
-// --- LOGOUT ROUTE ---
-app.post("/api/logout", async (req, res) => {
-    const sessionToken = req.cookies.session_token;
-    if (sessionToken) {
-        try {
-            await prisma.session.delete({ where: { id: sessionToken } });
-        } catch (error) {
-            // Ignore errors
-        }
-    }
-    res.clearCookie("session_token");
-    return res.status(200).json({ message: "Logged out" });
-});
-
-// --- ME (GET CURRENT USER) ROUTE ---
-app.get("/api/me", async (req, res) => {
-    const sessionToken = req.cookies.session_token;
-    if (!sessionToken) {
-        return res.status(401).json({ user: null });
-    }
-
-    const session = await prisma.session.findUnique({
-        where: { id: sessionToken, expiresAt: { gt: new Date() } },
-        include: { user: { select: { id: true, username: true, role: true, name: true } } },
-    });
-
-    if (session && session.user) {
-        return res.status(200).json({ user: session.user });
-    } else {
-        return res.status(401).json({ user: null });
-    }
-});
-
-app.get("/api/products", async (req, res) => {
-    // --- Pagination ---
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 24;
-    const offset = (page - 1) * limit;
-
-    // --- Sorting & Filtering ---
-    const sort = req.query.sort || "default";
-    // Accept a comma-separated string of categories
-    const categories = req.query.category ? req.query.category.split(",") : [];
-
-    let orderBy;
-    switch (sort) {
-        case "price_asc":
-            orderBy = Prisma.sql`"minSalePrice" ASC NULLS LAST`;
-            break;
-        case "price_desc":
-            orderBy = Prisma.sql`"minSalePrice" DESC NULLS LAST`;
-            break;
-        case "alpha":
-            orderBy = Prisma.sql`p.name ASC`;
-            break;
-        default:
-            orderBy = Prisma.sql`p."createdAt" DESC`;
-            break;
-    }
-
-    // --- Dynamic WHERE Clause for Multiple Categories ---
-    const whereClauses = [];
-    if (categories.length > 0) {
-        // Use a WHERE ... IN clause for multiple categories
-        whereClauses.push(Prisma.sql`p."categoryName" IN (${Prisma.join(categories)})`);
-    }
-
-    const where = whereClauses.length > 0 ? Prisma.sql`WHERE ${Prisma.join(whereClauses, " AND ")}` : Prisma.empty;
-
-    try {
-        const products = await prisma.$queryRaw`
-      SELECT
-        p.id, p."skuBase", p.name, p."createdAt",
-        (SELECT MIN(pv."salePrice") FROM "ProductVariant" pv WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL) as "minSalePrice",
-        (SELECT pv."imgUrl" FROM "ProductVariant" pv WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL ORDER BY pv."salePrice" ASC LIMIT 1) as "displayImageUrl"
-      FROM "Product" p
-      ${where}
-      ORDER BY ${orderBy}
-      LIMIT ${limit} OFFSET ${offset}
-    `;
-
-        // The total count must also respect the filter
-        const whereFilter = categories.length > 0 ? { categoryName: { in: categories } } : {};
-        const totalProductsResult = await prisma.product.count({ where: whereFilter });
-
-        res.json({
-            data: products,
-            meta: {
-                totalProducts: totalProductsResult,
-                currentPage: page,
-                totalPages: Math.ceil(totalProductsResult / limit),
-            },
-        });
-    } catch (error) {
-        console.error("Failed to fetch products:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
-
-app.get("/api/categories", async (req, res) => {
-    try {
-        const categories = await prisma.category.findMany({
-            orderBy: { name: "asc" },
-        });
-        res.json(categories);
-    } catch (error) {
-        res.status(500).json({ error: "Failed to fetch categories" });
-    }
-});
-
-// --- CREATE A NEW PRODUCT (ADMIN ONLY) ---
-app.post("/api/products", async (req, res) => {
-    // 1. Check for a valid session
-    const sessionToken = req.cookies.session_token;
-    if (!sessionToken) {
-        return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    const session = await prisma.session.findUnique({
-        where: { id: sessionToken, expiresAt: { gt: new Date() } },
-        include: { user: true }, // Include the full user object
-    });
-
-    // 2. Check if the user is an ADMIN
-    if (!session || !session.user || session.user.role !== "ADMIN") {
-        return res.status(403).json({ error: "Not authorized" });
-    }
-
-    // 3. If authorized, create the product
-    try {
-        const { name, description, price, imageUrl } = req.body;
-        // Basic validation
-        if (!name || !description || !price || !imageUrl) {
-            return res.status(400).json({ error: "All product fields are required." });
-        }
-
-        const product = await prisma.product.create({
-            data: {
-                name,
-                description,
-                price: parseInt(price, 10), // Ensure price is an integer
-                imageUrl,
-            },
-        });
-        res.status(201).json(product);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: "An error occurred while creating the product." });
-    }
-});
+// --- Centralized Error Handler ---
+// This should be the LAST middleware you use
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
