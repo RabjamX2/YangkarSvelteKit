@@ -1,5 +1,8 @@
 <script lang="ts">
     import "./layout.css";
+    import CartIcon from "$lib/components/CartIcon.svelte";
+    import CartSidebar from "$lib/components/CartSidebar.svelte";
+    import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";
 
     export let data;
 
@@ -36,6 +39,10 @@
     }
 </script>
 
+{#if $isCartOpen}
+    <CartSidebar />
+{/if}
+
 <header class="header-section">
     <!-- <div class="header-mobile">
         <figure>
@@ -56,15 +63,18 @@
             {#if data.user}
                 <span class="user-badge">{data.user.username}</span>
                 {#if data.user.role === "ADMIN"}
-                    <a class="nav-link" href="/admin/add-product">Admin</a>
+                    <a class="nav-link" href="/admin">Admin</a>
                 {/if}
-                <form class="logout-form" on:submit={handleLogout}>
+                <!-- <form class="logout-form" on:submit={handleLogout}>
                     <button class="logout-btn">Log Out</button>
-                </form>
+                </form> -->
             {:else}
                 <a class="nav-link" href="/login">Login</a>
                 <a class="nav-link signup" href="/signup">Sign Up</a>
             {/if}
+            <button class="icon-button" on:click={toggleCart} aria-label="Open cart">
+                <CartIcon />
+            </button>
             <button class="theme-toggle" on:click={toggleDarkMode} aria-label="Toggle dark mode">
                 {#if darkMode}
                     🌙

@@ -60,6 +60,25 @@ const getProducts = asyncHandler(async (req, res) => {
     });
 });
 
+const getProductBySku = asyncHandler(async (req, res) => {
+    const { skuBase } = req.params;
+    const product = await prisma.product.findUnique({
+        where: { skuBase },
+        include: {
+            variants: {
+                orderBy: [{ color: "asc" }, { size: "asc" }],
+            },
+        },
+    });
+
+    if (!product) {
+        res.status(404);
+        throw new Error("Product not found");
+    }
+
+    res.json(product);
+});
+
 const getCategories = asyncHandler(async (req, res) => {
     const categories = await prisma.category.findMany({
         orderBy: { name: "asc" },
@@ -69,6 +88,7 @@ const getCategories = asyncHandler(async (req, res) => {
 
 // --- Route Definitions ---
 router.get("/products", getProducts);
+router.get("/products/:skuBase", getProductBySku); // New route for single product
 router.get("/categories", getCategories);
 // You would add POST, PUT, DELETE product routes here later
 
