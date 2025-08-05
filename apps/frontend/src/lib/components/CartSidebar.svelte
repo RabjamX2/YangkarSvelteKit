@@ -2,7 +2,14 @@
     // @ts-nocheck
 
     import { fly } from "svelte/transition";
-    import cart, { cartSubtotal, updateQuantity, removeFromCart, isCartOpen } from "$lib/stores/cart.store.js";
+    import cart, {
+        cartSubtotal,
+        updateQuantity,
+        removeFromCart,
+        isCartOpen,
+        validationResults,
+        isCartValid,
+    } from "$lib/stores/cart.store.js";
 
     function closeCart() {
         isCartOpen.set(false);
@@ -30,9 +37,13 @@
     {:else}
         <div class="cart-items">
             {#each $cart as item (item.sku)}
-                <div class="cart-item">
+                {@const validation = $validationResults[item.id]}
+                <div class="cart-item" class:invalid={validation && !validation.isValid}>
                     <img src={item.imgUrl || "/Placeholder4-5.png"} alt={item.name} class="product-image" />
                     <div class="item-details">
+                        {#if validation && !validation.isValid}
+                            <p class="validation-error">{validation.reason}</p>
+                        {/if}
                         <a href="/products/{item.skuBase}" class="product-name" on:click={closeCart}>{item.name}</a>
                         <p class="product-variant">
                             {item.color}{#if item.size}, {item.size}{/if}
@@ -67,7 +78,13 @@
                 <span>${$cartSubtotal.toFixed(2)}</span>
             </div>
             <p class="shipping-note">Shipping & taxes calculated at checkout.</p>
-            <button class="checkout-btn">Proceed to Checkout</button>
+            <button class="checkout-btn" disabled={!$isCartValid}
+                >{#if !$isCartValid}
+                    Cart has issues
+                {:else}
+                    Proceed to Checkout
+                {/if}</button
+            >
         </div>
     {/if}
 </aside>
@@ -223,5 +240,22 @@
         font-size: 1rem;
         font-weight: bold;
         cursor: pointer;
+    }
+
+    .cart-item.invalid {
+        background-color: #fef2f2; /* Example invalid background */
+        border: 1px solid #fecaca;
+        border-radius: 4px;
+    }
+
+    .validation-error {
+        color: #e53e3e;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+
+    .checkout-btn:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
     }
 </style>

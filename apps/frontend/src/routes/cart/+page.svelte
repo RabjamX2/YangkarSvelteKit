@@ -1,4 +1,6 @@
 <script>
+    // @ts-nocheck
+
     import cart, { cartSubtotal, updateQuantity, removeFromCart } from "$lib/stores/cart.store.js";
     $: cartLength = $cart.length;
 </script>

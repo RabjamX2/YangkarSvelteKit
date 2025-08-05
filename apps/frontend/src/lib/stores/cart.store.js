@@ -1,8 +1,9 @@
-import { writable, derived } from "svelte/store";
+import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
 
 /**
  * @typedef {Object} CartItem
+ * @property {string} id - The unique ID of the product variant.
  * @property {string} sku - The unique SKU of the product variant.
  * @property {string} skuBase - The base SKU of the product.
  * @property {string} name - The product name.
@@ -18,6 +19,9 @@ import { browser } from "$app/environment";
 // @ts-ignore
 const initialCart = browser && localStorage.getItem("cart") ? JSON.parse(localStorage.getItem("cart")) : [];
 const cart = writable(initialCart);
+
+export const validationResults = writable({});
+export const isCartValid = writable(true);
 
 // Subscribe to cart changes and update localStorage
 if (browser) {
@@ -56,7 +60,49 @@ export const cartItemCount = derived(cart, calculateItemCount);
 // @ts-ignore
 export const cartSubtotal = derived(cart, calculateSubtotal);
 
-// --- Cart Action Methods ---
+/**
+ * Validates the current cart against the backend.
+ */
+async function validateCart() {
+    /** @type {CartItem[]} */
+    // @ts-ignore
+    const currentCart = get(cart); // Ensure we get the array value, not the store
+    if (currentCart.length === 0) {
+        validationResults.set({});
+        isCartValid.set(true);
+        return;
+    }
+
+    const itemsToValidate = currentCart.map((item) => ({
+        productVariantId: item.id, // Assuming variant ID is stored on the item
+        quantity: item.quantity,
+    }));
+
+    try {
+        const response = await fetch("http://localhost:3000/api/cart/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items: itemsToValidate }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Cart validation failed");
+        }
+
+        const result = await response.json();
+        const resultsMap = result.validationResults.reduce((acc, res) => {
+            acc[res.productVariantId] = res;
+            return acc;
+        }, {});
+
+        validationResults.set(resultsMap);
+        isCartValid.set(result.isValid);
+    } catch (error) {
+        console.error("Error validating cart:", error);
+        isCartValid.set(false); // Assume invalid on error
+    }
+}
+
 /**
  * Adds a product variant to the cart.
  * @param {import('$lib/types').ProductWithVariants} product - The main product object.
@@ -64,18 +110,19 @@ export const cartSubtotal = derived(cart, calculateSubtotal);
  * @param {number} quantity - The quantity to add.
  */
 export function addToCart(product, variant, quantity = 1) {
+    // @ts-ignore
     cart.update((items) => {
-        // @ts-ignore
-        const existingItemIndex = items.findIndex((item) => item.sku === variant.sku);
+        /** @type {CartItem[]} */
+        const arr = Array.isArray(items) ? items : [];
+        const existingItemIndex = arr.findIndex((item) => item.sku === variant.sku);
 
         if (existingItemIndex > -1) {
-            // Return a new array with updated quantity
-            // @ts-ignore
-            return items.map((item, idx) =>
+            return arr.map((item, idx) =>
                 idx === existingItemIndex ? { ...item, quantity: item.quantity + quantity } : item
             );
         } else {
             const newItem = {
+                id: variant.id, // Add variant ID for validation
                 sku: variant.sku,
                 skuBase: product.skuBase,
                 name: product.name,
@@ -85,11 +132,10 @@ export function addToCart(product, variant, quantity = 1) {
                 imgUrl: variant.imgUrl,
                 quantity: quantity,
             };
-            // Return a new array with the new item added
-            // @ts-ignore
-            return [...items, newItem];
+            return [...arr, newItem];
         }
     });
+    validateCart(); // Validate after adding
 }
 
 /**
@@ -98,22 +144,23 @@ export function addToCart(product, variant, quantity = 1) {
  * @param {number} newQuantity - The new quantity.
  */
 export function updateQuantity(sku, newQuantity) {
+    // @ts-ignore
     cart.update((items) => {
-        // @ts-ignore
-        const itemIndex = items.findIndex((item) => item.sku === sku);
+        /** @type {CartItem[]} */
+        const arr = Array.isArray(items) ? items : [];
+        const itemIndex = arr.findIndex((item) => item.sku === sku);
         if (itemIndex > -1) {
             if (newQuantity > 0) {
                 // Return a new array with updated quantity
-                // @ts-ignore
-                return items.map((item, idx) => (idx === itemIndex ? { ...item, quantity: newQuantity } : item));
+                return arr.map((item, idx) => (idx === itemIndex ? { ...item, quantity: newQuantity } : item));
             } else {
                 // Remove the item if quantity is zero or less
-                // @ts-ignore
-                return items.filter((item) => item.sku !== sku);
+                return arr.filter((item) => item.sku !== sku);
             }
         }
-        return items;
+        return arr;
     });
+    validateCart(); // Validate after updating
 }
 
 /**
@@ -122,7 +169,19 @@ export function updateQuantity(sku, newQuantity) {
  */
 export function removeFromCart(sku) {
     // @ts-ignore
-    cart.update((items) => items.filter((item) => item.sku !== sku));
+    cart.update((items) => {
+        /** @type {CartItem[]} */
+        const arr = Array.isArray(items) ? items : [];
+        return arr.filter((item) => item.sku !== sku);
+    });
+    validateCart(); // Validate after updating
 }
+
+// Auto-validate when cart opens
+isCartOpen.subscribe((open) => {
+    if (open) {
+        validateCart();
+    }
+});
 
 export default cart;
