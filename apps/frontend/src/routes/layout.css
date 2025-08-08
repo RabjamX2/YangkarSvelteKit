@@ -21,6 +21,10 @@
     --font-size-large: 1.25rem; /* 20px */
     --custom-letter-spacing: 0.8px;
     --font-primary: "Inter", Arial, sans-serif;
+
+    /* Voided order row colors */
+    --order-cancelled-bg: #ffeaea;
+    --order-cancelled-color: #b91c1c;
 }
 
 .dark {
@@ -41,6 +45,10 @@
     --color-logout-bg: #ef4444;
     --color-logout-bg-hover: #991b1b;
     --color-logout: #fff;
+
+    /* Voided order row colors for dark mode */
+    --order-cancelled-bg: #3b1c1c;
+    --order-cancelled-color: #f87171;
 }
 
 a,

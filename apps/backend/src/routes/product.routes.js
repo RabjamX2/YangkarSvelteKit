@@ -104,7 +104,13 @@ const updateProductVariant = asyncHandler(async (req, res) => {
 
 const getProductsWithVariants = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 24;
+    // If limit param is provided, use it; otherwise, use 1000 for admin POS, else 24
+    let limit = 24;
+    if (typeof req.query.limit !== "undefined") {
+        limit = parseInt(req.query.limit) || 24;
+    } else if (req.query.all === "true" || req.headers["x-admin-pos"] === "true") {
+        limit = 1000;
+    }
     const offset = (page - 1) * limit;
     const products = await prisma.product.findMany({
         skip: offset,

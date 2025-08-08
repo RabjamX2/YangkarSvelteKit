@@ -1,3 +1,15 @@
+/// Tracks all stock changes for audit/history purposes
+model StockChange {
+  id           Int      @id @default(autoincrement())
+  date         DateTime @default(now())
+  productVariantId Int
+  variant      ProductVariant @relation(fields: [productVariantId], references: [id])
+  change       Int      // Positive for addition, negative for removal
+  reason       String?
+  user         String?  // Optionally, who made the change
+  orderId      Int?     // Optionally, link to a CustomerOrder or PurchaseOrder
+  orderType    String?  // "customer" or "purchase" or null
+}
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -106,6 +118,7 @@ model ProductVariant {
   
   purchaseOrderItems PurchaseOrderItem[]
   customerOrderItems CustomerOrderItem[]
+  stockChanges StockChange[]
 
   // This line adds the index to the productSkuBase field for faster lookups.
   @@index([productSkuBase])
@@ -158,19 +171,33 @@ model PurchaseOrderItem {
 
 model Customer {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  // etc.
+  email     String?   @unique
+  name      String    
+  phone     String?
   orders    CustomerOrder[]
+}
+
+enum OrderStatus {
+  PENDING    // Order placed, awaiting payment/fulfillment
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  REFUNDED
 }
 
 model CustomerOrder {
   id         Int      @id @default(autoincrement())
   orderDate  DateTime @default(now())
+  status     OrderStatus @default(PENDING)
   total      Decimal
-  // etc.
+
+  paid      Boolean @default(false)
+  moneyHolder String?   // Who has the money
+  paymentMethod String? 
+
   customerId Int
   customer   Customer @relation(fields: [customerId], references: [id])
+
   items      CustomerOrderItem[]
 }
 
@@ -178,8 +205,10 @@ model CustomerOrderItem {
   id                 Int      @id @default(autoincrement())
   quantity           Int
   priceAtTimeOfSale  Decimal // Crucial: store the price at the time of sale
+
   orderId            Int
   order              CustomerOrder @relation(fields: [orderId], references: [id])
+  
   productVariantId   Int
   variant            ProductVariant @relation(fields: [productVariantId], references: [id])
 }

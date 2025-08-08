@@ -1,0 +1,124 @@
+/* Product and variant table styles extracted from admin page */
+.admin-container {
+    max-width: 1900px;
+    margin: 2rem auto;
+    background: var(--color-bg, #fff);
+    border-radius: 16px;
+    box-shadow: var(--color-shadow, 0 4px 24px 0 rgba(0, 0, 0, 0.07));
+    padding: 1.2rem 1.2rem 2rem 1.2rem;
+    overflow-x: auto;
+}
+.admin-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--color-link);
+    table-layout: auto;
+}
+.admin-table th,
+.admin-table td,
+.variant-table th,
+.variant-table td {
+    padding: 0.5rem 0.4rem;
+    text-align: left;
+    color: var(--color-link);
+    border-color: var(--color-border);
+    min-width: 0;
+    width: auto;
+    word-break: break-word;
+}
+.admin-table tr.product-row {
+    background: var(--color-bg, #fff);
+    transition: background 0.2s;
+}
+.admin-table tr.product-row:hover {
+    background: var(--color-link-bg-hover, #f9fafb);
+}
+.admin-table input,
+.admin-table select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 1rem;
+    background: var(--color-user-badge-bg, #f9fafb);
+    color: var(--color-link);
+    transition:
+        border 0.2s,
+        box-shadow 0.2s;
+}
+.admin-table input:focus,
+.admin-table select:focus {
+    border-color: var(--color-link-hover);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-link-hover, #6366f1) 33;
+}
+.save-btn {
+    background: var(--color-signup-bg, #6366f1);
+    color: var(--color-signup, #fff);
+    border: none;
+    border-radius: 6px;
+    padding: 0.4rem 1.1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        box-shadow 0.2s;
+    box-shadow: 0 1px 4px 0 var(--color-shadow, rgba(99, 102, 241, 0.08));
+}
+.save-btn:disabled {
+    background: #d1d5db;
+    color: #888;
+    cursor: not-allowed;
+}
+.save-btn:not(:disabled):hover {
+    background: var(--color-signup-bg-hover, #4f46e5);
+}
+.variant-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--color-user-badge-bg, #f8fafc);
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    box-shadow: 0 1px 4px 0 var(--color-shadow, rgba(0, 0, 0, 0.03));
+}
+.variant-table th,
+.variant-table td {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.98em;
+    color: var(--color-link);
+    border-color: var(--color-border);
+}
+.variant-table th {
+    background: var(--color-link-bg-hover, #f1f5f9);
+    font-weight: 500;
+    border-bottom: 1.5px solid var(--color-border);
+}
+.variant-table tr {
+    background: var(--color-bg, #fff);
+    transition: background 0.2s;
+}
+.variant-table tr:hover {
+    background: var(--color-link-bg-hover, #f3f4f6);
+}
+.variant-table input {
+    width: 100%;
+    height: fit-content;
+    box-sizing: border-box;
+    background: var(--color-link-bg-hover, #f3f4f6);
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    font-size: 0.98em;
+    padding: 0.3rem 0.5rem;
+    color: var(--color-link);
+}
+.variant-table input:focus {
+    border-color: var(--color-link-hover);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-link-hover, #6366f1) 33;
+}

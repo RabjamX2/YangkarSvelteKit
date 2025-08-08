@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import cartRoutes from "./routes/cart.routes.js";
+import transactionRoutes from "./routes/transaction.routes.js"; // Import transaction routes
 
 // Import middleware
 import errorHandler from "./middleware/errorHandler.js";
@@ -29,6 +30,7 @@ app.use("/api", authRoutes);
 app.use("/api", productRoutes);
 // All cart-related routes will be prefixed with /api
 app.use("/api", cartRoutes); // Use cart routes
+app.use("/api", transactionRoutes); // Use transaction routes
 
 // --- Centralized Error Handler ---
 // This should be the LAST middleware you use
