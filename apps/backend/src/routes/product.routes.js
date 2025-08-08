@@ -86,10 +86,53 @@ const getCategories = asyncHandler(async (req, res) => {
     res.json(categories);
 });
 
+const updateProductVariant = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = req.body;
+    // Only allow updating certain fields for safety
+    const allowedFields = ["sku", "color", "size", "salePrice", "stock"];
+    const updateData = {};
+    for (const field of allowedFields) {
+        if (field in data) updateData[field] = data[field];
+    }
+    const updated = await prisma.productVariant.update({
+        where: { id: Number(id) },
+        data: updateData,
+    });
+    res.json(updated);
+});
+
+const getProductsWithVariants = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 24;
+    const offset = (page - 1) * limit;
+    const products = await prisma.product.findMany({
+        skip: offset,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+            variants: {
+                orderBy: [{ color: "asc" }, { size: "asc" }],
+            },
+        },
+    });
+    const totalProducts = await prisma.product.count();
+    res.json({
+        data: products,
+        meta: {
+            totalProducts,
+            currentPage: page,
+            totalPages: Math.ceil(totalProducts / limit),
+        },
+    });
+});
+
 // --- Route Definitions ---
 router.get("/products", getProducts);
+router.get("/products-with-variants", getProductsWithVariants);
 router.get("/products/:skuBase", getProductBySku); // New route for single product
 router.get("/categories", getCategories);
+router.put("/variants/:id", updateProductVariant);
 // You would add POST, PUT, DELETE product routes here later
 
 export default router;

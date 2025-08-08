@@ -67,7 +67,7 @@
         margin-left: auto;
         margin-right: auto;
         max-width: 1920px;
-        border: 1px solid #1900ff;
+        border: 1px solid #000000;
         border-right: 0;
         font-family: var(--font-primary);
         font-size: 14px;
@@ -80,8 +80,8 @@
         box-sizing: border-box;
         text-decoration: none;
         color: inherit;
-        border-bottom: 1px solid #1900ff;
-        border-right: 1px solid #1900ff;
+        border-bottom: 1px solid #000000;
+        border-right: 1px solid #000000;
         padding: 0;
         margin: 0;
     }
@@ -99,7 +99,7 @@
     }
     .product-card-media {
         width: 100%;
-        border-bottom: 1px solid #1900ff;
+        border-bottom: 1px solid #000000;
     }
     .product-card-img-holder {
         width: 100%;
