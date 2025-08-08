@@ -1,5 +1,5 @@
 <script>
-    import { API_BASE_URL } from "$lib/env.js";
+    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import { page } from "$app/stores";
@@ -25,7 +25,7 @@
 
     async function fetchStockChanges() {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/stock-changes`);
+            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/stock-changes`);
             if (!res.ok) throw new Error("Failed to fetch stock changes");
             const data = await res.json();
             stockChanges.set(data.data || []);
@@ -37,10 +37,10 @@
     async function voidOrder(orderId) {
         if (!confirm("Are you sure you want to void this transaction? This cannot be undone.")) return;
         try {
-            const res = await fetch(`${API_BASE_URL}/api/customer-orders/${orderId}/void`, { method: "POST" });
+            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/customer-orders/${orderId}/void`, { method: "POST" });
             if (!res.ok) throw new Error("Failed to void order");
             // Refresh orders
-            const custRes = await fetch(`${API_BASE_URL}/api/customer-orders`);
+            const custRes = await fetch(`${PUBLIC_BACKEND_URL}/api/customer-orders`);
             if (custRes.ok) {
                 const custData = await custRes.json();
                 customerOrders.set(custData.data || []);
@@ -54,8 +54,8 @@
         loadingTransactions.set(true);
         try {
             const [custRes, purchRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/api/customer-orders`),
-                fetch(`${API_BASE_URL}/api/purchase-orders`),
+                fetch(`${PUBLIC_BACKEND_URL}/api/customer-orders`),
+                fetch(`${PUBLIC_BACKEND_URL}/api/purchase-orders`),
             ]);
             if (!custRes.ok) throw new Error("Failed to fetch customer orders");
             if (!purchRes.ok) throw new Error("Failed to fetch purchase orders");
@@ -72,7 +72,7 @@
 
     async function fetchProductVariants() {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/products-with-variants?all=true`);
+            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch variants");
             const data = await res.json();
             // Flatten all variants into a single array with product info
@@ -105,7 +105,7 @@
             return;
         }
         try {
-            const res = await fetch(`${API_BASE_URL}/api/stock-changes`, {
+            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/stock-changes`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

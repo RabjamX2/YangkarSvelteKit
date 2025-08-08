@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { API_BASE_URL } from "$lib/env.js";
+    import { PUBLIC_BACKEND_URL } from "$env/static/public";
     import CartIcon from "$lib/components/CartIcon.svelte";
     import CartSidebar from "$lib/components/CartSidebar.svelte";
     import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";
@@ -20,7 +20,7 @@
 
     function handleLogout(event: Event) {
         event.preventDefault();
-        fetch(`${API_BASE_URL}/api/logout`, {
+        fetch(`${PUBLIC_BACKEND_URL}/api/logout`, {
             method: "POST",
             credentials: "include",
         }).then(() => {

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./lib/env.js";
+const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 export const handle = async ({ event, resolve }) => {
     // Get the session cookie from the browser
     const sessionToken = event.cookies.get("session_token");
@@ -9,7 +9,7 @@ export const handle = async ({ event, resolve }) => {
     }
 
     // Send the cookie to our backend to validate the session
-    const response = await fetch(`${API_BASE_URL}/api/me`, {
+    const response = await fetch(`${PUBLIC_BACKEND_URL}/api/me`, {
         headers: {
             // Forward the cookie to the backend API
             cookie: `session_token=${sessionToken}`,

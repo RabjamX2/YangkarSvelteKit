@@ -1,6 +1,6 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
-import { API_BASE_URL } from "../env.js";
+const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 /**
  * @typedef {Object} CartItem
@@ -80,7 +80,7 @@ async function validateCart() {
     }));
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/cart/validate`, {
+        const response = await fetch(`${PUBLIC_BACKEND_URL}/api/cart/validate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ items: itemsToValidate }),
