@@ -15,6 +15,7 @@ const getStockChanges = asyncHandler(async (req, res) => {
 import express from "express";
 import { PrismaClient, Prisma } from "@prisma/client";
 import asyncHandler from "../middleware/asyncHandler.js";
+import authenticateToken from "../middleware/authenticateToken.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -57,6 +58,8 @@ const getPurchaseOrders = asyncHandler(async (req, res) => {
 // POST /api/customer-orders
 
 const createCustomerOrder = asyncHandler(async (req, res) => {
+    // User identity from JWT
+    const userFromToken = req.user;
     const { customer, items, total, moneyHolder, paymentMethod } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400);
@@ -104,7 +107,7 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
                 productVariantId: item.productVariantId,
                 change: -item.quantity,
                 reason: "Sale",
-                user: dbCustomer.name || "Guest",
+                user: userFromToken?.username || dbCustomer.name || "Guest",
                 orderId: order.id,
                 orderType: "customer",
             },
@@ -122,8 +125,10 @@ router.get("/stock-changes", getStockChanges);
 // POST /api/stock-changes (manual entry)
 router.post(
     "/stock-changes",
+    authenticateToken,
     asyncHandler(async (req, res) => {
-        const { productVariantId, change, reason, user } = req.body;
+        const { productVariantId, change, reason } = req.body;
+        const userFromToken = req.user;
         if (!productVariantId || !change || !reason) {
             res.status(400);
             throw new Error("productVariantId, change, and reason are required");
@@ -139,13 +144,13 @@ router.post(
                 productVariantId: Number(productVariantId),
                 change: Number(change),
                 reason,
-                user: user || "Manual",
+                user: userFromToken?.username || "Manual",
             },
         });
         res.status(201).json({ data: stockChange });
     })
 );
-router.post("/customer-orders", createCustomerOrder);
+router.post("/customer-orders", authenticateToken, createCustomerOrder);
 
 export default router;
 
