@@ -32,6 +32,7 @@ const signup = asyncHandler(async (req, res) => {
     const user = await prisma.user.create({
         data: { username, email, password: hashedPassword },
     });
+    req.log.info({ event: "user_signup", userId: user.id, username: user.username }, "User signed up");
 
     const sessionToken = uuidv4();
     const expiresAt = new Date(Date.now() + SESSION_DURATION);
@@ -73,6 +74,7 @@ const login = asyncHandler(async (req, res) => {
         expires: expiresAt,
     });
 
+    req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in");
     res.status(200).json({ id: user.id, username: user.username, role: user.role });
 });
 

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import logger from "./logger.js";
 
 // Import route handlers
 import authRoutes from "./routes/auth.routes.js";
@@ -12,6 +13,10 @@ import transactionRoutes from "./routes/transaction.routes.js"; // Import transa
 import errorHandler from "./middleware/errorHandler.js";
 
 const app = express();
+app.use((req, res, next) => {
+    req.log = logger;
+    next();
+});
 
 // --- Middleware Setup ---
 app.use(
@@ -38,5 +43,5 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Backend server listening on port ${PORT}`);
+    logger.info(`Backend server listening on port ${PORT}`);
 });

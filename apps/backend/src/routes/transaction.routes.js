@@ -113,6 +113,7 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
             },
         });
     }
+    req.log.info({ event: "order_created", orderId: order.id, userId: userFromToken?.id }, "Customer order created");
     res.status(201).json({ data: order });
 });
 
