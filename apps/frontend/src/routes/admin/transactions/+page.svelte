@@ -1,11 +1,9 @@
 <script>
+    import { API_BASE_URL } from "$lib/env.js";
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import { page } from "$app/stores";
     import "./transactionTable.css";
-
-    // API base URL from env
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
     const customerOrders = writable([]);
     const purchaseOrders = writable([]);
@@ -47,7 +45,6 @@
                 const custData = await custRes.json();
                 customerOrders.set(custData.data || []);
             }
-            alert("Order voided and stock restored.");
         } catch (e) {
             alert(e instanceof Error ? e.message : String(e));
         }
@@ -122,7 +119,6 @@
             manualStockChange.set({ variantId: "", change: "", reason: "", user: loggedInUser });
             manualStockChangeError.set("");
             fetchStockChanges();
-            alert("Stock change recorded.");
         } catch (e) {
             manualStockChangeError.set(e instanceof Error ? e.message : String(e));
         }

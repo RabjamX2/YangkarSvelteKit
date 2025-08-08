@@ -1,4 +1,5 @@
 import { fail, redirect } from "@sveltejs/kit";
+import { API_BASE_URL } from "$lib/env.js";
 
 /** @type {import('./$types').Actions} */
 export const actions = {
@@ -14,7 +15,7 @@ export const actions = {
             return fail(400, { error: "Passwords do not match." });
         }
 
-        const response = await fetch("http://localhost:3000/api/reset-password", {
+        const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token: params.token, password }),

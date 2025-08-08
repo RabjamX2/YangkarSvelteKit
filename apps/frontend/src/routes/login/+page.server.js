@@ -1,4 +1,5 @@
 import { fail, redirect } from "@sveltejs/kit";
+import { API_BASE_URL } from "$lib/env.js";
 
 /** @type {import('./$types').Actions} */
 export const actions = {
@@ -9,7 +10,7 @@ export const actions = {
         const password = data.get("password");
 
         // 1. Send the login request to your backend API
-        const response = await fetch("http://localhost:3000/api/login", {
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password }),

@@ -1,5 +1,6 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
+import { API_BASE_URL } from "../env.js";
 
 /**
  * @typedef {Object} CartItem
@@ -79,7 +80,7 @@ async function validateCart() {
     }));
 
     try {
-        const response = await fetch("http://localhost:3000/api/cart/validate", {
+        const response = await fetch(`${API_BASE_URL}/api/cart/validate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ items: itemsToValidate }),

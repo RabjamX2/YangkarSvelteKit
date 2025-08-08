@@ -135,7 +135,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
             data: { passwordResetToken, passwordResetExpires },
         });
 
-        const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+        const resetUrl = `${API_BASE_URL}/reset-password/${resetToken}`;
         console.log("--------------------");
         console.log("PASSWORD RESET LINK (for testing only):");
         console.log(resetUrl);

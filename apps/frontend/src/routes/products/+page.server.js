@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/env.js";
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ url, fetch }) {
     // 1. Read both sort and category parameters from the page's URL.
@@ -19,8 +20,8 @@ export async function load({ url, fetch }) {
         // 3. Fetch the initial products and the list of all categories in parallel.
         // This is more efficient than fetching them one after another.
         const [productResponse, categoriesResponse] = await Promise.all([
-            fetch(`http://localhost:3000/api/products?${apiParams.toString()}`),
-            fetch(`http://localhost:3000/api/categories`), // You'll need to create this API route
+            fetch(`${API_BASE_URL}/api/products?${apiParams.toString()}`),
+            fetch(`${API_BASE_URL}/api/categories`),
         ]);
 
         if (!productResponse.ok || !categoriesResponse.ok) {

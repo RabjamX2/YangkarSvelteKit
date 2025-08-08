@@ -1,4 +1,5 @@
 import { fail, redirect } from "@sveltejs/kit";
+import { API_BASE_URL } from "$lib/env.js";
 
 /** @type {import('./$types').Actions} */
 export const actions = {
@@ -17,7 +18,7 @@ export const actions = {
             return fail(400, { errors, username, email });
         }
 
-        const response = await fetch("http://localhost:3000/api/signup", {
+        const response = await fetch(`${API_BASE_URL}/api/signup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, email, password }),

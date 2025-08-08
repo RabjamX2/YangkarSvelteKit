@@ -1,4 +1,5 @@
 <script>
+    import { API_BASE_URL } from "$lib/env.js";
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import "./productTable.css";
@@ -16,13 +17,13 @@
         loading.set(true);
         try {
             // Fetch categories
-            const catRes = await fetch("http://localhost:3000/api/categories");
+            const catRes = await fetch(`${API_BASE_URL}/api/categories`);
             if (catRes.ok) {
                 const catData = await catRes.json();
                 categories.set(catData);
             }
             // Fetch products with variants (all for admin)
-            const res = await fetch("http://localhost:3000/api/products-with-variants?all=true");
+            const res = await fetch(`${API_BASE_URL}/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch products");
             const data = await res.json();
             products.set(data.data);
@@ -42,7 +43,7 @@
         edits.subscribe((v) => ($edits = v))();
         if (!$edits[id]) return;
         try {
-            const res = await fetch(`http://localhost:3000/api/products/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify($edits[id]),
@@ -63,7 +64,7 @@
         edits.subscribe((v) => ($edits = v))();
         if (!$edits[variantId]) return;
         try {
-            const res = await fetch(`http://localhost:3000/api/variants/${variantId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/variants/${variantId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify($edits[variantId]),

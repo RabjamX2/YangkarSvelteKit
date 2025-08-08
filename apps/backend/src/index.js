@@ -16,7 +16,7 @@ const app = express();
 // --- Middleware Setup ---
 app.use(
     cors({
-        origin: "http://localhost:5173", // The default SvelteKit dev server URL
+        origin: `${API_BASE_URL}`, // The default SvelteKit dev server URL
         credentials: true, // Allow cookies to be sent and received
     })
 );

@@ -1,4 +1,5 @@
 import { fail } from "@sveltejs/kit";
+import { API_BASE_URL } from "$lib/env.js";
 
 /** @type {import('./$types').Actions} */
 export const actions = {
@@ -10,7 +11,7 @@ export const actions = {
             return fail(400, { error: "Email is required.", email });
         }
 
-        const response = await fetch("http://localhost:3000/api/forgot-password", {
+        const response = await fetch(`${API_BASE_URL}/api/forgot-password`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),

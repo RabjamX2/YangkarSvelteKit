@@ -1,10 +1,11 @@
 import { error } from "@sveltejs/kit";
+import { API_BASE_URL } from "$lib/env.js";
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params, fetch }) {
     const { skuBase } = params;
 
-    const response = await fetch(`http://localhost:3000/api/products/${skuBase}`);
+    const response = await fetch(`${API_BASE_URL}/api/products/${skuBase}`);
 
     if (!response.ok) {
         if (response.status === 404) {

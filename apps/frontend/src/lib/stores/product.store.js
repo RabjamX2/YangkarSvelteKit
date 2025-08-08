@@ -1,5 +1,6 @@
 import { writable, derived, get } from "svelte/store";
 import { goto } from "$app/navigation";
+import { API_BASE_URL } from "../env.js";
 
 /**
  * @typedef {Object} ProductSummary
@@ -83,7 +84,7 @@ function createProductStore() {
 
         try {
             // We fetch from the backend API directly here
-            const response = await fetch(`http://localhost:3000/api/products?${params.toString()}`);
+            const response = await fetch(`${API_BASE_URL}/api/products?${params.toString()}`);
             if (!response.ok) throw new Error("Failed to fetch more products");
 
             const newData = await response.json();

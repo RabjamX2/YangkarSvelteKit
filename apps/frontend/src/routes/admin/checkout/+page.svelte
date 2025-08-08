@@ -1,4 +1,5 @@
 <script>
+    import { API_BASE_URL } from "$lib/env.js";
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
 
@@ -16,7 +17,7 @@
     onMount(async () => {
         loading.set(true);
         try {
-            const res = await fetch("http://localhost:3000/api/products-with-variants?all=true");
+            const res = await fetch(`${API_BASE_URL}/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch products");
             const data = await res.json();
             products.set(data.data);
@@ -86,7 +87,7 @@
         error.set(null);
         success.set(null);
         try {
-            const res = await fetch("http://localhost:3000/api/customer-orders", {
+            const res = await fetch(`${API_BASE_URL}/api/customer-orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
