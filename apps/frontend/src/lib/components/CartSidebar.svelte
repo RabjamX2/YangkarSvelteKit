@@ -82,7 +82,8 @@
                 >{#if !$isCartValid}
                     Cart has issues
                 {:else}
-                    Proceed to Checkout
+                    <!-- Proceed to Checkout -->
+                    Checkout not available yet
                 {/if}</button
             >
         </div>

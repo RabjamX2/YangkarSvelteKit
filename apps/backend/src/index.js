@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import logger from "./logger.js";
+import { API_BASE_URL } from "./config.js";
 
 // Import route handlers
 import authRoutes from "./routes/auth.routes.js";
@@ -41,7 +42,8 @@ app.use("/api", transactionRoutes); // Use transaction routes
 // This should be the LAST middleware you use
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
+    console.log(`Backend server listening on port ${PORT}`);
     logger.info(`Backend server listening on port ${PORT}`);
 });

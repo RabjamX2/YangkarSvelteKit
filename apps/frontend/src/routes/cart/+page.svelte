@@ -62,7 +62,8 @@
                 <span>${$cartSubtotal.toFixed(2)}</span>
             </div>
             <p class="shipping-note">Shipping & taxes calculated at checkout.</p>
-            <button class="checkout-btn">Proceed to Checkout</button>
+            <!-- <button class="checkout-btn">Proceed to Checkout</button> -->
+            <button class="checkout-btn">Checkout not available yet</button>
         </div>
     {/if}
 </div>
