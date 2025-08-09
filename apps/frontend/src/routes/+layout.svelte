@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { PUBLIC_BACKEND_URL } from "$env/static/public";
+    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     import CartIcon from "$lib/components/CartIcon.svelte";
     import CartSidebar from "$lib/components/CartSidebar.svelte";
     import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";

@@ -1,4 +1,6 @@
 <script>
+    // @ts-nocheck
+
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
