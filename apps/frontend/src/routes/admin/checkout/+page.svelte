@@ -91,7 +91,10 @@
         try {
             const res = await fetch(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
                 body: JSON.stringify({
                     customer: { phone: $customerPhone, name: $customerName },
                     items: $cart.map((item) => ({

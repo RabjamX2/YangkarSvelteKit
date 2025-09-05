@@ -1,2 +1,2 @@
 // export API_BASE_URL
-export const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:3001";
+export const FRONT_END_URL = process.env.FRONT_END_URL;

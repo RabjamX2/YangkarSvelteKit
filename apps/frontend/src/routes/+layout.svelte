@@ -70,8 +70,8 @@
                     <button class="logout-btn">Log Out</button>
                 </form> -->
             {:else}
-                <a class="nav-link" href="/login">Login</a>
-                <a class="nav-link signup" href="/signup">Sign Up</a>
+                <!-- <a class="nav-link" href="/login">Login</a> -->
+                <!-- <a class="nav-link signup" href="/signup">Sign Up</a> -->
             {/if}
             <button class="icon-button" on:click={toggleCart} aria-label="Open cart">
                 <CartIcon />
@@ -103,11 +103,11 @@
                         <span class="nav-link-text">Jewelry</span>
                     </a>
                 </div>
-                <!-- <div class="nav-item">
+                <div class="nav-item">
                     <a class="nav-link" href="/products/PhoneCases">
                         <span class="nav-link-text">Phone Cases</span>
                     </a>
-                </div> -->
+                </div>
             </div>
         </nav>
     </div>

@@ -43,14 +43,13 @@ const getCustomerOrders = asyncHandler(async (req, res) => {
 const getPurchaseOrders = asyncHandler(async (req, res) => {
     const orders = await prisma.purchaseOrder.findMany({
         include: {
-            supplier: true,
             items: {
                 include: {
                     variant: true,
                 },
             },
         },
-        orderBy: { orderDate: "desc" },
+        orderBy: { createdAt: "asc" },
     });
     res.json({ data: orders });
 });
@@ -153,8 +152,6 @@ router.post(
 );
 router.post("/customer-orders", authenticateToken, createCustomerOrder);
 
-export default router;
-
 // POST /api/customer-orders/:id/void
 router.post(
     "/customer-orders/:id/void",
@@ -202,3 +199,5 @@ router.post(
         res.json({ message: "Order voided and stock restored." });
     })
 );
+
+export default router;

@@ -1,15 +1,24 @@
-import jwt from "jsonwebtoken";
+import { PrismaClient } from "@prisma/client";
 
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "No token provided" });
+const prisma = new PrismaClient();
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ message: "Invalid token" });
-        req.user = user;
+const authenticateToken = async (req, res, next) => {
+    const sessionToken = req.cookies.session_token;
+    if (!sessionToken) return res.status(401).json({ message: "No session token provided" });
+
+    try {
+        const session = await prisma.session.findUnique({
+            where: { id: sessionToken, expiresAt: { gt: new Date() } },
+            include: { user: true },
+        });
+        if (!session || !session.user) {
+            return res.status(401).json({ message: "Invalid or expired session" });
+        }
+        req.user = session.user;
         next();
-    });
+    } catch (err) {
+        return res.status(500).json({ message: "Authentication error", error: err.message });
+    }
 };
 
 export default authenticateToken;

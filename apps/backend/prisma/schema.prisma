@@ -59,7 +59,6 @@ model Supplier {
   contactPerson String?
   contactMethod String?
   products      Product[]
-  purchaseOrders PurchaseOrder[] // A supplier can have many purchase orders
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -101,12 +100,12 @@ model Product {
 model ProductVariant {
   id    Int    @id @default(autoincrement())
   sku   String? @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
-  color String
+  color String?
   size  String?
   imgUrl String? @default("/Placeholder4-5.png") // Default image URL
   
-  costCny    Decimal
-  costUsd    Decimal
+  costCny    Decimal?
+  costUsd    Decimal?
   salePrice  Decimal?
   
   // The actual number of items you have on hand
@@ -127,17 +126,14 @@ model ProductVariant {
   updatedAt DateTime @updatedAt
 }
 
-/// Represents a purchase order you place with a Supplier.
-/// Corresponds to your "Order List.csv".
+/// Represents a purchase order made to a Supplier/s.
+/// For us, this corresponds to each batch of orders we place
 model PurchaseOrder {
   id           Int                 @id @default(autoincrement())
   batchNumber  Int
-  orderDate    DateTime
+  shipDate    DateTime?
+  arrivalDate DateTime?
   hasArrived   Boolean             @default(false)
-  
-  // Foreign key to the Supplier
-  supplierId   Int
-  supplier     Supplier            @relation(fields: [supplierId], references: [id])
   
   // A purchase order is composed of multiple line items
   items        PurchaseOrderItem[]
@@ -151,9 +147,8 @@ model PurchaseOrder {
 model PurchaseOrderItem {
   id                Int      @id @default(autoincrement())
   quantityOrdered   Int
-  arrived           Boolean  @default(false)
-  costPerItemCny    Decimal
-  costPerItemUsd    Decimal
+  costPerItemCny    Decimal?
+  costPerItemUsd    Decimal?
   
   // Foreign key to the PurchaseOrder it belongs to
   purchaseOrderId   Int

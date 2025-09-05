@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import logger from "./logger.js";
-import { API_BASE_URL } from "./config.js";
+import { FRONT_END_URL } from "./config.js";
 
 // Import route handlers
 import authRoutes from "./routes/auth.routes.js";
@@ -22,10 +22,11 @@ app.use((req, res, next) => {
 // --- Middleware Setup ---
 app.use(
     cors({
-        origin: `${API_BASE_URL}`, // The default SvelteKit dev server URL
+        origin: `${FRONT_END_URL}`, // The default SvelteKit dev server URL
         credentials: true, // Allow cookies to be sent and received
     })
 );
+
 app.use(express.json());
 app.use(cookieParser());
 

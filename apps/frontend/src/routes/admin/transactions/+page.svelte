@@ -9,6 +9,7 @@
 
     const customerOrders = writable([]);
     const purchaseOrders = writable([]);
+    const expandedBatch = writable([]); // Array of expanded order IDs
     const stockChanges = writable([]); // For stock change history
     const loadingTransactions = writable(false);
     const errorTransactions = writable(/** @type {string|null} */ (null));
@@ -237,26 +238,76 @@
         </table>
     {:else if $activeTab === "purchase"}
         <h2>Purchase Orders</h2>
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Supplier</th>
-                    <th>Date</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {#each $purchaseOrders as order}
+        {#if $purchaseOrders.length > 0}
+            <table class="admin-table">
+                <thead>
                     <tr>
-                        <td>{order.id}</td>
-                        <td>{order.supplier?.name}</td>
-                        <td>{new Date(order.orderDate).toLocaleString()}</td>
-                        <td>{order.total}</td>
+                        <th></th>
+                        <th>Batch Number</th>
+                        <th>Date</th>
+                        <th>Arrived?</th>
                     </tr>
-                {/each}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {#each $purchaseOrders as order}
+                        <tr>
+                            <td>
+                                <button
+                                    on:click={() => {
+                                        expandedBatch.update((ids) =>
+                                            ids.includes(order.id)
+                                                ? ids.filter((id) => id !== order.id)
+                                                : [...ids, order.id]
+                                        );
+                                    }}
+                                >
+                                    {#if $expandedBatch.includes(order.id)}−{:else}+{/if}
+                                </button>
+                            </td>
+                            <td>{order.batchNumber}</td>
+                            <td>{order.shipDate ? new Date(order.shipDate).toLocaleString() : "-"}</td>
+                            <td>{order.hasArrived ? "Yes" : "No"}</td>
+                        </tr>
+                        {#if $expandedBatch.includes(order.id)}
+                            <tr>
+                                <td></td>
+                                <td colspan="3">
+                                    <strong>Items in Batch {order.batchNumber}:</strong>
+                                    <table class="variant-table" style="margin-top:0.5rem;">
+                                        <thead>
+                                            <tr>
+                                                <th>SKU</th>
+                                                <th>Product</th>
+                                                <th>Color</th>
+                                                <th>Size</th>
+                                                <th>Quantity</th>
+                                                <th>CNY</th>
+                                                <th>USD</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {#each order.items as item}
+                                                <tr>
+                                                    <td>{item.variant?.sku || "-"}</td>
+                                                    <td>{item.variant?.product?.name || "-"}</td>
+                                                    <td>{item.variant?.color || "-"}</td>
+                                                    <td>{item.variant?.size || "-"}</td>
+                                                    <td>{item.quantityOrdered}</td>
+                                                    <td>{item.costPerItemCny ?? "-"}</td>
+                                                    <td>{item.costPerItemUsd ?? "-"}</td>
+                                                </tr>
+                                            {/each}
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        {/if}
+                    {/each}
+                </tbody>
+            </table>
+        {:else}
+            <p>No purchase orders found.</p>
+        {/if}
     {:else}
         <h2>Stock Change History</h2>
         <form
