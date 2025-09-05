@@ -1,3 +1,12 @@
+generator client {
+    provider = "prisma-client-js" 
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
 /// Tracks all stock changes for audit/history purposes
 model StockChange {
   id           Int      @id @default(autoincrement())
@@ -9,20 +18,6 @@ model StockChange {
   user         String?  // Optionally, who made the change
   orderId      Int?     // Optionally, link to a CustomerOrder or PurchaseOrder
   orderType    String?  // "customer" or "purchase" or null
-}
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-    provider = "prisma-client-js" 
-}
-
-datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -118,12 +113,29 @@ model ProductVariant {
   purchaseOrderItems PurchaseOrderItem[]
   customerOrderItems CustomerOrderItem[]
   stockChanges StockChange[]
+  inventoryBatches   InventoryBatch[]
 
   // This line adds the index to the productSkuBase field for faster lookups.
   @@index([productSkuBase])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// This model tracks each incoming batch of stock with its specific cost.
+model InventoryBatch {
+  id                  Int            @id @default(autoincrement())
+  
+  productVariantId    Int
+  productVariant      ProductVariant    @relation(fields: [productVariantId], references: [id])
+  
+  quantity            Int               // The remaining quantity in this batch
+  cost                Decimal           // The cost per item for this specific batch
+  
+  createdAt           DateTime          @default(now()) // Essential for FIFO - we sell the oldest batches first
+  
+  purchaseOrderItemId Int?           @unique
+  purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
 }
 
 /// Represents a purchase order made to a Supplier/s.
@@ -150,13 +162,13 @@ model PurchaseOrderItem {
   costPerItemCny    Decimal?
   costPerItemUsd    Decimal?
   
-  // Foreign key to the PurchaseOrder it belongs to
   purchaseOrderId   Int
   order             PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
   
-  // Foreign key to the specific ProductVariant being ordered
   productVariantId  Int
   variant           ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  inventoryBatch    InventoryBatch?
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -195,6 +207,7 @@ model CustomerOrder {
   customerPhone String?
 
   paid      Boolean @default(false)
+  cogs      Decimal?
 
   staffName String?  // Who handled the order
   moneyHolder String?   // Who has the money
