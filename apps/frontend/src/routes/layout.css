@@ -25,6 +25,11 @@
     /* Voided order row colors */
     --order-cancelled-bg: #ffeaea;
     --order-cancelled-color: #b91c1c;
+    /* Purchase order status colors */
+    --status-pending-bg: #fff3cd;
+    --status-pending-color: #856404;
+    --status-received-bg: #d4edda;
+    --status-received-color: #155724;
 }
 
 .dark {
@@ -49,6 +54,11 @@
     /* Voided order row colors for dark mode */
     --order-cancelled-bg: #3b1c1c;
     --order-cancelled-color: #f87171;
+    /* Purchase order status colors for dark mode */
+    --status-pending-bg: #4b3f1c;
+    --status-pending-color: #ffe082;
+    --status-received-bg: #1e4620;
+    --status-received-color: #b2f5ea;
 }
 
 a,

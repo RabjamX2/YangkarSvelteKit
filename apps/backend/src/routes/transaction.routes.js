@@ -47,7 +47,15 @@ const getCustomerOrders = asyncHandler(async (req, res) => {
 const getPurchaseOrders = asyncHandler(async (req, res) => {
     const orders = await prisma.purchaseOrder.findMany({
         include: {
-            items: { include: { variant: true } },
+            items: {
+                include: {
+                    variant: {
+                        include: {
+                            product: true,
+                        },
+                    },
+                },
+            },
         },
         orderBy: { createdAt: "asc" },
     });
