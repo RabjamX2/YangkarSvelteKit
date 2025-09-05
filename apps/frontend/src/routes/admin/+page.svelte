@@ -6,7 +6,9 @@
     <h1>Admin Dashboard</h1>
     <ul>
         <li><a href="/admin/products">Product List</a></li>
-        <li><a href="/admin/transactions">Transaction History</a></li>
+        <li><a href="/admin/transactions/customer-orders">Transaction History</a></li>
+        <li><a href="/admin/transactions/purchase-orders">Purchase Orders</a></li>
+        <li><a href="/admin/transactions/stock-changes">Stock Changes</a></li>
         <li><a href="/admin/checkout">Checkout</a></li>
     </ul>
 </div>
