@@ -1,3 +1,19 @@
+/**
+ * Updates hasArrived for a specific PurchaseOrderItem.
+ */
+const updatePurchaseOrderItemArrived = asyncHandler(async (req, res) => {
+    const itemId = Number(req.params.id);
+    const { hasArrived } = req.body;
+    if (typeof hasArrived !== "boolean") {
+        res.status(400);
+        throw new Error("hasArrived must be a boolean");
+    }
+    const updatedItem = await prisma.purchaseOrderItem.update({
+        where: { id: itemId },
+        data: { hasArrived },
+    });
+    res.json({ data: updatedItem });
+});
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -234,12 +250,12 @@ const createStockChange = asyncHandler(async (req, res) => {
 // Customer Orders
 router.get("/customer-orders", authenticateToken, getCustomerOrders);
 router.post("/customer-orders", authenticateToken, createCustomerOrder);
-
 router.post("/void-sale/:orderId", authenticateToken, voidCustomerOrder);
 
 // Purchase Orders
 router.get("/purchase-orders", authenticateToken, getPurchaseOrders);
 router.post("/receive-purchase-order/:id", authenticateToken, receivePurchaseOrder);
+router.post("/purchase-order-items/:id/arrived", authenticateToken, updatePurchaseOrderItemArrived);
 
 // Stock Changes
 router.get("/stock-changes", authenticateToken, getStockChanges);

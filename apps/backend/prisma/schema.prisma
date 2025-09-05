@@ -99,8 +99,6 @@ model ProductVariant {
   size  String?
   imgUrl String? @default("/Placeholder4-5.png") // Default image URL
   
-  costCny    Decimal?
-  costUsd    Decimal?
   salePrice  Decimal?
   
   // The actual number of items you have on hand
@@ -130,9 +128,11 @@ model InventoryBatch {
   productVariant      ProductVariant    @relation(fields: [productVariantId], references: [id])
   
   quantity            Int               // The remaining quantity in this batch
-  cost                Decimal           // The cost per item for this specific batch
+  costUSD             Decimal?
+  costCNY             Decimal?
   
-  createdAt           DateTime          @default(now()) // Essential for FIFO - we sell the oldest batches first
+  arrivalDate        DateTime?       // When this batch arrived
+  createdAt           DateTime          @default(now())
   
   purchaseOrderItemId Int?           @unique
   purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
@@ -159,6 +159,7 @@ model PurchaseOrder {
 model PurchaseOrderItem {
   id                Int      @id @default(autoincrement())
   quantityOrdered   Int
+  hasArrived       Boolean?  @default(false)
   costPerItemCny    Decimal?
   costPerItemUsd    Decimal?
   
