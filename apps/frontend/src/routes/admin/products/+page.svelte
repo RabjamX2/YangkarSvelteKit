@@ -160,15 +160,47 @@
                                     {#each product.variants as variant}
                                         <tr>
                                             <td>{variant.sku}</td>
-                                            <td>{variant.color}</td>
-                                            <td>{variant.size}</td>
-                                            <td>{variant.salePrice}</td>
+                                            <td>
+                                                <input
+                                                    type="text"
+                                                    value={$edits[variant.id]?.color ?? variant.color ?? ""}
+                                                    on:input={(e) =>
+                                                        handleEdit(variant.id, "color", e.currentTarget.value)}
+                                                    placeholder="Color"
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    type="text"
+                                                    value={$edits[variant.id]?.size ?? variant.size ?? ""}
+                                                    on:input={(e) =>
+                                                        handleEdit(variant.id, "size", e.currentTarget.value)}
+                                                    placeholder="Size"
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={$edits[variant.id]?.salePrice ?? variant.salePrice ?? ""}
+                                                    on:input={(e) =>
+                                                        handleEdit(variant.id, "salePrice", e.currentTarget.value)}
+                                                    placeholder="Price (USD)"
+                                                />
+                                            </td>
                                             <td>{variant.stock}</td>
                                             <td>
                                                 <button
                                                     class="save-btn"
                                                     on:click={() => saveVariantEdit(variant.id)}
-                                                    disabled={!$edits[variant.id]}>Save</button
+                                                    disabled={!$edits[variant.id] ||
+                                                        (($edits[variant.id]?.color ?? variant.color) ===
+                                                            variant.color &&
+                                                            ($edits[variant.id]?.size ?? variant.size) ===
+                                                                variant.size &&
+                                                            ($edits[variant.id]?.salePrice ?? variant.salePrice) ==
+                                                                variant.salePrice)}>Save</button
                                                 >
                                             </td>
                                         </tr>

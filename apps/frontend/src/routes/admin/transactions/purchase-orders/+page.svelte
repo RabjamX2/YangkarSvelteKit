@@ -215,6 +215,8 @@
                                             <tr>
                                                 <th>SKU</th>
                                                 <th>Name</th>
+                                                <th>Color</th>
+                                                <th>Size</th>
                                                 <th>Quantity</th>
                                                 <th>Cost/Item</th>
                                                 <th>Verified</th>
@@ -225,6 +227,8 @@
                                                 <tr>
                                                     <td>{item.variant?.sku}</td>
                                                     <td>{item.variant?.product?.name}</td>
+                                                    <td>{item.variant?.color}</td>
+                                                    <td>{item.variant?.size}</td>
                                                     <td>
                                                         <input
                                                             type="number"
