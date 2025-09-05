@@ -3,7 +3,6 @@ const { PrismaClient } = require("@prisma/client");
 const fs = require("fs");
 const path = require("path");
 const Papa = require("papaparse");
-const { CLIENT_RENEG_WINDOW } = require("tls");
 
 // Initialize the Prisma Client
 const prisma = new PrismaClient();

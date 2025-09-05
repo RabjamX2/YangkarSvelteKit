@@ -104,7 +104,7 @@
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a class="nav-link" href="/products/PhoneCases">
+                    <a class="nav-link" href="/products?sort=default&category=Phone+Cases">
                         <span class="nav-link-text">Phone Cases</span>
                     </a>
                 </div>

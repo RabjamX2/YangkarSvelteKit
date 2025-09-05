@@ -158,7 +158,6 @@ model PurchaseOrderItem {
   productVariantId  Int
   variant           ProductVariant @relation(fields: [productVariantId], references: [id])
 
-
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
@@ -167,9 +166,15 @@ model PurchaseOrderItem {
 model Customer {
   id        Int      @id @default(autoincrement())
   email     String?   @unique
-  name      String    
+  name      String?
   phone     String?
   orders    CustomerOrder[]
+
+  hasAccount Boolean? @default(false)
+//  if hasAccount is true, link to a User account
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum OrderStatus {
@@ -182,16 +187,22 @@ enum OrderStatus {
 
 model CustomerOrder {
   id         Int      @id @default(autoincrement())
+  invoiceNumber String?  @unique
   orderDate  DateTime @default(now())
+  orderType  String?  // e.g., "in-store", "online", etc.
   status     OrderStatus @default(PENDING)
-  total      Decimal
+  customerName String?
+  customerPhone String?
 
   paid      Boolean @default(false)
+
+  staffName String?  // Who handled the order
   moneyHolder String?   // Who has the money
   paymentMethod String? 
+  notes     String?
 
-  customerId Int
-  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId Int?
+  customer   Customer? @relation(fields: [customerId], references: [id])
 
   items      CustomerOrderItem[]
 }
@@ -199,8 +210,9 @@ model CustomerOrder {
 model CustomerOrderItem {
   id                 Int      @id @default(autoincrement())
   quantity           Int
-  priceAtTimeOfSale  Decimal // Crucial: store the price at the time of sale
+  priceAtTimeOfSale  Decimal 
 
+  discount Decimal? @default(0)
   orderId            Int
   order              CustomerOrder @relation(fields: [orderId], references: [id])
   

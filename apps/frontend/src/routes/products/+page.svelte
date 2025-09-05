@@ -1,5 +1,4 @@
 <script>
-    import { onMount } from "svelte";
     import { productStore } from "$lib/stores/product.store.js";
     import ProductFilters from "$lib/components/ProductFilters.svelte";
     import ProductSort from "$lib/components/ProductSort.svelte";
