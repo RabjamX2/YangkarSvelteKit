@@ -12,6 +12,7 @@
 
     const loadingTransactions = writable(false);
     const errorTransactions = writable(null);
+    const receivingOrderId = writable(null); // Tracks which order is being marked as received
 
     // Derived store to compute whether all items in an order are checked
     const allItemsCheckedByOrder = derived([purchaseOrders, checkedItems], ([$purchaseOrders, $checkedItems]) => {
@@ -101,6 +102,7 @@
             return;
         }
 
+        receivingOrderId.set(orderId);
         try {
             const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/receive-purchase-order/${orderId}`, {
                 method: "POST",
@@ -120,6 +122,8 @@
         } catch (error) {
             console.error("Error receiving purchase order:", error);
             alert(`Error: ${error.message}`);
+        } finally {
+            receivingOrderId.set(null);
         }
     }
 
@@ -199,8 +203,16 @@
                             {#if order.hasArrived}
                                 <span class="action-placeholder">✔ Received</span>
                             {:else}
-                                <button class="receive-btn" on:click|stopPropagation={() => markAsReceived(order.id)}>
-                                    Mark as Received
+                                <button
+                                    class="receive-btn"
+                                    on:click|stopPropagation={() => markAsReceived(order.id)}
+                                    disabled={$receivingOrderId === order.id}
+                                >
+                                    {#if $receivingOrderId === order.id}
+                                        <span class="spinner"></span> Receiving...
+                                    {:else}
+                                        Mark as Received
+                                    {/if}
                                 </button>
                             {/if}
                         </td>
@@ -275,6 +287,25 @@
 </div>
 
 <style>
+    .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 3px solid #ccc;
+        border-top: 3px solid var(--color-signup-bg, #007bff);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
     /* Layout and table structure */
     .transaction-container {
         padding: 2rem;

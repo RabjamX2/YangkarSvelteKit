@@ -164,7 +164,7 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
     }
     const updatedPO = await prisma.purchaseOrder.update({
         where: { id: Number(id) },
-        data: {},
+        data: { arrivalDate: new Date(), hasArrived: true },
     });
     res.status(200).json(updatedPO);
 });
