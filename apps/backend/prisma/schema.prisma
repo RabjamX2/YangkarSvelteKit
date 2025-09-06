@@ -143,10 +143,16 @@ model InventoryBatch {
 model PurchaseOrder {
   id           Int                 @id @default(autoincrement())
   batchNumber  Int
+  
+  shippingCostCny Decimal?
+  shippingCostUsd Decimal?
+
   shipDate    DateTime?
   arrivalDate DateTime?
   hasArrived   Boolean             @default(false)
   
+  notes      String?
+
   // A purchase order is composed of multiple line items
   items        PurchaseOrderItem[]
 
