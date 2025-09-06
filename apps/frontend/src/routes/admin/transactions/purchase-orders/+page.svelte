@@ -178,8 +178,8 @@
                             <button class="expand-btn">{$expandedOrders.has(order.id) ? "▼" : "►"}</button>
                         </td>
                         <td>{order.batchNumber}</td>
-                        <td>{new Date(order.shipDate).toLocaleDateString()}</td>
-                        <td>{new Date(order.arrivalDate).toLocaleDateString()}</td>
+                        <td>{order.shipDate ? new Date(order.shipDate).toLocaleDateString() : "-"}</td>
+                        <td>{order.arrivalDate ? new Date(order.arrivalDate).toLocaleDateString() : "-"}</td>
                         <td>{order.items.reduce((sum, item) => sum + item.quantityOrdered, 0)}</td>
                         <td>
                             ${order.items

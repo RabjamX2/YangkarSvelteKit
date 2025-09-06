@@ -6,17 +6,17 @@ const prisma = new PrismaClient();
  * This should be called when a purchase order is marked as "received".
  * @param {string} productVariantId - The ID of the product variant.
  * @param {number} quantity - The number of items received.
- * @param {number} cost - The cost per item in this batch.
+ * @param {number} costCNY - The cost per item in this batch.
  * @param {string} purchaseOrderItemId - The ID of the related purchase order item.
  */
-export async function receiveStock(productVariantId, quantity, cost, purchaseOrderItemId) {
+export async function receiveStock(productVariantId, quantity, costCNY, purchaseOrderItemId) {
     return prisma.$transaction(async (tx) => {
         // 1. Create the new batch of inventory with its specific cost.
         const newBatch = await tx.inventoryBatch.create({
             data: {
                 productVariantId,
                 quantity,
-                cost,
+                costCNY,
                 purchaseOrderItemId,
             },
         });

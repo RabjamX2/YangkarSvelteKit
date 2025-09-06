@@ -1,3 +1,16 @@
+import express from "express";
+import { PrismaClient } from "@prisma/client";
+import asyncHandler from "../middleware/asyncHandler.js";
+import authenticateToken from "../middleware/authenticateToken.js";
+import { fulfillStock, receiveStock } from "../services/inventory.service.js";
+
+const router = express.Router();
+const prisma = new PrismaClient();
+
+// =========================
+// Route Controllers
+// =========================
+
 /**
  * Updates hasArrived for a specific PurchaseOrderItem.
  */
@@ -14,18 +27,6 @@ const updatePurchaseOrderItemArrived = asyncHandler(async (req, res) => {
     });
     res.json({ data: updatedItem });
 });
-import express from "express";
-import { PrismaClient } from "@prisma/client";
-import asyncHandler from "../middleware/asyncHandler.js";
-import authenticateToken from "../middleware/authenticateToken.js";
-import { fulfillStock, receiveStock } from "../services/inventory.service.js";
-
-const router = express.Router();
-const prisma = new PrismaClient();
-
-// =========================
-// Route Controllers
-// =========================
 
 /**
  * Returns all customer orders with customer and item details.
@@ -111,7 +112,7 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
             items: {
                 create: items.map((item) => ({
                     productVariantId: item.productVariantId,
-                    quantity: item.quantity,
+                    quantity: item.quantityOrdered,
                     priceAtTimeOfSale: item.priceAtTimeOfSale,
                 })),
             },
@@ -121,19 +122,19 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
 
     // FIFO logic: fulfill stock for each item
     for (const item of order.items) {
-        await fulfillStock(item.productVariantId, item.quantity, item.id);
+        await fulfillStock(item.productVariantId, item.quantityOrdered, item.id);
     }
 
     // Decrement stock and log stock change
     for (const item of items) {
         await prisma.productVariant.update({
             where: { id: item.productVariantId },
-            data: { stock: { decrement: item.quantity } },
+            data: { stock: { decrement: item.quantityOrdered } },
         });
         await prisma.stockChange.create({
             data: {
                 productVariantId: item.productVariantId,
-                change: -item.quantity,
+                change: -item.quantityOrdered,
                 reason: "Sale",
                 user: userFromToken?.username || dbCustomer.name || "Guest",
                 orderId: order.id,
@@ -159,11 +160,11 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "Purchase order not found" });
     }
     for (const item of purchaseOrder.items) {
-        await receiveStock(item.productVariantId, item.quantity, parseFloat(item.cost), item.id);
+        await receiveStock(item.productVariantId, item.quantityOrdered, parseFloat(item.costPerItemCny), item.id);
     }
     const updatedPO = await prisma.purchaseOrder.update({
         where: { id: Number(id) },
-        data: { status: "Received" },
+        data: {},
     });
     res.status(200).json(updatedPO);
 });
@@ -186,15 +187,15 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
         throw new Error("Order already voided");
     }
     for (const item of order.items) {
-        if (item.cogs > 0 && item.quantity > 0) {
+        if (item.cogs > 0 && item.quantityOrdered > 0) {
             // Calculate the original cost per item from the sale
-            const costPerItem = parseFloat(item.cogs) / item.quantity;
+            const costPerItem = parseFloat(item.cogs) / item.quantityOrdered;
 
             // Create a new inventory batch for the returned items
             await prisma.inventoryBatch.create({
                 data: {
                     productVariantId: item.productVariantId,
-                    quantity: item.quantity,
+                    quantity: item.quantityOrdered,
                     cost: costPerItem,
                 },
             });
@@ -202,14 +203,14 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
             // Update the main stock count as well
             await prisma.productVariant.update({
                 where: { id: item.productVariantId },
-                data: { stock: { increment: item.quantity } },
+                data: { stock: { increment: item.quantityOrdered } },
             });
 
             // Log the stock change
             await prisma.stockChange.create({
                 data: {
                     productVariantId: item.productVariantId,
-                    change: item.quantity,
+                    change: item.quantityOrdered,
                     reason: "Void Sale",
                     user: order.customer?.name || "Unknown",
                     orderId: order.id,
