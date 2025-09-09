@@ -37,7 +37,8 @@ export const actions = {
                 cookies.set("session_token", sessionToken, {
                     path: "/",
                     httpOnly: true,
-                    sameSite: "lax",
+                    sameSite: "none",
+                    domain: ".yangkarbhoeche.com",
                     maxAge: 60 * 60 * 24 * 7, // Cookie expiration (e.g., 1 week)
                 });
             }

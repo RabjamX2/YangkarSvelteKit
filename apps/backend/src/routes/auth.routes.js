@@ -43,8 +43,9 @@ const signup = asyncHandler(async (req, res) => {
 
     res.cookie("session_token", sessionToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
+        domain: ".yangkarbhoeche.com",
         expires: expiresAt,
     });
 
@@ -69,8 +70,9 @@ const login = asyncHandler(async (req, res) => {
 
     res.cookie("session_token", sessionToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
+        domain: ".yangkarbhoeche.com",
         expires: expiresAt,
     });
 
@@ -107,8 +109,9 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
         res.cookie("session_token", sessionToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: true,
+            sameSite: "none",
+            domain: ".yangkarbhoeche.com",
             expires: newExpiresAt,
         });
 
