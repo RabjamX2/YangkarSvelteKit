@@ -9,6 +9,7 @@
         <li><a href="/admin/transactions/customer-orders">Transaction History</a></li>
         <li><a href="/admin/transactions/purchase-orders">Purchase Orders</a></li>
         <li><a href="/admin/transactions/stock-changes">Stock Changes</a></li>
+        <li><a href="/admin/transactions/inventory-batches">Inventory Batches</a></li>
         <li><a href="/admin/checkout">Checkout</a></li>
     </ul>
 </div>

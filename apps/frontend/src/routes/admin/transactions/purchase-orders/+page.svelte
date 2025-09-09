@@ -41,10 +41,115 @@
         expandedOrders.update((set) => {
             if (set.has(orderId)) {
                 set.delete(orderId);
+                // Store for new item fields per order
+                const newItemFields = writable({}); // { orderId: { sku, name, color, size, quantity, costPerItemUsd } }
+
+                function handleNewItemField(orderId, field, value) {
+                    newItemFields.update((fields) => {
+                        if (!fields[orderId]) fields[orderId] = {};
+                        fields[orderId][field] = value;
+                        return fields;
+                    });
+                }
+
+                async function addNewItem(orderId) {
+                    let $newItemFields;
+                    newItemFields.subscribe((v) => ($newItemFields = v))();
+                    const fields = $newItemFields[orderId];
+                    if (!fields || !fields.sku || !fields.name || !fields.quantity || !fields.costPerItemUsd) {
+                        alert("Please fill in SKU, Name, Quantity, and Cost/Item.");
+                        return;
+                    }
+                    try {
+                        const response = await fetchAuth(
+                            `${PUBLIC_BACKEND_URL}/api/purchase-order-items/${orderId}/add-item`,
+                            {
+                                method: "POST",
+                                body: JSON.stringify({
+                                    sku: fields.sku,
+                                    name: fields.name,
+                                    color: fields.color,
+                                    size: fields.size,
+                                    quantityOrdered: Number(fields.quantity),
+                                    costPerItemUsd: parseFloat(fields.costPerItemUsd),
+                                }),
+                            }
+                        );
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.message || "Failed to add item");
+                        }
+                        const newItem = await response.json();
+                        purchaseOrders.update((orders) => {
+                            return orders.map((order) => {
+                                if (order.id === orderId) {
+                                    order.items.push(newItem);
+                                }
+                                return order;
+                            });
+                        });
+                        newItemFields.update((fields) => {
+                            fields[orderId] = {};
+                            return fields;
+                        });
+                    } catch (error) {
+                        alert(`Error: ${error.message}`);
+                    }
+                }
             } else {
                 set.add(orderId);
             }
             return set;
+
+            async function updateItemColor(itemId, newColor) {
+                try {
+                    const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-order-items/${itemId}/color`, {
+                        method: "POST",
+                        body: JSON.stringify({ color: newColor }),
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || "Failed to update color");
+                    }
+                    purchaseOrders.update((orders) => {
+                        for (const order of orders) {
+                            for (const item of order.items) {
+                                if (item.id === itemId) {
+                                    item.variant.color = newColor;
+                                }
+                            }
+                        }
+                        return orders;
+                    });
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                }
+            }
+
+            async function updateItemCost(itemId, newCost) {
+                try {
+                    const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-order-items/${itemId}/cost`, {
+                        method: "POST",
+                        body: JSON.stringify({ costPerItemUsd: parseFloat(newCost) }),
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || "Failed to update cost");
+                    }
+                    purchaseOrders.update((orders) => {
+                        for (const order of orders) {
+                            for (const item of order.items) {
+                                if (item.id === itemId) {
+                                    item.costPerItemUsd = parseFloat(newCost);
+                                }
+                            }
+                        }
+                        return orders;
+                    });
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                }
+            }
         });
     }
 
@@ -232,6 +337,7 @@
                                                 <th>Quantity</th>
                                                 <th>Cost/Item</th>
                                                 <th>Verified</th>
+                                                <th>Update</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -239,8 +345,22 @@
                                                 <tr>
                                                     <td>{item.variant?.sku}</td>
                                                     <td>{item.variant?.product?.name}</td>
-                                                    <td>{item.variant?.color}</td>
-                                                    <td>{item.variant?.size}</td>
+                                                    <td>
+                                                        <input
+                                                            type="text"
+                                                            value={item.variant?.color}
+                                                            on:input={(e) => updateItemColor(item.id, e.target.value)}
+                                                            style="width:80px;"
+                                                        />
+                                                    </td>
+                                                    <td>
+                                                        <input
+                                                            type="text"
+                                                            value={item.variant?.size}
+                                                            on:input={(e) => updateItemSize(item.id, e.target.value)}
+                                                            style="width:60px;"
+                                                        />
+                                                    </td>
                                                     <td>
                                                         <input
                                                             type="number"
@@ -250,6 +370,27 @@
                                                                 handleQuantityChange(item.id, e.currentTarget.value)}
                                                             style="width: 70px;"
                                                         />
+                                                    </td>
+                                                    <td>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={item.costPerItemUsd}
+                                                            on:input={(e) => updateItemCost(item.id, e.target.value)}
+                                                            style="width:80px;"
+                                                        />
+                                                    </td>
+                                                    <td>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={$checkedItems[item.id] || false}
+                                                            on:change={(e) =>
+                                                                handleItemCheck(item.id, e.currentTarget.checked)}
+                                                            on:click|stopPropagation
+                                                        />
+                                                    </td>
+                                                    <td>
                                                         <button
                                                             class="update-qty-btn"
                                                             on:click={() =>
@@ -261,16 +402,6 @@
                                                                 item.quantityOrdered) == item.quantityOrdered}
                                                             >Update</button
                                                         >
-                                                    </td>
-                                                    <td>${parseFloat(item.costPerItemUsd).toFixed(2)}</td>
-                                                    <td>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={$checkedItems[item.id] || false}
-                                                            on:change={(e) =>
-                                                                handleItemCheck(item.id, e.currentTarget.checked)}
-                                                            on:click|stopPropagation
-                                                        />
                                                     </td>
                                                 </tr>
                                             {/each}

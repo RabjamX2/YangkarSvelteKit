@@ -10,6 +10,178 @@ const prisma = new PrismaClient();
 // =========================
 // Route Controllers
 // =========================
+/**
+ * Adds a new inventory batch, creating a new variant if needed.
+ */
+const addInventoryBatch = asyncHandler(async (req, res) => {
+    const { sku, color, size, costCNY, costUSD, quantity, productName } = req.body;
+    if (!sku || !quantity || (!costCNY && !costUSD)) {
+        res.status(400);
+        throw new Error("sku, quantity, and costCNY or costUSD are required");
+    }
+    // Find or create product
+    let product = null;
+    if (productName) {
+        product = await prisma.product.findUnique({ where: { name: productName } });
+        if (!product) {
+            product = await prisma.product.create({ data: { name: productName, skuBase: sku } });
+        }
+    }
+    // Find or create variant
+    let variant = await prisma.productVariant.findFirst({
+        where: {
+            sku,
+            color,
+            size,
+        },
+    });
+    if (!variant) {
+        variant = await prisma.productVariant.create({
+            data: {
+                sku,
+                color,
+                size,
+                salePrice: 0,
+                stock: 0,
+                product: product ? { connect: { id: product.id } } : undefined,
+            },
+        });
+    }
+    // Create inventory batch
+    const batch = await prisma.inventoryBatch.create({
+        data: {
+            productVariantId: variant.id,
+            quantity,
+            costCNY: costCNY || null,
+            costUSD: costUSD || null,
+        },
+        include: { productVariant: true },
+    });
+    // Update variant stock
+    await prisma.productVariant.update({
+        where: { id: variant.id },
+        data: { stock: { increment: quantity } },
+    });
+    res.json(batch);
+});
+/**
+ * Updates quantityOrdered for a specific PurchaseOrderItem and retroactively updates inventory batch and stock if received.
+ */
+const updatePurchaseOrderItemQuantity = asyncHandler(async (req, res) => {
+    const itemId = Number(req.params.id);
+    const { quantityOrdered } = req.body;
+    if (typeof quantityOrdered !== "number" || isNaN(quantityOrdered) || quantityOrdered < 1) {
+        res.status(400);
+        throw new Error("quantityOrdered must be a positive number");
+    }
+    // Update the purchase order item
+    const item = await prisma.purchaseOrderItem.update({
+        where: { id: itemId },
+        data: { quantityOrdered },
+        include: { purchaseOrder: true },
+    });
+    // If the purchase order has already arrived, update the inventory batch
+    if (item.purchaseOrder.hasArrived) {
+        // Find the inventory batch linked to this item
+        const batch = await prisma.inventoryBatch.findFirst({
+            where: { purchaseOrderItemId: itemId },
+        });
+        if (batch) {
+            // Update the batch quantity
+            await prisma.inventoryBatch.update({
+                where: { id: batch.id },
+                data: { quantity: quantityOrdered },
+            });
+            // Update productVariant stock to match new batch quantity
+            const batches = await prisma.inventoryBatch.findMany({
+                where: { productVariantId: item.productVariantId },
+            });
+            const totalBatchStock = batches.reduce((sum, b) => sum + b.quantity, 0);
+            await prisma.productVariant.update({
+                where: { id: item.productVariantId },
+                data: { stock: totalBatchStock },
+            });
+        }
+    }
+    res.json(item);
+});
+/**
+ * Updates color for a specific PurchaseOrderItem.
+ */
+const updatePurchaseOrderItemColor = asyncHandler(async (req, res) => {
+    const itemId = Number(req.params.id);
+    const { color } = req.body;
+    if (typeof color !== "string") {
+        res.status(400);
+        throw new Error("color must be a string");
+    }
+    const updatedItem = await prisma.purchaseOrderItem.update({
+        where: { id: itemId },
+        data: {
+            variant: {
+                update: { color },
+            },
+        },
+        include: { variant: true },
+    });
+    res.json(updatedItem);
+});
+
+/**
+ * Updates costPerItemUsd for a specific PurchaseOrderItem.
+ */
+const updatePurchaseOrderItemCost = asyncHandler(async (req, res) => {
+    const itemId = Number(req.params.id);
+    const { costPerItemUsd } = req.body;
+    if (typeof costPerItemUsd !== "number" || isNaN(costPerItemUsd)) {
+        res.status(400);
+        throw new Error("costPerItemUsd must be a number");
+    }
+    const updatedItem = await prisma.purchaseOrderItem.update({
+        where: { id: itemId },
+        data: { costPerItemUsd },
+    });
+    res.json(updatedItem);
+});
+
+/**
+ * Adds a new item to a purchase order.
+ */
+const addPurchaseOrderItem = asyncHandler(async (req, res) => {
+    const orderId = Number(req.params.id);
+    const { sku, name, color, size, quantityOrdered, costPerItemUsd } = req.body;
+    if (!sku || !name || !quantityOrdered || !costPerItemUsd) {
+        res.status(400);
+        throw new Error("sku, name, quantityOrdered, and costPerItemUsd are required");
+    }
+    // Create new ProductVariant if needed
+    const variant = await prisma.productVariant.create({
+        data: {
+            sku,
+            color,
+            size,
+            salePrice: 0,
+            stock: 0,
+            product: {
+                connectOrCreate: {
+                    where: { name },
+                    create: { name, skuBase: sku },
+                },
+            },
+        },
+    });
+    // Add item to purchase order
+    const newItem = await prisma.purchaseOrderItem.create({
+        data: {
+            purchaseOrderId: orderId,
+            productVariantId: variant.id,
+            quantityOrdered,
+            costPerItemUsd,
+        },
+        include: { variant: { include: { product: true } } },
+    });
+    res.json(newItem);
+});
 
 /**
  * Updates hasArrived for a specific PurchaseOrderItem.
@@ -82,38 +254,37 @@ const getStockChanges = asyncHandler(async (req, res) => {
  */
 const createCustomerOrder = asyncHandler(async (req, res) => {
     const userFromToken = req.user;
-    const { customer, items, total, moneyHolder, paymentMethod } = req.body;
+    const { customer, items, moneyHolder, paymentMethod } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400);
         throw new Error("No items in order");
     }
 
-    // Find or create customer
-    let dbCustomer;
-    if (customer?.email) {
-        dbCustomer = await prisma.customer.upsert({
-            where: { email: customer.email },
-            update: { name: customer.name, phone: customer.phone },
-            create: { email: customer.email, name: customer.name, phone: customer.phone },
-        });
-    } else {
-        dbCustomer = await prisma.customer.create({
-            data: { email: `guest-${Date.now()}@guest.local`, name: customer?.name || "Guest", phone: customer?.phone },
-        });
-    }
+    // // Find or create customer
+    // let dbCustomer;
+    // if (customer?.email) {
+    //     dbCustomer = await prisma.customer.upsert({
+    //         where: { email: customer.email },
+    //         update: { name: customer.name, phone: customer.phone },
+    //         create: { email: customer.email, name: customer.name, phone: customer.phone },
+    //     });
+    // } else {
+    //     dbCustomer = await prisma.customer.create({
+    //         data: { email: `guest-${Date.now()}@guest.local`, name: customer?.name || "Guest", phone: customer?.phone },
+    //     });
+    // }
 
     // Create order and items
     const order = await prisma.customerOrder.create({
         data: {
-            customerId: dbCustomer.id,
-            total,
+            customerName: customer?.name || "Guest",
             moneyHolder,
             paymentMethod,
             items: {
                 create: items.map((item) => ({
-                    productVariantId: item.productVariantId,
-                    quantity: item.quantityOrdered,
-                    priceAtTimeOfSale: item.priceAtTimeOfSale,
+                    variant: { connect: { id: item.productVariantId } },
+                    quantity: item.quantity,
+                    salePrice: item.salePrice,
                 })),
             },
         },
@@ -122,7 +293,7 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
 
     // FIFO logic: fulfill stock for each item
     for (const item of order.items) {
-        await fulfillStock(item.productVariantId, item.quantityOrdered, item.id);
+        await fulfillStock(item.productVariantId, item.quantity, item.id);
     }
 
     // Decrement stock and log stock change
@@ -161,12 +332,35 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
     }
     for (const item of purchaseOrder.items) {
         await receiveStock(item.productVariantId, item.quantityOrdered, parseFloat(item.costPerItemCny), item.id);
+        await prisma.stockChange.create({
+            data: {
+                productVariantId: item.productVariantId,
+                change: item.quantityOrdered,
+                reason: "Purchase Order Received",
+                user: req.user?.username || "System",
+                orderId: purchaseOrder.id,
+                orderType: "purchase",
+            },
+        });
     }
     const updatedPO = await prisma.purchaseOrder.update({
         where: { id: Number(id) },
         data: { arrivalDate: new Date(), hasArrived: true },
     });
     res.status(200).json(updatedPO);
+});
+
+/**
+ * Returns all inventory batches with product variant details.
+ */
+const getInventoryBatches = asyncHandler(async (req, res) => {
+    const batches = await prisma.inventoryBatch.findMany({
+        include: {
+            productVariant: true,
+        },
+        orderBy: { createdAt: "asc" },
+    });
+    res.json({ data: batches });
 });
 
 /**
@@ -265,6 +459,13 @@ router.post("/void-sale/:orderId", authenticateToken, voidCustomerOrder);
 router.get("/purchase-orders", authenticateToken, getPurchaseOrders);
 router.post("/receive-purchase-order/:id", authenticateToken, receivePurchaseOrder);
 router.post("/purchase-order-items/:id/arrived", authenticateToken, updatePurchaseOrderItemArrived);
+router.post("/purchase-order-items/:id/quantity", authenticateToken, updatePurchaseOrderItemQuantity);
+router.post("/purchase-order-items/:id/color", authenticateToken, updatePurchaseOrderItemColor);
+router.post("/purchase-order-items/:id/cost", authenticateToken, updatePurchaseOrderItemCost);
+router.post("/purchase-order-items/:id/add-item", authenticateToken, addPurchaseOrderItem);
+// Inventory Batches
+router.get("/inventory-batches", authenticateToken, getInventoryBatches);
+router.post("/inventory-batches/add", authenticateToken, addInventoryBatch);
 
 // Stock Changes
 router.get("/stock-changes", authenticateToken, getStockChanges);

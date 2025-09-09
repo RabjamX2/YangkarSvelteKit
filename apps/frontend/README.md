@@ -33,6 +33,17 @@ To create a production version of your app:
 npm run build
 ```
 
+FRONT END
+cd htdocs/yangkarbhoeche.com/YangkarSvelteKit/
+pm --filter frontend build
+PORT=5000 PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com pm2 start build/index.js --name "frontend"
+
+Backend
+cd htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
+pnpm --filter backend exec prisma generate
+
+PORT=4000 DATABASE_URL="api.yangkarbhoeche.com" pm2 start apps/backend/src/index.js --name "backend"
+
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

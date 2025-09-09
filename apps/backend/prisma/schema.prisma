@@ -1,5 +1,5 @@
 generator client {
-    provider = "prisma-client-js" 
+    provider = "prisma-client-js"
 }
 
 datasource db {
@@ -9,15 +9,15 @@ datasource db {
 
 /// Tracks all stock changes for audit/history purposes
 model StockChange {
-  id           Int      @id @default(autoincrement())
-  date         DateTime @default(now())
-  productVariantId Int
-  variant      ProductVariant @relation(fields: [productVariantId], references: [id])
-  change       Int      // Positive for addition, negative for removal
-  reason       String?
-  user         String?  // Optionally, who made the change
-  orderId      Int?     // Optionally, link to a CustomerOrder or PurchaseOrder
-  orderType    String?  // "customer" or "purchase" or null
+    id               Int            @id @default(autoincrement())
+    date             DateTime       @default(now())
+    productVariantId Int
+    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
+    change           Int // Positive for addition, negative for removal
+    reason           String?
+    user             String? // Optionally, who made the change
+    orderId          Int? // Optionally, link to a CustomerOrder or PurchaseOrder
+    orderType        String? // "customer" or "purchase" or null
 }
 
 enum Role {
@@ -28,7 +28,7 @@ enum Role {
 model User {
     id       String    @id @default(cuid())
     username String    @unique
-    email    String   @unique
+    email    String    @unique
     name     String?
     password String
     role     Role      @default(USER)
@@ -47,195 +47,194 @@ model Session {
 
 /// Represents a supplier or seller from whom you purchase goods.
 model Supplier {
-  id            Int             @id @default(autoincrement())
-  idString      String          @unique // e.g., "bt", "ptl"
-  name          String          @unique
-  tibetanName   String?
-  contactPerson String?
-  contactMethod String?
-  products      Product[]
+    id            Int       @id @default(autoincrement())
+    idString      String    @unique // e.g., "bt", "ptl"
+    name          String    @unique
+    tibetanName   String?
+    contactPerson String?
+    contactMethod String?
+    products      Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 /// Product categories like "Chupa", "Jewelry", etc.
 model Category {
-  id       Int       @id @default(autoincrement())
-  name     String    @unique
-  products Product[]
+    id       Int       @id @default(autoincrement())
+    name     String    @unique
+    products Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 /// Represents the core product concept, like "Metok Wonju" or "plaindhi".
 /// Price is stored in the ProductVariant model to allow for differences.
 model Product {
-  id         Int        @id @default(autoincrement())
-  skuBase    String     @unique // e.g., "ptlMetok"
-  name       String     // e.g., "Metok Wonju"
-  style      String?    // e.g., "Metok"
-  notes      String?
+    id      Int     @id @default(autoincrement())
+    skuBase String  @unique // e.g., "ptlMetok"
+    name    String // e.g., "Metok Wonju"
+    style   String? // e.g., "Metok"
+    notes   String?
 
-  // Relationships
-  supplierName String 
-  supplier   Supplier @relation(fields: [supplierName], references: [name])
-  categoryName String
-  category   Category @relation(fields: [categoryName], references: [name])
-  
-  variants   ProductVariant[]
+    // Relationships
+    supplierName String
+    supplier     Supplier @relation(fields: [supplierName], references: [name])
+    categoryName String
+    category     Category @relation(fields: [categoryName], references: [name])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    variants ProductVariant[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 /// Represents a specific, sellable version of a Product.
 /// This is the level where you will track inventory AND price.
 model ProductVariant {
-  id    Int    @id @default(autoincrement())
-  sku   String? @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
-  color String?
-  size  String?
-  imgUrl String? @default("/Placeholder4-5.png") // Default image URL
-  
-  salePrice  Decimal?
-  
-  // The actual number of items you have on hand
-  stock Int    @default(0)
+    id     Int     @id @default(autoincrement())
+    sku    String? @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
+    color  String?
+    size   String?
+    imgUrl String? @default("/Placeholder4-5.png") // Default image URL
 
-  // Foreign key to the parent Product
-  productSkuBase String
-  product   Product @relation(fields: [productSkuBase], references: [skuBase], onDelete: Cascade)
-  
-  purchaseOrderItems PurchaseOrderItem[]
-  customerOrderItems CustomerOrderItem[]
-  stockChanges StockChange[]
-  inventoryBatches   InventoryBatch[]
+    salePrice Decimal?
 
-  // This line adds the index to the productSkuBase field for faster lookups.
-  @@index([productSkuBase])
+    // The actual number of items you have on hand
+    stock Int @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    // Foreign key to the parent Product
+    productSkuBase String
+    product        Product @relation(fields: [productSkuBase], references: [skuBase], onDelete: Cascade)
+
+    purchaseOrderItems PurchaseOrderItem[]
+    customerOrderItems CustomerOrderItem[]
+    stockChanges       StockChange[]
+    inventoryBatches   InventoryBatch[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    // This line adds the index to the productSkuBase field for faster lookups.
+    @@index([productSkuBase])
 }
 
 // This model tracks each incoming batch of stock with its specific cost.
 model InventoryBatch {
-  id                  Int            @id @default(autoincrement())
-  
-  productVariantId    Int
-  productVariant      ProductVariant    @relation(fields: [productVariantId], references: [id])
-  
-  quantity            Int               // The remaining quantity in this batch
-  costUSD             Decimal?
-  costCNY             Decimal?
-  
-  arrivalDate        DateTime?       // When this batch arrived
-  createdAt           DateTime          @default(now())
-  
-  purchaseOrderItemId Int?           @unique
-  purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
+    id Int @id @default(autoincrement())
+
+    productVariantId Int
+    productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+
+    quantity Int // The remaining quantity in this batch
+    costUSD  Decimal?
+    costCNY  Decimal?
+
+    arrivalDate DateTime? // When this batch arrived
+    createdAt   DateTime  @default(now())
+
+    purchaseOrderItemId Int?               @unique
+    purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
 }
 
 /// Represents a purchase order made to a Supplier/s.
 /// For us, this corresponds to each batch of orders we place
 model PurchaseOrder {
-  id           Int                 @id @default(autoincrement())
-  batchNumber  Int
-  
-  shippingCostCny Decimal?
-  shippingCostUsd Decimal?
+    id          Int @id @default(autoincrement())
+    batchNumber Int
 
-  shipDate    DateTime?
-  arrivalDate DateTime?
-  hasArrived   Boolean             @default(false)
-  
-  notes      String?
+    shippingCostCny Decimal?
+    shippingCostUsd Decimal?
 
-  // A purchase order is composed of multiple line items
-  items        PurchaseOrderItem[]
+    shipDate    DateTime?
+    arrivalDate DateTime?
+    hasArrived  Boolean   @default(false)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+    notes String?
+
+    // A purchase order is composed of multiple line items
+    items PurchaseOrderItem[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 /// A specific line item within a PurchaseOrder.
 /// e.g., 6 units of "Metok Wonju, Red, XL"
 model PurchaseOrderItem {
-  id                Int      @id @default(autoincrement())
-  quantityOrdered   Int
-  hasArrived       Boolean?  @default(false)
-  costPerItemCny    Decimal?
-  costPerItemUsd    Decimal?
-  
-  purchaseOrderId   Int
-  order             PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  
-  productVariantId  Int
-  variant           ProductVariant @relation(fields: [productVariantId], references: [id])
+    id              Int      @id @default(autoincrement())
+    quantityOrdered Int
+    hasArrived      Boolean? @default(false)
+    costPerItemCny  Decimal?
+    costPerItemUsd  Decimal?
 
-  inventoryBatch    InventoryBatch?
+    purchaseOrderId Int
+    order           PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+    productVariantId Int
+    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
+
+    inventoryBatch InventoryBatch?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
-
 model Customer {
-  id        Int      @id @default(autoincrement())
-  email     String?   @unique
-  name      String?
-  phone     String?
-  orders    CustomerOrder[]
+    id     Int             @id @default(autoincrement())
+    email  String?         @unique
+    name   String?
+    phone  String?
+    orders CustomerOrder[]
 
-  hasAccount Boolean? @default(false)
-//  if hasAccount is true, link to a User account
+    hasAccount Boolean? @default(false)
+    //  if hasAccount is true, link to a User account
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 enum OrderStatus {
-  PENDING    // Order placed, awaiting payment/fulfillment
-  SHIPPED
-  COMPLETED
-  CANCELLED
-  REFUNDED
+    PENDING // Order placed, awaiting payment/fulfillment
+    SHIPPED
+    COMPLETED
+    CANCELLED
+    REFUNDED
 }
 
 model CustomerOrder {
-  id         Int      @id @default(autoincrement())
-  invoiceNumber String?  @unique
-  orderDate  DateTime @default(now())
-  orderType  String?  // e.g., "in-store", "online", etc.
-  status     OrderStatus @default(PENDING)
-  customerName String?
-  customerPhone String?
+    id            Int         @id @default(autoincrement())
+    invoiceNumber String?     @unique
+    orderDate     DateTime    @default(now())
+    orderType     String? // e.g., "in-store", "online", etc.
+    status        OrderStatus @default(PENDING)
+    customerName  String?
+    customerPhone String?
 
-  paid      Boolean @default(false)
-  cogs      Decimal?
+    paid Boolean @default(false)
 
-  staffName String?  // Who handled the order
-  moneyHolder String?   // Who has the money
-  paymentMethod String? 
-  notes     String?
+    staffName     String? // Who handled the order
+    moneyHolder   String? // Who has the money
+    paymentMethod String?
+    notes         String?
 
-  customerId Int?
-  customer   Customer? @relation(fields: [customerId], references: [id])
+    customerId Int?
+    customer   Customer? @relation(fields: [customerId], references: [id])
 
-  items      CustomerOrderItem[]
+    items CustomerOrderItem[]
 }
 
 model CustomerOrderItem {
-  id                 Int      @id @default(autoincrement())
-  quantity           Int
-  priceAtTimeOfSale  Decimal 
+    id        Int      @id @default(autoincrement())
+    quantity  Int
+    cogs      Decimal?
+    salePrice Decimal
 
-  discount Decimal? @default(0)
-  orderId            Int
-  order              CustomerOrder @relation(fields: [orderId], references: [id])
-  
-  productVariantId   Int
-  variant            ProductVariant @relation(fields: [productVariantId], references: [id])
+    discount Decimal?      @default(0)
+    orderId  Int
+    order    CustomerOrder @relation(fields: [orderId], references: [id])
+
+    productVariantId Int
+    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
 }

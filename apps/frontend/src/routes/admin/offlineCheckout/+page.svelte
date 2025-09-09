@@ -1,52 +1,54 @@
 <script>
     // @ts-nocheck
-
-    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
 
+    // Local-only stores
     const products = writable([]);
     const variants = writable([]);
-    const cart = writable([]); // [{variant, quantity}]
+    const cart = writable([]);
     const customerPhone = writable("");
     const customerName = writable("");
     const search = writable("");
-    const loading = writable(false);
     const error = writable(null);
     const success = writable(null);
     const paymentMethod = writable("");
+    const moneyHolder = writable("");
+    let cashReceived = "";
 
-    onMount(async () => {
-        loading.set(true);
-        try {
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
-            if (!res.ok) throw new Error("Failed to fetch products");
-            const data = await res.json();
-            products.set(data.data);
-            // Flatten all variants for search
+    // Local transaction log
+    const transactions = writable([]);
+
+    // Load products from localStorage or static file (simulate backend)
+    onMount(() => {
+        // Try to load from localStorage
+        const localProducts = localStorage.getItem("offlineProducts");
+        if (localProducts) {
+            products.set(JSON.parse(localProducts));
             let allVariants = [];
-            data.data.forEach((p) => {
+            JSON.parse(localProducts).forEach((p) => {
                 p.variants.forEach((v) => {
                     allVariants.push({ ...v, product: { skuBase: p.skuBase, name: p.name } });
                 });
             });
             variants.set(allVariants);
-        } catch (e) {
-            error.set(e.message);
-        } finally {
-            loading.set(false);
+        } else {
+            // Fallback: empty
+            products.set([]);
+            variants.set([]);
         }
+        // Load transactions
+        const txs = localStorage.getItem("offlineTransactions");
+        if (txs) transactions.set(JSON.parse(txs));
     });
 
     function addToCart(variant) {
-        // Ensure variant has .product property (for cart rendering)
         cart.update((list) => {
             const idx = list.findIndex((item) => item.variant.id === variant.id);
             if (idx !== -1) {
                 list[idx].quantity++;
                 return [...list];
             }
-            // If variant.product is missing, find it from products
             let v = { ...variant };
             if (!v.product) {
                 let $products;
@@ -72,57 +74,53 @@
         $cart.reduce((sum, item) => sum + Number(item.variant.salePrice || 0) * item.quantity, 0)
     );
 
-    async function completeSale() {
-        let $cart, $customerPhone, $customerName, $total, $moneyHolder;
+    function completeSale() {
+        let $cart, $customerPhone, $customerName, $total, $moneyHolder, $paymentMethod;
         cart.subscribe((v) => ($cart = v))();
         customerPhone.subscribe((v) => ($customerPhone = v))();
         customerName.subscribe((v) => ($customerName = v))();
         total.subscribe((v) => ($total = v))();
-        let $paymentMethod;
         moneyHolder.subscribe((v) => ($moneyHolder = v))();
         paymentMethod.subscribe((v) => ($paymentMethod = v))();
         if (!$cart.length) {
             error.set("Cart is empty");
             return;
         }
-        loading.set(true);
         error.set(null);
         success.set(null);
-        try {
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                    customer: { phone: $customerPhone, name: $customerName },
-                    items: $cart.map((item) => ({
-                        productVariantId: item.variant.id,
-                        quantity: item.quantity,
-                        salePrice: item.variant.salePrice,
-                    })),
-                    total: $total,
-                    moneyHolder: $moneyHolder,
-                    paymentMethod: $paymentMethod,
-                }),
-            });
-            if (!res.ok) throw new Error("Failed to complete sale");
-            cart.set([]);
-            customerPhone.set("");
-            customerName.set("");
-            moneyHolder.set("");
-            success.set("Sale completed!");
-        } catch (e) {
-            error.set(e.message);
-        } finally {
-            loading.set(false);
-        }
+        // Save transaction locally
+        const tx = {
+            date: new Date().toISOString(),
+            customer: { phone: $customerPhone, name: $customerName },
+            items: $cart.map((item) => ({
+                sku: item.variant.sku,
+                name: item.variant.product.name,
+                color: item.variant.color,
+                size: item.variant.size,
+                salePrice: item.variant.salePrice,
+                quantity: item.quantity,
+                subtotal: Number(item.variant.salePrice || 0) * item.quantity,
+            })),
+            total: $total,
+            moneyHolder: $moneyHolder,
+            paymentMethod: $paymentMethod,
+            cashReceived,
+            change: cashReceived && $total ? (Number(cashReceived) - Number($total)).toFixed(2) : "0.00",
+        };
+        transactions.update((list) => {
+            const updated = [...list, tx];
+            localStorage.setItem("offlineTransactions", JSON.stringify(updated));
+            return updated;
+        });
+        cart.set([]);
+        customerPhone.set("");
+        customerName.set("");
+        moneyHolder.set("");
+        cashReceived = "";
+        success.set("Sale recorded offline!");
     }
-    const moneyHolder = writable("");
 
     const groupedProducts = derived([products, search], ([$products, $search]) => {
-        // Sort products alphabetically
         let filtered = $products
             .map((p) => ({
                 ...p,
@@ -151,15 +149,14 @@
             .sort((a, b) => a.name.localeCompare(b.name));
         return filtered;
     });
-    let cashReceived = "";
 </script>
 
 <svelte:head>
-    <title>Admin Checkout</title>
+    <title>Offline Admin Checkout</title>
 </svelte:head>
 
 <div class="checkout-container">
-    <h1>Admin Checkout (POS)</h1>
+    <h1>Offline Admin Checkout (POS)</h1>
     {#if $error}
         <p style="color:red">{$error}</p>
     {/if}
@@ -312,13 +309,7 @@
                     </select>
                 </div>
             </div>
-            <button class="complete-btn" on:click={completeSale} disabled={$loading || !$cart.length}>
-                {#if $loading}
-                    <span class="spinner"></span> Processing...
-                {:else}
-                    Complete Sale
-                {/if}
-            </button>
+            <button class="complete-btn" on:click={completeSale} disabled={!$cart.length}> Complete Sale </button>
             <style>
                 .spinner {
                     display: inline-block;
@@ -345,6 +336,33 @@
                     margin-bottom: 0.7rem;
                 }
             </style>
+            <div style="margin-top:2rem;">
+                <h3>Offline Transaction Log</h3>
+                <table class="cart-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Total</th>
+                            <th>Payment</th>
+                            <th>Money Holder</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each $transactions as tx}
+                            <tr>
+                                <td>{tx.date.slice(0, 19).replace("T", " ")}</td>
+                                <td>{tx.customer.name || ""} {tx.customer.phone ? `(${tx.customer.phone})` : ""}</td>
+                                <td>${tx.total}</td>
+                                <td>{tx.paymentMethod}</td>
+                                <td>{tx.moneyHolder}</td>
+                                <td>{tx.change}</td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
