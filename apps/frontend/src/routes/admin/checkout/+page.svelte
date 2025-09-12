@@ -1,9 +1,10 @@
 <script>
     // @ts-nocheck
-
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
+    import AdminHeader from "$lib/components/AdminHeader.svelte";
 
     const products = writable([]);
     const variants = writable([]);
@@ -157,6 +158,8 @@
 <svelte:head>
     <title>Admin Checkout</title>
 </svelte:head>
+
+<AdminHeader />
 
 <div class="checkout-container">
     <h1>Admin Checkout (POS)</h1>

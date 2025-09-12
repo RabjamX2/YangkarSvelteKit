@@ -9,15 +9,18 @@ datasource db {
 
 /// Tracks all stock changes for audit/history purposes
 model StockChange {
-    id               Int            @id @default(autoincrement())
-    date             DateTime       @default(now())
-    productVariantId Int
-    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
-    change           Int // Positive for addition, negative for removal
-    reason           String?
-    user             String? // Optionally, who made the change
-    orderId          Int? // Optionally, link to a CustomerOrder or PurchaseOrder
-    orderType        String? // "customer" or "purchase" or null
+    id   Int      @id @default(autoincrement())
+    date DateTime @default(now())
+
+    productVariantSku String
+    variant           ProductVariant @relation(fields: [productVariantSku], references: [sku])
+
+    change Int // Positive for addition, negative for removal
+    reason String?
+    user   String? // Optionally, who made the change
+
+    orderId   Int? // Optionally, link to a CustomerOrder or PurchaseOrder
+    orderType String? // "customer" or "purchase" or null
 }
 
 enum Role {
@@ -94,7 +97,7 @@ model Product {
 /// This is the level where you will track inventory AND price.
 model ProductVariant {
     id     Int     @id @default(autoincrement())
-    sku    String? @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
+    sku    String  @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
     color  String?
     size   String?
     imgUrl String? @default("/Placeholder4-5.png") // Default image URL
@@ -142,7 +145,7 @@ model InventoryBatch {
 /// For us, this corresponds to each batch of orders we place
 model PurchaseOrder {
     id          Int @id @default(autoincrement())
-    batchNumber Int
+    batchNumber Int @unique
 
     shippingCostCny Decimal?
     shippingCostUsd Decimal?
@@ -169,11 +172,11 @@ model PurchaseOrderItem {
     costPerItemCny  Decimal?
     costPerItemUsd  Decimal?
 
-    purchaseOrderId Int
-    order           PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+    batchNumber Int
+    order       PurchaseOrder @relation(fields: [batchNumber], references: [batchNumber])
 
-    productVariantId Int
-    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
+    productVariantSku String
+    variant           ProductVariant @relation(fields: [productVariantSku], references: [sku])
 
     inventoryBatch InventoryBatch?
 
@@ -235,6 +238,6 @@ model CustomerOrderItem {
     orderId  Int
     order    CustomerOrder @relation(fields: [orderId], references: [id])
 
-    productVariantId Int
-    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
+    productVariantSku String
+    variant           ProductVariant @relation(fields: [productVariantSku], references: [sku])
 }

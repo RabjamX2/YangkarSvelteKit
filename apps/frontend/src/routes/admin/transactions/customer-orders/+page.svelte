@@ -4,6 +4,7 @@
     import { writable } from "svelte/store";
     import { page } from "$app/stores";
     import "../transactionTable.css";
+    import AdminHeader from "$lib/components/AdminHeader.svelte";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     const customerOrders = writable([]);
@@ -50,6 +51,7 @@
     });
 </script>
 
+<AdminHeader />
 <div class="admin-container">
     <h2>Customer Orders</h2>
     {#if $loadingTransactions}

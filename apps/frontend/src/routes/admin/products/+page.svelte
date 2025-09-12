@@ -4,6 +4,7 @@
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
+    import AdminHeader from "$lib/components/AdminHeader.svelte";
     import "./productTable.css";
 
     const products = writable([]);
@@ -89,6 +90,7 @@
     }
 </script>
 
+<AdminHeader />
 <div class="admin-container">
     <h1>Product List</h1>
     {#if $loading}

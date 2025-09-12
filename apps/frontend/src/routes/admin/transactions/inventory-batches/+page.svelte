@@ -2,6 +2,7 @@
     // @ts-nocheck
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
+    import AdminHeader from "$lib/components/AdminHeader.svelte";
     import "../transactionTable.css";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
@@ -29,6 +30,7 @@
     });
 </script>
 
+<AdminHeader />
 <div class="transaction-container">
     <h1>Inventory Batches (FIFO)</h1>
     {#if $loadingBatches}
