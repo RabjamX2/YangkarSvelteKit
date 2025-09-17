@@ -12,8 +12,8 @@ model StockChange {
     id   Int      @id @default(autoincrement())
     date DateTime @default(now())
 
-    productVariantSku String
-    variant           ProductVariant @relation(fields: [productVariantSku], references: [sku])
+    productVariantID Int
+    variant          ProductVariant @relation(fields: [productVariantID], references: [id])
 
     change Int // Positive for addition, negative for removal
     reason String?
@@ -45,7 +45,8 @@ model Session {
     id        String   @id // This will be our secure session token
     userId    String
     expiresAt DateTime
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// Represents a supplier or seller from whom you purchase goods.
@@ -82,10 +83,10 @@ model Product {
     notes   String?
 
     // Relationships
-    supplierName String
-    supplier     Supplier @relation(fields: [supplierName], references: [name])
-    categoryName String
-    category     Category @relation(fields: [categoryName], references: [name])
+    supplierID Int
+    supplier   Supplier @relation(fields: [supplierID], references: [id])
+    categoryID Int
+    category   Category @relation(fields: [categoryID], references: [id])
 
     variants ProductVariant[]
 
@@ -104,12 +105,8 @@ model ProductVariant {
 
     salePrice Decimal?
 
-    // The actual number of items you have on hand
-    stock Int @default(0)
-
-    // Foreign key to the parent Product
-    productSkuBase String
-    product        Product @relation(fields: [productSkuBase], references: [skuBase], onDelete: Cascade)
+    productID Int
+    product   Product @relation(fields: [productID], references: [id], onDelete: Cascade)
 
     purchaseOrderItems PurchaseOrderItem[]
     customerOrderItems CustomerOrderItem[]
@@ -120,7 +117,7 @@ model ProductVariant {
     updatedAt DateTime @updatedAt
 
     // This line adds the index to the productSkuBase field for faster lookups.
-    @@index([productSkuBase])
+    @@index([productID])
 }
 
 // This model tracks each incoming batch of stock with its specific cost.
@@ -172,11 +169,11 @@ model PurchaseOrderItem {
     costPerItemCny  Decimal?
     costPerItemUsd  Decimal?
 
-    batchNumber Int
-    order       PurchaseOrder @relation(fields: [batchNumber], references: [batchNumber])
+    PurchaseOrderID Int
+    order           PurchaseOrder @relation(fields: [PurchaseOrderID], references: [batchNumber])
 
-    productVariantSku String
-    variant           ProductVariant @relation(fields: [productVariantSku], references: [sku])
+    productVariantID Int
+    variant          ProductVariant @relation(fields: [productVariantID], references: [id])
 
     inventoryBatch InventoryBatch?
 
@@ -238,6 +235,6 @@ model CustomerOrderItem {
     orderId  Int
     order    CustomerOrder @relation(fields: [orderId], references: [id])
 
-    productVariantSku String
-    variant           ProductVariant @relation(fields: [productVariantSku], references: [sku])
+    productVariantID Int
+    variant          ProductVariant @relation(fields: [productVariantID], references: [id])
 }
