@@ -76,11 +76,14 @@ model Category {
 /// Represents the core product concept, like "Metok Wonju" or "plaindhi".
 /// Price is stored in the ProductVariant model to allow for differences.
 model Product {
-    id      Int     @id @default(autoincrement())
-    skuBase String  @unique // e.g., "ptlMetok"
-    name    String // e.g., "Metok Wonju"
-    style   String? // e.g., "Metok"
-    notes   String?
+    id          Int     @id @default(autoincrement())
+    style       String // e.g., "Metok"
+    displayName String? // e.g., "Metok Wonju"
+
+    notes String?
+
+    skuIntBase Int?   @unique // e.g., 1001
+    skuBase    String @unique // e.g., "ptl_chup_Metok"
 
     // Relationships
     supplierID Int
@@ -97,9 +100,13 @@ model Product {
 /// Represents a specific, sellable version of a Product.
 /// This is the level where you will track inventory AND price.
 model ProductVariant {
-    id     Int     @id @default(autoincrement())
-    sku    String  @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
-    color  String?
+    id  Int     @id @default(autoincrement())
+    sku String? @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
+
+    color        String?
+    displayColor String? // e.g., "Red"
+    colorHex     String? // e.g., "#FF0000"
+
     size   String?
     imgUrl String? @default("/Placeholder4-5.png") // Default image URL
 
@@ -160,8 +167,6 @@ model PurchaseOrder {
     updatedAt DateTime @updatedAt
 }
 
-/// A specific line item within a PurchaseOrder.
-/// e.g., 6 units of "Metok Wonju, Red, XL"
 model PurchaseOrderItem {
     id              Int      @id @default(autoincrement())
     quantityOrdered Int
@@ -170,10 +175,10 @@ model PurchaseOrderItem {
     costPerItemUsd  Decimal?
 
     PurchaseOrderID Int
-    order           PurchaseOrder @relation(fields: [PurchaseOrderID], references: [batchNumber])
+    order           PurchaseOrder @relation(fields: [PurchaseOrderID], references: [id])
 
-    productVariantID Int
-    variant          ProductVariant @relation(fields: [productVariantID], references: [id])
+    ProductVariantID Int
+    variant          ProductVariant @relation(fields: [ProductVariantID], references: [id])
 
     inventoryBatch InventoryBatch?
 
