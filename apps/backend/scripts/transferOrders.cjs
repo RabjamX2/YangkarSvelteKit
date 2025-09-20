@@ -150,6 +150,7 @@ async function main() {
                     },
                     create: {
                         sku: skuSpecific,
+                        legacySku: item["SKU Specific"] || null,
                         color: item["Color / Type"] || null,
                         size: item["Size"] || null,
                         productID: product.id,

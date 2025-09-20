@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
  */
 async function main() {
     // Path to phoneList.csv
-    const filePath = path.resolve(__dirname, "phoneList.csv");
+    const filePath = path.resolve(__dirname, "phoneOrders.csv");
     console.log(`Reading CSV file from: ${filePath}`);
 
     const fileContent = fs.readFileSync(filePath, "utf8");
@@ -32,11 +32,6 @@ async function main() {
     // For phoneList.csv, treat all as a single batch (batchNumber = 1)
     const batchNumber = 4;
     const batchItems = phonesFromCSV;
-    // Find earliest orderDate in batch
-    const orderDates = batchItems.map((i) => new Date(i["ORDER DATE"])).filter((d) => !isNaN(d));
-    const orderDate = orderDates.length ? new Date(Math.min(...orderDates.map((d) => d.getTime()))) : new Date();
-    // hasArrived: assume all arrived for phoneList.csv
-    const hasArrived = true;
 
     // Find or create PurchaseOrder for this batchNumber
     let purchaseOrder = await prisma.purchaseOrder.findFirst({
@@ -47,7 +42,6 @@ async function main() {
             data: {
                 batchNumber: batchNumber,
                 arrivalDate: null,
-                hasArrived,
             },
         });
     }
@@ -91,45 +85,41 @@ async function main() {
                 console.log(`Created new category: ${category.name}`);
             }
             // Product: skuBase = phoneCase + Style (e.g., "phoneCaseSnowlion")
-            const skuBase = `phoneCase${item["Style"]}`;
+            const skuBase = `phon_${item["Style"].toLowerCase().replace(/\s+/g, "-")}`;
             const product = await prisma.product.upsert({
                 where: { skuBase },
                 update: {
-                    name: item["Item name"] || skuBase,
+                    displayName: item["Item name"] || skuBase,
                     style: item["Style"],
                     notes: null,
-                    supplierName: supplier.name,
-                    categoryName: category.name,
+                    supplierID: supplier.id,
+                    categoryID: category.id,
                 },
                 create: {
                     skuBase,
-                    name: item["Item name"] || skuBase,
+                    displayName: item["Item name"] || skuBase,
                     style: item["Style"],
                     notes: null,
-                    supplierName: supplier.name,
-                    categoryName: category.name,
+                    supplierID: supplier.id,
+                    categoryID: category.id,
                 },
             });
             // ProductVariant: sku = skuBase + Color/Type + Size (e.g., "phoneCaseSnowlioniPhone13")
-            const sku = `${skuBase}${item["Color / Type"]}${item["Size"]}`;
+            const sku = `${skuBase}_${item["Color / Type"].toLowerCase().replace(/\s+/g, "-")}_${item["Size"].toLowerCase().replace(/\s+/g, "-")}`;
             const variant = await prisma.productVariant.upsert({
                 where: { sku },
                 update: {
                     color: item["Color / Type"] || null,
                     size: item["Size"] || null,
-                    costCny: item["CNY Per"] ? parseFloat(item["CNY Per"].replace(/[¥,]/g, "")) : null,
-                    costUsd: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
-                    stock: item["Quantity"] ? parseInt(item["Quantity"], 10) : 0,
-                    productSkuBase: product.skuBase,
+                    salePrice: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
+                    productID: product.id,
                 },
                 create: {
                     sku,
                     color: item["Color / Type"] || null,
                     size: item["Size"] || null,
-                    costCny: item["CNY Per"] ? parseFloat(item["CNY Per"].replace(/[¥,]/g, "")) : null,
-                    costUsd: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
-                    stock: item["Quantity"] ? parseInt(item["Quantity"], 10) : 0,
-                    productSkuBase: product.skuBase,
+                    salePrice: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
+                    productID: product.id,
                 },
             });
             // Create PurchaseOrderItem
@@ -138,8 +128,8 @@ async function main() {
                     quantityOrdered: item["Quantity"] ? parseInt(item["Quantity"], 10) : 0,
                     costPerItemCny: item["CNY Per"] ? parseFloat(item["CNY Per"].replace(/[¥,]/g, "")) : null,
                     costPerItemUsd: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
-                    purchaseOrderId: purchaseOrder.id,
-                    productVariantId: variant.id,
+                    PurchaseOrderID: purchaseOrder.id,
+                    ProductVariantID: variant.id,
                 },
             });
             console.log(`Processed row ${index + 1}: ${sku}`);

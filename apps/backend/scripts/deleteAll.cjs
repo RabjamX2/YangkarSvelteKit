@@ -1,8 +1,18 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const tableNameList = ["PurchaseOrderItem", "PurchaseOrder", "ProductVariant", "Product"];
-
+const tableNameList = [
+    "InventoryBatch",
+    "StockChange",
+    "PurchaseOrderItem",
+    "PurchaseOrder",
+    "ProductVariant",
+    "Product",
+    "CustomerOrderItem",
+    "CustomerOrder",
+    "Customer",
+];
+// const tableNameList = ["InventoryBatch"];
 const tableName = "PurchaseOrderItem"; // Change this to your target table name
 
 async function main() {
