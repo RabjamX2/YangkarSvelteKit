@@ -9,15 +9,16 @@ const prisma = new PrismaClient();
  * @param {number} costCNY - The cost per item in this batch.
  * @param {string} purchaseOrderItemId - The ID of the related purchase order item.
  */
-export async function receiveStock(productVariantId, quantity, costCNY, purchaseOrderItemId) {
+export async function receiveStock(productVariantId, quantity, costCNY, purchaseOrderItemId, arrivalDate) {
     return prisma.$transaction(async (tx) => {
-        // 1. Create the new batch of inventory with its specific cost.
+        // 1. Create the new batch of inventory with its specific cost and arrival date.
         const newBatch = await tx.inventoryBatch.create({
             data: {
                 productVariantId,
                 quantity,
                 costCNY,
                 purchaseOrderItemId,
+                arrivalDate,
             },
         });
 
@@ -38,15 +39,31 @@ export async function fulfillStock(productVariantId, quantityToSell, customerOrd
         let quantityToFulfill = quantityToSell;
         let totalCogs = 0;
 
-        // 1. Get all available inventory batches for the variant, oldest first (FIFO).
+        // 1. Get all available inventory batches for the variant, oldest first (FIFO by parent PurchaseOrder arrivalDate, fallback to createdAt).
         const batches = await tx.inventoryBatch.findMany({
             where: {
                 productVariantId: productVariantId,
                 quantity: { gt: 0 },
             },
-            orderBy: {
-                createdAt: "asc",
+            include: {
+                purchaseOrderItem: {
+                    include: {
+                        order: true,
+                    },
+                },
             },
+        });
+
+        // Sort batches by parent PurchaseOrder arrivalDate (asc), then createdAt (asc)
+        batches.sort((a, b) => {
+            const aArrival = a.purchaseOrderItem?.order?.arrivalDate
+                ? new Date(a.purchaseOrderItem.order.arrivalDate).getTime()
+                : 0;
+            const bArrival = b.purchaseOrderItem?.order?.arrivalDate
+                ? new Date(b.purchaseOrderItem.order.arrivalDate).getTime()
+                : 0;
+            if (aArrival !== bArrival) return aArrival - bArrival;
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         });
 
         const totalStock = batches.reduce((sum, batch) => sum + batch.quantity, 0);

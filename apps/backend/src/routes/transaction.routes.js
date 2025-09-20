@@ -142,21 +142,31 @@ const addPurchaseOrderItem = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("sku, name, quantityOrdered, and costPerItemUsd are required");
     }
-    // Create new ProductVariant if needed
-    const variant = await prisma.productVariant.create({
-        data: {
+    // Find existing ProductVariant by sku, color, size
+    let variant = await prisma.productVariant.findFirst({
+        where: {
             sku,
             color,
             size,
-            salePrice: 0,
-            product: {
-                connectOrCreate: {
-                    where: { displayName: name },
-                    create: { displayName: name, skuBase: sku },
-                },
-            },
         },
     });
+    // If not found, create new ProductVariant
+    if (!variant) {
+        variant = await prisma.productVariant.create({
+            data: {
+                sku,
+                color,
+                size,
+                salePrice: 0,
+                product: {
+                    connectOrCreate: {
+                        where: { displayName: name },
+                        create: { displayName: name, skuBase: sku },
+                    },
+                },
+            },
+        });
+    }
     // Add item to purchase order
     const newItem = await prisma.purchaseOrderItem.create({
         data: {
@@ -323,9 +333,13 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
             },
         });
     }
+    let updateData = { hasArrived: true };
+    if (!purchaseOrder.arrivalDate) {
+        updateData.arrivalDate = new Date();
+    }
     const updatedPO = await prisma.purchaseOrder.update({
         where: { id: Number(id) },
-        data: { arrivalDate: new Date(), hasArrived: true },
+        data: updateData,
     });
     res.status(200).json(updatedPO);
 });
@@ -337,6 +351,11 @@ const getInventoryBatches = asyncHandler(async (req, res) => {
     const batches = await prisma.inventoryBatch.findMany({
         include: {
             productVariant: true,
+            purchaseOrderItem: {
+                include: {
+                    order: true,
+                },
+            },
         },
         orderBy: { createdAt: "asc" },
     });

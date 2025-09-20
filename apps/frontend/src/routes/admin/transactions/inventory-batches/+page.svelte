@@ -51,7 +51,6 @@
                     <th>Cost (USD)</th>
                     <th>Cost (CNY)</th>
                     <th>Arrival Date</th>
-                    <th>Created At</th>
                 </tr>
             </thead>
             <tbody>
@@ -64,8 +63,11 @@
                         <td>{batch.quantity}</td>
                         <td>{batch.costUSD ? `$${parseFloat(batch.costUSD).toFixed(2)}` : "-"}</td>
                         <td>{batch.costCNY ? batch.costCNY : "-"}</td>
-                        <td>{batch.arrivalDate ? new Date(batch.arrivalDate).toLocaleDateString() : "-"}</td>
-                        <td>{batch.createdAt ? new Date(batch.createdAt).toLocaleDateString() : "-"}</td>
+                        <td
+                            >{batch.purchaseOrderItem?.order?.arrivalDate
+                                ? new Date(batch.purchaseOrderItem.order.arrivalDate).toLocaleDateString()
+                                : "-"}</td
+                        >
                     </tr>
                 {/each}
             </tbody>

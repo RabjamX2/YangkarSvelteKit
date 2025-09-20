@@ -85,7 +85,7 @@ async function main() {
                 console.log(`Created new category: ${category.name}`);
             }
             // Product: skuBase = phoneCase + Style (e.g., "phoneCaseSnowlion")
-            const skuBase = `phon_${item["Style"].toLowerCase().replace(/\s+/g, "-")}`;
+            const skuBase = `phon_phon_${item["Style"].toLowerCase().replace(/\s+/g, "-")}`;
             const product = await prisma.product.upsert({
                 where: { skuBase },
                 update: {

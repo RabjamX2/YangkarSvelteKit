@@ -7,152 +7,291 @@
     import AdminHeader from "$lib/components/AdminHeader.svelte";
     import "./productTable.css";
 
-    <script>
-        // @ts-nocheck
+    const products = writable([]);
+    const expanded = writable({}); // { [productId]: true }
+    const keepExpanded = writable(false);
+    // Used to trigger refresh animation
+    const refreshAnim = writable({}); // { [productId]: true }
+    const search = writable("");
+    const loading = writable(true);
+    const error = writable(null);
+    const edits = writable({}); // { [id]: { field: value } }
+    const bulkPrice = writable({}); // { [productId]: price }
 
-        const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
-        import { onMount } from "svelte";
-        import { writable } from "svelte/store";
-        import AdminHeader from "$lib/components/AdminHeader.svelte";
-        import "./productTable.css";
+    // Feedback messages for actions
+    const feedback = writable({}); // { [id]: { type: 'success'|'error', message: string } }
 
-        const products = writable([]);
-        const expanded = writable({}); // { [productId]: true }
-        const search = writable("");
-        const loading = writable(true);
-        const error = writable(null);
-        const edits = writable({}); // { [id]: { field: value } }
-        const categories = writable([]);
-        const selectedCategory = writable("");
-        const searchSkuBase = writable("");
-        const searchName = writable("");
+    function showFeedback(id, type, message, timeout = 2000) {
+        feedback.update((f) => ({ ...f, [id]: { type, message } }));
+        setTimeout(() => {
+            feedback.update((f) => {
+                const { [id]: _, ...rest } = f;
+                return rest;
+            });
+        }, timeout);
+    }
+    const categories = writable([]);
+    const selectedCategory = writable("");
+    const searchSkuBase = writable("");
+    const searchName = writable("");
+    const sortBy = writable("none"); // "none", "salePriceAsc", "salePriceDesc"
 
-        // Store for bulk price edits per product
-        const bulkPriceEdits = writable({}); // { [productId]: price }
+    // Derived: categoryID to name map
+    let categoryIdToName = {};
+    categories.subscribe((cats) => {
+        categoryIdToName = {};
+        if (Array.isArray(cats)) {
+            cats.forEach((cat) => {
+                categoryIdToName[cat.id] = cat.name;
+            });
+        }
+    });
 
-        async function setAllVariantPrices(productId, price) {
-            // Find product and its variants
-            let $products;
-            products.subscribe((v) => ($products = v))();
-            const product = $products.find((p) => p.id === productId);
-            if (!product || !product.variants || product.variants.length === 0) return;
-            // Update all variants
-            const promises = product.variants.map((variant) =>
-                fetch(`${PUBLIC_BACKEND_URL}/api/variants/${variant.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ salePrice: price }),
+    onMount(async () => {
+        loading.set(true);
+        try {
+            // Fetch categories
+            const catRes = await fetch(`${PUBLIC_BACKEND_URL}/api/categories`);
+            if (catRes.ok) {
+                const catData = await catRes.json();
+                categories.set(catData);
+            }
+            // Fetch products with variants (all for admin)
+            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
+            if (!res.ok) throw new Error("Failed to fetch products");
+            const data = await res.json();
+            products.set(data.data);
+        } catch (e) {
+            error.set(e instanceof Error ? e.message : String(e));
+        } finally {
+            loading.set(false);
+        }
+    });
+
+    function handleEdit(id, field, value) {
+        edits.update((e) => ({ ...e, [id]: { ...e[id], [field]: value } }));
+    }
+
+    async function saveEdit(id) {
+        let $edits;
+        edits.subscribe((v) => ($edits = v))();
+        if (!$edits[id]) return;
+        try {
+            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify($edits[id]),
+            });
+            if (!res.ok) throw new Error("Failed to update");
+            products.update((list) => list.map((p) => (p.id === id ? { ...p, ...$edits[id] } : p)));
+            edits.update((e) => {
+                const { [id]: _, ...rest } = e;
+                return rest;
+            });
+            showFeedback(id, "success", "Saved!");
+        } catch (e) {
+            showFeedback(id, "error", e instanceof Error ? e.message : String(e));
+        }
+    }
+
+    async function saveVariantEdit(variantId) {
+        let $edits;
+        edits.subscribe((v) => ($edits = v))();
+        if (!$edits[variantId]) return;
+        try {
+            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify($edits[variantId]),
+            });
+            if (!res.ok) throw new Error("Failed to update variant");
+            // Update local products store
+            products.update((list) =>
+                list.map((product) => ({
+                    ...product,
+                    variants: product.variants.map((v) => (v.id === variantId ? { ...v, ...$edits[variantId] } : v)),
+                }))
+            );
+            edits.update((e) => {
+                const { [variantId]: _, ...rest } = e;
+                return rest;
+            });
+            showFeedback(variantId, "success", "Saved!");
+        } catch (e) {
+            showFeedback(variantId, "error", e instanceof Error ? e.message : String(e));
+        }
+    }
+
+    async function setAllVariantPrices(product) {
+        let $bulkPrice;
+        bulkPrice.subscribe((v) => ($bulkPrice = v))();
+        const price = $bulkPrice[product.id];
+        if (price === undefined || price === "") return;
+        const variantIds = product.variants.map((v) => v.id);
+        try {
+            // Update all variants in parallel
+            await Promise.all(
+                variantIds.map(async (variantId) => {
+                    const res = await fetch(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ salePrice: price }),
+                    });
+                    if (!res.ok) throw new Error(`Failed to update variant ${variantId}`);
                 })
             );
-            try {
-                await Promise.all(promises);
-                // Update local store
-                products.update((list) =>
-                    list.map((p) =>
-                        p.id === productId
-                            ? {
-                                  ...p,
-                                  variants: p.variants.map((v) => ({ ...v, salePrice: price })),
-                              }
-                            : p
-                    )
-                );
-                bulkPriceEdits.update((edits) => {
-                    const { [productId]: _, ...rest } = edits;
+            // Update local store
+            products.update((list) =>
+                list.map((p) =>
+                    p.id === product.id
+                        ? {
+                              ...p,
+                              variants: p.variants.map((v) => ({ ...v, salePrice: price })),
+                          }
+                        : p
+                )
+            );
+            bulkPrice.update((bp) => ({ ...bp, [product.id]: "" }));
+            showFeedback(product.id, "success", "All prices set!");
+
+            // Trigger refresh animation (collapse/expand) regardless of keepExpanded
+            refreshAnim.update((r) => ({ ...r, [product.id]: true }));
+            setTimeout(() => {
+                refreshAnim.update((r) => {
+                    const { [product.id]: _, ...rest } = r;
                     return rest;
                 });
-            } catch (e) {
-                alert("Failed to update all variant prices");
-            }
+            }, 400);
+        } catch (e) {
+            showFeedback(product.id, "error", e instanceof Error ? e.message : String(e));
         }
+    }
+</script>
 
-        // Derived: categoryID to name map
-        let categoryIdToName = {};
-        categories.subscribe((cats) => {
-            categoryIdToName = {};
-            if (Array.isArray(cats)) {
-                cats.forEach((cat) => {
-                    categoryIdToName[cat.id] = cat.name;
-                });
-            }
-        });
+<AdminHeader />
 
-        onMount(async () => {
-            loading.set(true);
-            try {
-                // Fetch categories
-                const catRes = await fetch(`${PUBLIC_BACKEND_URL}/api/categories`);
-                if (catRes.ok) {
-                    const catData = await catRes.json();
-                    categories.set(catData);
-                }
-                // Fetch products with variants (all for admin)
-                const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
-                if (!res.ok) throw new Error("Failed to fetch products");
-                const data = await res.json();
-                products.set(data.data);
-            } catch (e) {
-                error.set(e instanceof Error ? e.message : String(e));
-            } finally {
-                loading.set(false);
-            }
-        });
-
-        function handleEdit(id, field, value) {
-            edits.update((e) => ({ ...e, [id]: { ...e[id], [field]: value } }));
-        }
-
-        async function saveEdit(id) {
-            let $edits;
-            edits.subscribe((v) => ($edits = v))();
-            if (!$edits[id]) return;
-            try {
-                const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products/${id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify($edits[id]),
-                });
-                if (!res.ok) throw new Error("Failed to update");
-                products.update((list) => list.map((p) => (p.id === id ? { ...p, ...$edits[id] } : p)));
-                edits.update((e) => {
-                    const { [id]: _, ...rest } = e;
-                    return rest;
-                });
-            } catch (e) {
-                alert(e instanceof Error ? e.message : String(e));
-            }
-        }
-
-        async function saveVariantEdit(variantId) {
-            let $edits;
-            edits.subscribe((v) => ($edits = v))();
-            if (!$edits[variantId]) return;
-            try {
-                const res = await fetch(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify($edits[variantId]),
-                });
-                if (!res.ok) throw new Error("Failed to update variant");
-                // Update local products store
-                products.update((list) =>
-                    list.map((product) => ({
-                        ...product,
-                        variants: product.variants.map((v) => (v.id === variantId ? { ...v, ...$edits[variantId] } : v)),
-                    }))
-                );
-                edits.update((e) => {
-                    const { [variantId]: _, ...rest } = e;
-                    return rest;
-                });
-            } catch (e) {
-                alert(e instanceof Error ? e.message : String(e));
-            }
-        }
-    </script>
+<div class="admin-container">
+    <h1>Product List</h1>
+    <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1.2rem;">
+        <input
+            type="text"
+            class="search-input"
+            placeholder="Search SKU, name, color, size..."
+            bind:value={$search}
+            style="width:100%;max-width:400px;"
+        />
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:1rem;">
+            <input type="checkbox" bind:checked={$keepExpanded} />
+            Keep Expanded
+        </label>
+        <select bind:value={$selectedCategory} style="font-size:1rem;padding:0.3rem 0.7rem;">
+            <option value="">All Categories</option>
+            {#each $categories as cat}
+                <option value={cat.id}>{cat.name}</option>
+            {/each}
+        </select>
+        <select bind:value={$sortBy} style="font-size:1rem;padding:0.3rem 0.7rem;">
+            <option value="none">Sort: None</option>
+            <option value="salePriceAsc">Sort by Sale Price (Low → High)</option>
+            <option value="salePriceDesc">Sort by Sale Price (High → Low)</option>
+        </select>
+    </div>
+    {#if $loading}
+        <p>Loading...</p>
+    {:else if $error}
+        <p style="color:red">Error: {$error}</p>
+    {:else}
+        <div class="product-list">
+            {#each $products
+                .filter((p) => {
+                    const s = $search.toLowerCase();
+                    // Product-level search
+                    const productMatch = p.skuBase?.toLowerCase().includes(s) || p.displayName
+                            ?.toLowerCase()
+                            .includes(s) || (p.categoryName?.toLowerCase().includes(s) ?? false);
+                    // Variant-level search
+                    const variants = p.variants.filter((v) => v.sku.toLowerCase().includes(s) || (v.color && v.color
+                                    .toLowerCase()
+                                    .includes(s)) || (v.size && v.size.toLowerCase().includes(s)));
+                    // Category filter
+                    if ($selectedCategory && p.categoryID !== Number($selectedCategory)) return false;
+                    // Show product if product matches or any variant matches
+                    return !$search || productMatch || variants.length > 0;
+                })
+                .slice() // copy before sort
+                .sort((a, b) => {
+                    if ($sortBy === "salePriceAsc") {
+                        // Sort by lowest variant salePrice
+                        const aPrice = Math.min(...a.variants.map((v) => Number(v.salePrice) || Infinity));
+                        const bPrice = Math.min(...b.variants.map((v) => Number(v.salePrice) || Infinity));
+                        return aPrice - bPrice;
+                    } else if ($sortBy === "salePriceDesc") {
+                        const aPrice = Math.max(...a.variants.map((v) => Number(v.salePrice) || -Infinity));
+                        const bPrice = Math.max(...b.variants.map((v) => Number(v.salePrice) || -Infinity));
+                        return bPrice - aPrice;
+                    }
+                    return 0;
+                }) as product}
+                <div class="product-card">
+                    <div style="display:flex;align-items:center;width:100%;">
+                        <button
+                            type="button"
+                            class="product-main"
+                            aria-expanded={($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]}
+                            aria-controls={`variants-${product.id}`}
+                            on:click={() => {
+                                if (!$keepExpanded) expanded.update((e) => ({ ...e, [product.id]: !e[product.id] }));
+                            }}
+                            style="width:100%;text-align:left;background:none;border:none;padding:0;"
+                            disabled={$keepExpanded}
                         >
-                    </button>
-                    {#if $expanded[product.id]}
+                            <div class="product-info">
+                                <span class="sku-base">{product.skuBase}</span>
+                                <span class="product-name">{product.displayName ?? product.name}</span>
+                                <span class="product-category"
+                                    >{categoryIdToName[product.categoryID] ?? "No Category"}</span
+                                >
+                                <span class="product-price" style="margin-left:1.2rem;color:#059669;font-weight:600;">
+                                    {(() => {
+                                        const prices = product.variants.map((v) => v.salePrice);
+                                        if (prices.length === 0) return "";
+                                        const allSame = prices.every((p) => p === prices[0]);
+                                        return allSame ? `$${prices[0]}` : "Varies";
+                                    })()}
+                                </span>
+                            </div>
+                            <span class="expand-btn-label"
+                                >{($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]
+                                    ? "Hide Variants"
+                                    : "Show Variants"}</span
+                            >
+                        </button>
+                        <div style="display:flex;align-items:center;gap:0.7rem;margin-left:1.2rem;">
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Set all variant prices (USD)"
+                                class="edit-input price"
+                                bind:value={$bulkPrice[product.id]}
+                                style="max-width:120px;"
+                            />
+                            <button
+                                class="save-btn"
+                                on:click={() => setAllVariantPrices(product)}
+                                disabled={!$bulkPrice[product.id] || isNaN(Number($bulkPrice[product.id]))}
+                                >Set All Prices</button
+                            >
+                            {#if $feedback[product.id]}
+                                <span
+                                    style="margin-left:0.5rem;color:{$feedback[product.id].type === 'success'
+                                        ? '#059669'
+                                        : 'red'}">{$feedback[product.id].message}</span
+                                >
+                            {/if}
+                        </div>
+                    </div>
+                    {#if ($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]}
                         <div class="variant-grid" id={`variants-${product.id}`}>
                             {#each (() => {
                                 const s = $search.toLowerCase();
@@ -235,8 +374,20 @@
                                                 (($edits[variant.id]?.color ?? variant.color) === variant.color &&
                                                     ($edits[variant.id]?.size ?? variant.size) === variant.size &&
                                                     ($edits[variant.id]?.salePrice ?? variant.salePrice) ==
-                                                        variant.salePrice)}>Save</button
+                                                        variant.salePrice)}
                                         >
+                                            Save
+                                        </button>
+                                        {#if $feedback[variant.id]}
+                                            <span
+                                                style="margin-left:0.7rem;color:{$feedback[variant.id].type ===
+                                                'success'
+                                                    ? '#059669'
+                                                    : 'red'}"
+                                            >
+                                                {$feedback[variant.id].message}
+                                            </span>
+                                        {/if}
                                     </div>
                                 </div>
                             {/each}
