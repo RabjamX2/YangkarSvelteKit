@@ -28,7 +28,7 @@
             let allVariants = [];
             data.data.forEach((p) => {
                 p.variants.forEach((v) => {
-                    allVariants.push({ ...v, product: { skuBase: p.skuBase, name: p.name } });
+                    allVariants.push({ ...v, product: { skuBase: p.skuBase, displayName: p.displayName } });
                 });
             });
             variants.set(allVariants);
@@ -53,7 +53,7 @@
                 let $products;
                 products.subscribe((p) => ($products = p))();
                 const parent = $products.find((p) => p.variants.some((vv) => vv.id === v.id));
-                if (parent) v.product = { skuBase: parent.skuBase, name: parent.name };
+                if (parent) v.product = { skuBase: parent.skuBase, displayName: parent.displayName };
             }
             return [...list, { variant: v, quantity: 1 }];
         });
@@ -133,7 +133,7 @@
                         const s = $search.toLowerCase();
                         return (
                             v.sku?.toLowerCase().includes(s) ||
-                            p.name.toLowerCase().includes(s) ||
+                            p.displayName?.toLowerCase().includes(s) ||
                             (v.color ? v.color.toLowerCase().includes(s) : false) ||
                             (v.size ? v.size.toLowerCase().includes(s) : false)
                         );
@@ -149,7 +149,7 @@
                     }),
             }))
             .filter((p) => p.variants.length > 0)
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a, b) => a.displayName.localeCompare(b.displayName));
         return filtered;
     });
     let cashReceived = "";
@@ -176,7 +176,7 @@
                 {#each $groupedProducts as product}
                     <div class="product-group">
                         <div class="product-header">
-                            {product.name} <span class="sku-base">[{product.skuBase}]</span>
+                            {product.displayName} <span class="sku-base">[{product.skuBase}]</span>
                         </div>
                         <table class="variant-table-pos">
                             <thead>
@@ -250,7 +250,7 @@
                         {#each $cart as item}
                             <tr>
                                 <td>{item.variant.sku}</td>
-                                <td>{item.variant.product.name}</td>
+                                <td>{item.variant.product.displayName}</td>
                                 <td>{item.variant.color}</td>
                                 <td>{item.variant.size}</td>
                                 <td>

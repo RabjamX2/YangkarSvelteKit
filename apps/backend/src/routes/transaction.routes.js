@@ -57,11 +57,7 @@ const addInventoryBatch = asyncHandler(async (req, res) => {
         },
         include: { productVariant: true },
     });
-    // Update variant stock
-    await prisma.productVariant.update({
-        where: { id: variant.id },
-        data: { stock: { increment: quantity } },
-    });
+    // No direct stock update; stock is tracked via inventory batches only
     res.json(batch);
 });
 /**
@@ -78,7 +74,7 @@ const updatePurchaseOrderItemQuantity = asyncHandler(async (req, res) => {
     const item = await prisma.purchaseOrderItem.update({
         where: { id: itemId },
         data: { quantityOrdered },
-        include: { purchaseOrder: true },
+        include: { purchaseOrder: true, variant: true },
     });
     // If the purchase order has already arrived, update the inventory batch
     if (item.purchaseOrder.hasArrived) {
@@ -92,15 +88,7 @@ const updatePurchaseOrderItemQuantity = asyncHandler(async (req, res) => {
                 where: { id: batch.id },
                 data: { quantity: quantityOrdered },
             });
-            // Update productVariant stock to match new batch quantity
-            const batches = await prisma.inventoryBatch.findMany({
-                where: { productVariantId: item.productVariantId },
-            });
-            const totalBatchStock = batches.reduce((sum, b) => sum + b.quantity, 0);
-            await prisma.productVariant.update({
-                where: { id: item.productVariantId },
-                data: { stock: totalBatchStock },
-            });
+            // No direct productVariant stock update; stock is tracked via inventory batches only
         }
     }
     res.json(item);
@@ -161,11 +149,10 @@ const addPurchaseOrderItem = asyncHandler(async (req, res) => {
             color,
             size,
             salePrice: 0,
-            stock: 0,
             product: {
                 connectOrCreate: {
-                    where: { name },
-                    create: { name, skuBase: sku },
+                    where: { displayName: name },
+                    create: { displayName: name, skuBase: sku },
                 },
             },
         },
@@ -173,8 +160,8 @@ const addPurchaseOrderItem = asyncHandler(async (req, res) => {
     // Add item to purchase order
     const newItem = await prisma.purchaseOrderItem.create({
         data: {
-            purchaseOrderId: orderId,
-            productVariantId: variant.id,
+            PurchaseOrderID: orderId,
+            ProductVariantID: variant.id,
             quantityOrdered,
             costPerItemUsd,
         },
@@ -294,20 +281,13 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
     // FIFO logic: fulfill stock for each item
     for (const item of order.items) {
         await fulfillStock(item.productVariantId, item.quantity, item.id);
-    }
-
-    // Decrement stock and log stock change
-    for (const item of items) {
-        await prisma.productVariant.update({
-            where: { id: item.productVariantId },
-            data: { stock: { decrement: item.quantityOrdered } },
-        });
+        // Log stock change only; no direct productVariant stock update
         await prisma.stockChange.create({
             data: {
-                productVariantId: item.productVariantId,
-                change: -item.quantityOrdered,
+                productVariantID: item.productVariantId,
+                change: -item.quantity,
                 reason: "Sale",
-                user: userFromToken?.username || dbCustomer.name || "Guest",
+                user: userFromToken?.username || customer?.name || "Guest",
                 orderId: order.id,
                 orderType: "customer",
             },
@@ -331,10 +311,10 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "Purchase order not found" });
     }
     for (const item of purchaseOrder.items) {
-        await receiveStock(item.productVariantId, item.quantityOrdered, parseFloat(item.costPerItemCny), item.id);
+        await receiveStock(item.ProductVariantID, item.quantityOrdered, parseFloat(item.costPerItemCny), item.id);
         await prisma.stockChange.create({
             data: {
-                productVariantId: item.productVariantId,
+                productVariantID: item.ProductVariantID,
                 change: item.quantityOrdered,
                 reason: "Purchase Order Received",
                 user: req.user?.username || "System",
@@ -394,11 +374,7 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
                 },
             });
 
-            // Update the main stock count as well
-            await prisma.productVariant.update({
-                where: { id: item.productVariantId },
-                data: { stock: { increment: item.quantityOrdered } },
-            });
+            // No direct productVariant stock update; stock is tracked via inventory batches only
 
             // Log the stock change
             await prisma.stockChange.create({
@@ -431,13 +407,9 @@ const createStockChange = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("productVariantId, change, and reason are required");
     }
-    await prisma.productVariant.update({
-        where: { id: Number(productVariantId) },
-        data: { stock: { increment: Number(change) } },
-    });
     const stockChange = await prisma.stockChange.create({
         data: {
-            productVariantId: Number(productVariantId),
+            productVariantID: Number(productVariantId),
             change: Number(change),
             reason,
             user: userFromToken?.username || "Manual",

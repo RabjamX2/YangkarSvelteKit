@@ -83,7 +83,7 @@ model Product {
     notes String?
 
     skuIntBase Int?   @unique // e.g., 1001
-    skuBase    String @unique // e.g., "ptl_chup_Metok"
+    skuBase    String @unique // e.g., "ptl_chup_metok"
 
     // Relationships
     supplierID Int
@@ -100,8 +100,9 @@ model Product {
 /// Represents a specific, sellable version of a Product.
 /// This is the level where you will track inventory AND price.
 model ProductVariant {
-    id  Int     @id @default(autoincrement())
-    sku String? @unique // The full, specific SKU, e.g., "ptlMetokRedXL"
+    id        Int     @id @default(autoincrement())
+    legacySku String? @unique // Old SKU from previous system, e.g., "ptlMetokRedXL"
+    sku       String? @unique // specific SKU e.g., "ptl_chup_metok_red_xl"
 
     color        String?
     displayColor String? // e.g., "Red"

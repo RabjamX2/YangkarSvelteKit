@@ -21,15 +21,7 @@ export async function receiveStock(productVariantId, quantity, costCNY, purchase
             },
         });
 
-        // 2. Update the total stock count on the ProductVariant for quick lookups.
-        await tx.productVariant.update({
-            where: { id: productVariantId },
-            data: {
-                stock: {
-                    increment: quantity,
-                },
-            },
-        });
+        // No direct productVariant stock update; stock is tracked via inventory batches only
 
         return newBatch;
     });
@@ -94,15 +86,7 @@ export async function fulfillStock(productVariantId, quantityToSell, customerOrd
             },
         });
 
-        // 6. Update the total stock on the master product variant.
-        await tx.productVariant.update({
-            where: { id: productVariantId },
-            data: {
-                stock: {
-                    decrement: quantityToSell,
-                },
-            },
-        });
+        // No direct productVariant stock update; stock is tracked via inventory batches only
 
         return { cogs: totalCogs };
     });

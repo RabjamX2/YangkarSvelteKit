@@ -10,6 +10,27 @@ const prisma = new PrismaClient();
 
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
+const getCookieOptions = () => {
+    if (process.env.NODE_ENV === "production") {
+        // Production settings
+        return {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            domain: ".yangkarbhoeche.com",
+            expires: new Date(Date.now() + SESSION_DURATION),
+        };
+    } else {
+        // Development settings
+        return {
+            httpOnly: true,
+            secure: false, // Allow HTTP
+            sameSite: "lax",
+            expires: new Date(Date.now() + SESSION_DURATION),
+        };
+    }
+};
+
 // --- Route Controllers ---
 
 const signup = asyncHandler(async (req, res) => {
@@ -68,13 +89,10 @@ const login = asyncHandler(async (req, res) => {
         data: { id: sessionToken, userId: user.id, expiresAt },
     });
 
-    res.cookie("session_token", sessionToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        domain: ".yangkarbhoeche.com",
-        expires: expiresAt,
-    });
+    const cookieOptions = getCookieOptions();
+    cookieOptions.expires = expiresAt; // Set the correct expiration date
+
+    res.cookie("session_token", sessionToken, cookieOptions);
 
     req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in");
     res.status(200).json({ id: user.id, username: user.username, role: user.role });

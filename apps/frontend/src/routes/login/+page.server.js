@@ -14,6 +14,7 @@ export const actions = {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password }),
+            credentials: "include",
         });
 
         // 2. If login fails, return an error message
@@ -34,12 +35,16 @@ export const actions = {
             const match = setCookieHeader.match(/session_token=([^;]+)/);
             const sessionToken = match ? match[1] : null;
             if (sessionToken) {
+                const isProduction = process.env.NODE_ENV === "production";
+                console.log(`Code is running in ${isProduction ? "production" : "development"} mode.`);
+
                 cookies.set("session_token", sessionToken, {
                     path: "/",
                     httpOnly: true,
-                    sameSite: "none",
-                    domain: ".yangkarbhoeche.com",
-                    maxAge: 60 * 60 * 24 * 7, // Cookie expiration (e.g., 1 week)
+                    secure: isProduction, // Use secure cookies in production
+                    sameSite: isProduction ? "none" : "lax",
+                    domain: isProduction ? ".yangkarbhoeche.com" : undefined, // Do not set domain for localhost
+                    maxAge: 60 * 60 * 24 * 7, // 1 week
                 });
             }
         }

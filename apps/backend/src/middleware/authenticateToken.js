@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 const authenticateToken = async (req, res, next) => {
     const sessionToken = req.cookies.session_token;
-    if (!sessionToken) return res.status(401).json({ message: "No session token provided" });
+    if (!sessionToken) return res.status(401).json({ message: `No session token provided for ${req.path}` });
 
     try {
         const session = await prisma.session.findUnique({

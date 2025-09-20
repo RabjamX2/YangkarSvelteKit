@@ -6,6 +6,9 @@
     import "../transactionTable.css";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+    const isProduction = process.env.NODE_ENV === "production";
+    console.log(`Code is running in ${isProduction ? "production" : "development"} mode.`);
+
     const purchaseOrders = writable([]);
     const expandedOrders = writable(new Set()); // Tracks which orders are expanded
     const checkedItems = writable({}); // Tracks checked state of each item { itemId: boolean }
@@ -219,17 +222,35 @@
                 throw new Error(errorData.message || "Failed to receive purchase order");
             }
 
-            const updatedOrder = await response.json();
-
-            // Update the local store to reflect the change immediately
-            purchaseOrders.update((orders) =>
-                orders.map((order) => (order.id === orderId ? { ...order, status: updatedOrder.status } : order))
-            );
+            // After marking as received, refresh purchase orders
+            await refreshPurchaseOrders();
         } catch (error) {
             console.error("Error receiving purchase order:", error);
             alert(`Error: ${error.message}`);
         } finally {
             receivingOrderId.set(null);
+        }
+        // Helper to refresh purchase orders
+        async function refreshPurchaseOrders() {
+            loadingTransactions.set(true);
+            errorTransactions.set(null);
+            try {
+                const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-orders`);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch purchase orders.");
+                }
+                const result = await response.json();
+                const sortedOrders = result.data.sort((a, b) => {
+                    if (a.status === "Pending" && b.status !== "Pending") return -1;
+                    if (a.status !== "Pending" && b.status === "Pending") return 1;
+                    return 0;
+                });
+                purchaseOrders.set(sortedOrders);
+            } catch (err) {
+                errorTransactions.set(err.message);
+            } finally {
+                loadingTransactions.set(false);
+            }
         }
     }
 

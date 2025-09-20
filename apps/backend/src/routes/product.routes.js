@@ -7,6 +7,13 @@ const prisma = new PrismaClient();
 
 // --- Route Controllers ---
 
+const categoryDict = {
+    Chupa: 1,
+    Wonju: 2,
+    Jewelry: 3,
+    "Phone Cases": 4,
+};
+
 const getProducts = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 24;
@@ -23,7 +30,7 @@ const getProducts = asyncHandler(async (req, res) => {
             orderBy = Prisma.sql`"minSalePrice" DESC NULLS LAST`;
             break;
         case "alpha":
-            orderBy = Prisma.sql`p.name ASC`;
+            orderBy = Prisma.sql`p."displayName" ASC`;
             break;
         default:
             orderBy = Prisma.sql`p."createdAt" DESC`;
@@ -31,23 +38,27 @@ const getProducts = asyncHandler(async (req, res) => {
     }
 
     const whereClauses = [];
+    // Map category names to IDs using categoryDict
+    const categoryIds = categories.map((cat) => categoryDict[cat]).filter(Boolean);
     if (categories.length > 0) {
-        whereClauses.push(Prisma.sql`p."categoryName" IN (${Prisma.join(categories)})`);
+        if (categoryIds.length > 0) {
+            whereClauses.push(Prisma.sql`p."categoryID" IN (${Prisma.join(categoryIds)})`);
+        }
     }
     const where = whereClauses.length > 0 ? Prisma.sql`WHERE ${Prisma.join(whereClauses, " AND ")}` : Prisma.empty;
 
     const products = await prisma.$queryRaw`
       SELECT
-        p.id, p."skuBase", p.name, p."createdAt",
-        (SELECT MIN(pv."salePrice") FROM "ProductVariant" pv WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL) as "minSalePrice",
-        (SELECT pv."imgUrl" FROM "ProductVariant" pv WHERE pv."productSkuBase" = p."skuBase" AND pv."salePrice" IS NOT NULL ORDER BY pv."salePrice" ASC LIMIT 1) as "displayImageUrl"
+        p.id, p."skuBase", p."displayName", p."createdAt",
+        (SELECT MIN(pv."salePrice") FROM "ProductVariant" pv WHERE pv."productID" = p."id" AND pv."salePrice" IS NOT NULL) as "minSalePrice",
+        (SELECT pv."imgUrl" FROM "ProductVariant" pv WHERE pv."productID" = p."id" AND pv."salePrice" IS NOT NULL ORDER BY pv."salePrice" ASC LIMIT 1) as "displayImageUrl"
       FROM "Product" p
       ${where}
       ORDER BY ${orderBy}
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const whereFilter = categories.length > 0 ? { categoryName: { in: categories } } : {};
+    const whereFilter = categoryIds.length > 0 ? { categoryID: { in: categoryIds } } : {};
     const totalProductsResult = await prisma.product.count({ where: whereFilter });
 
     res.json({
@@ -119,6 +130,9 @@ const getProductsWithVariants = asyncHandler(async (req, res) => {
         include: {
             variants: {
                 orderBy: [{ color: "asc" }, { size: "asc" }],
+                include: {
+                    inventoryBatches: true,
+                },
             },
         },
     });
