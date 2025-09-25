@@ -1,10 +1,11 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import prismaPkg from "@prisma/client";
 import argon2 from "argon2";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 import asyncHandler from "../middleware/asyncHandler.js";
 
+const { PrismaClient } = prismaPkg;
 const router = express.Router();
 const prisma = new PrismaClient();
 

@@ -1,9 +1,10 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import prismaPkg from "@prisma/client";
 import asyncHandler from "../middleware/asyncHandler.js";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { fulfillStock, receiveStock } from "../services/inventory.service.js";
 
+const { PrismaClient } = prismaPkg;
 const router = express.Router();
 const prisma = new PrismaClient();
 
