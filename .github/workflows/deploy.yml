@@ -42,7 +42,7 @@ jobs:
               with:
                   host: ${{ secrets.BACKEND_SSH_HOST }}
                   username: ${{ secrets.BACKEND_SSH_USERNAME }}
-                  key: ${{ secrets.BACKEND_SSH_KEY }}
+                  password: ${{ secrets.BACKEND_SSH_PASSWORD }}
                   script: |
                       cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
 
@@ -82,16 +82,14 @@ jobs:
               # This runs the 'build' script specifically for the 'frontend' app
               run: pnpm --filter frontend build
 
-            - name: Deploy to Frontend Server via rsync
+            - name: Sync files to Frontend Server
               uses: appleboy/scp-action@v0.1.7
               with:
                   host: ${{ secrets.FRONTEND_SSH_HOST }}
                   username: ${{ secrets.FRONTEND_SSH_USERNAME }}
-                  key: ${{ secrets.FRONTEND_SSH_KEY }}
+                  password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
                   # This copies the built frontend app to the server
                   source: "apps/frontend/build/"
-                  # --- ACTION REQUIRED ---
-                  # Change this path to where your frontend's build output should go
                   target: "/home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit/apps/frontend/build/"
                   strip_components: 2 # This removes 'apps/frontend/' from the path
 
@@ -100,7 +98,6 @@ jobs:
               with:
                   host: ${{ secrets.FRONTEND_SSH_HOST }}
                   username: ${{ secrets.FRONTEND_SSH_USERNAME }}
-                  key: ${{ secrets.FRONTEND_SSH_KEY }}
+                  password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
                   script: |
-                      # This restarts the app named "frontend" which you set up with pm2
                       pm2 restart frontend
