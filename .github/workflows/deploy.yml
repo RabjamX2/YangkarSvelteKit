@@ -1,0 +1,106 @@
+# .github/workflows/deploy.yml
+
+name: Deploy Yangkar Website
+
+on:
+    push:
+        branches:
+            - main # Trigger this workflow on every push to the main branch
+
+jobs:
+    deploy-backend:
+        name: Deploy Backend API
+        runs-on: ubuntu-latest
+        environment: production # Uses secrets from your 'production' environment
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v3
+              with:
+                  version: "10.13.1" # Version from your package.json
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20" # A stable, modern Node.js version
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Run Prisma migrations
+              env:
+                  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+              # This command runs the prisma migration for only the 'backend' app
+              run: pnpm --filter backend exec prisma migrate deploy
+
+            - name: Deploy to Backend Server
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.BACKEND_SSH_HOST }}
+                  username: ${{ secrets.BACKEND_SSH_USERNAME }}
+                  key: ${{ secrets.BACKEND_SSH_KEY }}
+                  script: |
+                      cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
+
+                      git pull origin main
+                      pnpm install
+
+                      pm2 restart backend
+
+    deploy-frontend:
+        name: Deploy Frontend App
+        runs-on: ubuntu-latest
+        environment: production # Uses secrets from your 'production' environment
+        needs: deploy-backend # This job will wait for the backend deployment to succeed
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v3
+              with:
+                  version: "10.13.1" # Version from your package.json
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Build SvelteKit App
+              env:
+                  # This sets the public backend URL during the build process
+                  PUBLIC_BACKEND_URL: "https://api.yangkarbhoeche.com"
+              # This runs the 'build' script specifically for the 'frontend' app
+              run: pnpm --filter frontend build
+
+            - name: Deploy to Frontend Server via rsync
+              uses: appleboy/scp-action@v0.1.7
+              with:
+                  host: ${{ secrets.FRONTEND_SSH_HOST }}
+                  username: ${{ secrets.FRONTEND_SSH_USERNAME }}
+                  key: ${{ secrets.FRONTEND_SSH_KEY }}
+                  # This copies the built frontend app to the server
+                  source: "apps/frontend/build/"
+                  # --- ACTION REQUIRED ---
+                  # Change this path to where your frontend's build output should go
+                  target: "/home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit/apps/frontend/build/"
+                  strip_components: 2 # This removes 'apps/frontend/' from the path
+
+            - name: Restart Frontend PM2 Process
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.FRONTEND_SSH_HOST }}
+                  username: ${{ secrets.FRONTEND_SSH_USERNAME }}
+                  key: ${{ secrets.FRONTEND_SSH_KEY }}
+                  script: |
+                      # This restarts the app named "frontend" which you set up with pm2
+                      pm2 restart frontend
