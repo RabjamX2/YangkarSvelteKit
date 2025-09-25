@@ -44,6 +44,7 @@ jobs:
                   username: ${{ secrets.BACKEND_SSH_USERNAME }}
                   password: ${{ secrets.BACKEND_SSH_PASSWORD }}
                   script: |
+                      source ~/.profile
                       cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
 
                       git pull origin main
@@ -100,4 +101,5 @@ jobs:
                   username: ${{ secrets.FRONTEND_SSH_USERNAME }}
                   password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
                   script: |
+                      source ~/.profile
                       pm2 restart frontend
