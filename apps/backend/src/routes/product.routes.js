@@ -2,7 +2,7 @@ import express from "express";
 import prismaPkg from "@prisma/client";
 import asyncHandler from "../middleware/asyncHandler.js";
 
-const { PrismaClient } = prismaPkg;
+const { PrismaClient, Prisma } = prismaPkg;
 const router = express.Router();
 const prisma = new PrismaClient();
 
