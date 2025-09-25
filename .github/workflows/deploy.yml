@@ -49,6 +49,7 @@ jobs:
 
                       cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
 
+                      pnpm --filter backend exec prisma generate
                       git pull origin main
                       pnpm install
 
