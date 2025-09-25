@@ -44,12 +44,15 @@ jobs:
                   username: ${{ secrets.BACKEND_SSH_USERNAME }}
                   password: ${{ secrets.BACKEND_SSH_PASSWORD }}
                   script: |
+                      export NVM_DIR="$HOME/.nvm"
+                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
                       cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
 
                       git pull origin main
+                      pnpm install
 
-                      /home/yangkarbhoeche-api/.nvm/versions/node/v22.18.0/bin/pnpm install
-                      /home/yangkarbhoeche-api/.nvm/versions/node/v22.18.0/bin/pm2 restart backend
+                      pm2 restart backend
 
     deploy-frontend:
         name: Deploy Frontend App
@@ -100,4 +103,7 @@ jobs:
                   username: ${{ secrets.FRONTEND_SSH_USERNAME }}
                   password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
                   script: |
-                      /home/yangkarbhoeche/.nvm/versions/node/v22.18.0/bin/pm2 restart frontend
+                      export NVM_DIR="$HOME/.nvm"
+                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+                      pm2 restart frontend
