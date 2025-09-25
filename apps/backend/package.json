@@ -12,8 +12,6 @@
     "license": "ISC",
     "packageManager": "pnpm@10.13.1",
     "devDependencies": {
-        "@sveltejs/adapter-node": "^5.2.13",
-        "@sveltejs/kit": "^2.24.0",
         "@types/papaparse": "^5.3.16",
         "papaparse": "^5.5.3",
         "prisma": "^6.16.2",
