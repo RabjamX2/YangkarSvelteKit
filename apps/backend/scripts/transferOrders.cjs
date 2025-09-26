@@ -60,6 +60,42 @@ async function main() {
         "Phone Cases": "phon",
     };
 
+    // Check if categories and suppliers exist
+    const existingCategories = await prisma.category.findMany();
+    const existingSuppliers = await prisma.supplier.findMany();
+    for (const categoryName of Object.keys(categoryDict)) {
+        if (!existingCategories.find((cat) => cat.name.toLowerCase() === categoryName.toLowerCase())) {
+            console.error(`Category "${categoryName}" not found in database. Making them now.`);
+        }
+        await prisma.category.upsert({
+            where: { name: categoryName },
+            update: {
+                code: categoryNames[categoryName],
+            },
+            create: {
+                id: categoryDict[categoryName],
+                name: categoryName,
+                code: categoryNames[categoryName],
+            },
+        });
+    }
+    for (const supplierName of Object.keys(supplierDict)) {
+        if (!existingSuppliers.find((sup) => sup.name.toLowerCase() === supplierName.toLowerCase())) {
+            console.error(`Supplier "${supplierName}" not found in database. Making them now.`);
+        }
+        await prisma.supplier.upsert({
+            where: { name: supplierName },
+            update: {
+                idString: supplierNames[supplierName],
+            },
+            create: {
+                id: supplierDict[supplierName],
+                name: supplierName,
+                idString: supplierNames[supplierName],
+            },
+        });
+    }
+
     // Group all rows by batchNumber
     const batchGroups = {};
     for (const item of ordersFromCSV) {
@@ -75,11 +111,23 @@ async function main() {
         let purchaseOrder = await prisma.purchaseOrder.findFirst({
             where: { batchNumber: parseInt(batchNumber, 10) },
         });
+        let arrivalDate = null;
+        if (parseInt(batchNumber, 10) === 1) {
+            arrivalDate = new Date("2025-08-02 EST");
+        } else if (parseInt(batchNumber, 10) === 2) {
+            arrivalDate = new Date("2025-09-02 EST");
+        } else if (parseInt(batchNumber, 10) === 3) {
+            arrivalDate = new Date("2025-09-25 EST");
+        } else if (parseInt(batchNumber, 10) === 4) {
+            arrivalDate = new Date("2025-08-12 EST");
+        } else {
+            arrivalDate = null;
+        }
         if (!purchaseOrder) {
             purchaseOrder = await prisma.purchaseOrder.create({
                 data: {
                     batchNumber: parseInt(batchNumber, 10),
-                    arrivalDate: null,
+                    arrivalDate,
                     hasArrived: false,
                 },
             });

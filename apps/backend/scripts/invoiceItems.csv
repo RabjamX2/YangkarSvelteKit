@@ -1,0 +1,155 @@
+Invoice#,Customer Name,Product,Item Name,Color,Quantity,Status,Quantity Remaining,Cost Price,Column 1,Discount %,List Price,Final Price Per,Total Final Price
+aa0001,In-Person,ptlMetokBlackXXL,Metok Fold Chupa,Black,1,Delivered,0,$26.65,$75.00,,,$75.00,$75.00
+aa0001,In-Person,gcGyenrakAllRound,All-Round Kapshop,AllRound,1,Delivered,6,$4.91,$20.00,,,$20.00,$20.00
+aa00017,Tenzin Choeyang (Canada),btplaindhiRedXL,Yangkar Chupa,Red,1,Delivered,3,$15.15,$70.00,,,$70.00,$70.00
+aa00017,Tenzin Choeyang (Canada),gcCoralStackWhite,,White,1,Delivered,3,,,,,$0.00,$15.00
+aa00018,Sithar Dolma,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,6,$3.93,$15.00,,,$15.00,$15.00
+aa00019,In-Person,btplaindhiBeigeL,Yangkar Chupa,Beige,1,Delivered,2,$15.15,$70.00,,,$70.00,$70.00
+aa00019,In-Person,tbPlainWonjuWhiteL,,White,1,Delivered,1,,,,,$0.00,$30.00
+aa00019,In-Person,gcsmallPachapChain,Gachung Pachap,Chain,1,Delivered,7,$5.61,$40.00,,,$40.00,$40.00
+aa0002,In-Person,ptlMetokBlackXXL,Metok Fold Chupa,Black,1,Delivered,0,$26.65,$75.00,,,$75.00,$35.00
+aa00020,In-Person,btplaindhiRedXL,Yangkar Chupa,Red,1,Delivered,3,$15.15,$70.00,,,$70.00,$70.00
+aa00020,In-Person,tbPlainWonjuWhiteL,,White,1,Delivered,1,,,,,$0.00,$30.00
+aa00021,In-Person,gcLapChain2silverc,Single Lap Chain,silverc,1,Delivered,12,$3.51,$20.00,,,$20.00,$20.00
+aa00021,In-Person,gcSweetSilvTurqouise,Silver Gachung Earring,Turqouise,1,Delivered,6,$1.12,$8.00,,,$8.00,$8.00
+aa00022,In-Person,btplaindhiBeigeL,Yangkar Chupa,Beige,1,Delivered,2,$15.15,$70.00,,,$70.00,$70.00
+aa00022,In-Person,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,6,$3.93,$15.00,,,$15.00,$15.00
+aa00022,In-Person,btfullGuchenBurgundyXL,Guchen Chupa,Burgundy,1,Delivered,0,$12.62,$75.00,,,$75.00,$75.00
+aa00023,In-Person,btplaindhiBlackXL,Yangkar Chupa,Black,1,Delivered,7,$15.15,$70.00,,,$70.00,$70.00
+aa00023,In-Person,tbPlainWonjuWhiteL,,White,1,Delivered,1,,,,,$0.00,$30.00
+aa00023,In-Person,tbPlainWonjuGreenL,,Green,1,Delivered,7,,,,,$0.00,$30.00
+aa00024,In-Person,gcLapChain3darksilverg,3 Chain Lap Rack,darksilverg,1,Delivered,0,$6.31,$30.00,,,$30.00,$30.00
+aa00025,In-Person,gcLapChain3lightsilverg,,lightsilverg,1,Delivered,1,$6.26,$30.00,,,$30.00,$30.00
+aa00025,In-Person,gcOrnamentDropchain,Kapshop Ornament,Dropchain,1,Delivered,5,$3.65,$20.00,,,$20.00,$20.00
+aa00025,In-Person,gcSweetSilvTurqouise,Silver Gachung Earring,Turqouise,1,Delivered,6,$1.12,$8.00,,,$8.00,$8.00
+aa00026,In-Person,ptlFoldRedBrownXL,Metok Wonju,RedBrown,1,Delivered,4,$7.43,$35.00,,,$35.00,$75.00
+aa00027,In-Person,gcCoralStackWhite,,White,1,Delivered,3,,,,,$0.00,$15.00
+aa00027,In-Person,btplaindhiRedXL,Yangkar Chupa,Red,1,Delivered,3,$15.15,$70.00,,,$70.00,$70.00
+aa00028,In-Person,tbPlainWonjuMaroonXL,,Maroon,1,Delivered,5,,,,,$0.00,$30.00
+aa00028,In-Person,tbPlainWonjuWhiteL,,White,1,Delivered,1,,,,,$0.00,$30.00
+aa00029,In-Person,gcSPinkapSmall,Pinkap,Small,1,Delivered,20,$0.98,$5.00,,,$5.00,$5.00
+aa0003,In-Person,gcsmallPachapChain,Gachung Pachap,Chain,1,Delivered,7,$5.61,$40.00,,,$40.00,$25.00
+aa0003,In-Person,gcBPinkapBig,Pinkap,Big,1,Delivered,0,$1.12,$8.00,,,$8.00,$8.00
+aa00032,In-Person,gcroundEarringGolden Coral,Golden Coral Button Earring,Golden Coral,1,Delivered,13,$0.98,$8.00,,,$8.00,$8.00
+aa00033,In-Person,gcLapChain2silverc,Single Lap Chain,silverc,1,Delivered,12,$3.51,$20.00,,,$20.00,$20.00
+aa00033,In-Person,ptlMetokBlackXXL,Metok Fold Chupa,Black,1,Delivered,0,$26.65,$75.00,,,$75.00,$35.00
+aa00034,In-Person,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,6,$3.93,$15.00,,,$15.00,$15.00
+aa00034,In-Person,gcSweetSilvCoral,Silver Gachung Earring,Coral,1,Delivered,10,$1.12,$8.00,,,$8.00,$8.00
+aa00035,In-Person,ptlMetokBlackXL,Metok Fold Chupa,Black,1,Delivered,1,$26.65,$75.00,,,$75.00,$35.00
+aa00036,In-Person,gcBMechaMan,Phosar Mecha,Man,1,Delivered,5,$16.83,$30.00,,,$30.00,$30.00
+aa00036,In-Person,gcLapChain2silverc,Single Lap Chain,silverc,1,Delivered,12,$3.51,$20.00,,,$20.00,$20.00
+aa00037,In-Person,gcCoralStackWhite,,White,1,Delivered,3,,,,,$0.00,$15.00
+aa00037,In-Person,gcSPinkapSmall,Pinkap,Small,1,Delivered,20,$0.98,$5.00,,,$5.00,$5.00
+aa00037,In-Person,gcSweetSilvTurqouise,Silver Gachung Earring,Turqouise,1,Delivered,6,$1.12,$8.00,,,$8.00,$8.00
+aa00038,In-Person,gcOrnamentDropchain,Kapshop Ornament,Dropchain,1,Delivered,5,$3.65,$20.00,,,$20.00,$20.00
+aa00039,In-Person,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,6,$3.93,$15.00,,,$15.00,$15.00
+aa00039,In-Person,gcroundEarringGolden Coral,Golden Coral Button Earring,Golden Coral,1,Delivered,13,$0.98,$8.00,,,$8.00,$8.00
+aa0004,In-Person,gcSCharmaSmallGold,Blue-Lined Charma,SmallGold,1,Delivered,0,$11.92,$30.00,,,$30.00,$30.00
+aa00040,Tensang Ladakhi La,gcsmallPachapChain,Gachung Pachap,Chain,1,Delivered,7,$5.61,$40.00,,,$40.00,$25.00
+aa00040,Tensang Ladakhi La,gcSCharmaSmallGold,Blue-Lined Charma,SmallGold,1,Delivered,0,$11.92,$30.00,,,$30.00,$30.00
+aa00041,Pema Lachi,tbPlainWonjuBlueL,,Blue,1,Delivered,7,,,,,$0.00,$30.00
+aa00042,Tenzin Chokyi (MN),tbPlainWonjuMaroonL,,Maroon,1,Delivered,7,,,,,$0.00,$25.00
+aa00043,In-Person,btplaindhiBrownXL,Yangkar Chupa,Brown,1,Delivered,4,$15.15,$70.00,,,$70.00,$70.00
+aa00044,In-Person,gcLapChain3darksilverg,3 Chain Lap Rack,darksilverg,1,Delivered,0,$6.31,$30.00,,,$30.00,$30.00
+aa00045,In-Person,ptlMetokBlueXL,Metok Wonju,Blue,1,Delivered,0,$7.43,$35.00,,,$35.00,$35.00
+aa00046,In-Person,gcLapChain2silverc,Single Lap Chain,silverc,1,Delivered,12,$3.51,$20.00,,,$20.00,$20.00
+aa00047,In-Person,tbPlainWonjuMaroonL,,Maroon,1,Delivered,7,,,,,$0.00,$30.00
+aa00048,In-Person,snowlion 13 pro max case,,,1,Delivered,,,,,,$0.00,$15.00
+aa00049,In-Person,pink tashi delek 16 pro max,,,1,Delivered,,,,,,$0.00,$15.00
+aa0005,In-Person,ptlFoldBlackCreamXL,Metok Fold Chupa,BlackCream,1,Delivered,3,$26.65,$75.00,,,$75.00,$75.00
+aa00050,In-Person,15 pro pink tashi delek,,,1,Delivered,,,,,,$0.00,$15.00
+aa00054,Palzom,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,,,$15.00,,,$0.00,$15.00
+aa00055,In-Person,Endless KNot 15 pro Max,,,1,Delivered,,,,,,$0.00,$15.00
+aa00056,In-Person,snowlion case 13,,,1,Delivered,,,,,,$0.00,$15.00
+aa00057,In-Person,jmDhiMenOrangeXL,,Orange,1,Delivered,2,,,,,$0.00,$35.00
+aa00058,In-Person,jmDhiMenBurgundyXXL,,Burgundy,1,Delivered,4,,,,,$0.00,$35.00
+aa00059,In-Person,jmDhiMenBlackL,,Black,1,Delivered,2,,,,,$0.00,$35.00
+aa0006,Cho Thinley Wangtop,gcBMechaMan,Phosar Mecha,Man,1,Delivered,5,$16.83,$30.00,,,$30.00,$30.00
+aa00060,In-Person,jmDhiMenBurgundyXL,,Burgundy,1,Delivered,3,,,,,$0.00,$35.00
+aa00061,In-Person,gcKnifeGirlGold,,GirlGold,1,Delivered,3,,,,,$0.00,$25.00
+aa00062,In-Person,blLhasaGuchenOrangeL,,Orange,1,Delivered,2,,,,,$0.00,$70.00
+aa00063,In-Person,losVestShirtMenWine RedXXL,,Wine Red,1,Delivered,2,,,,,$0.00,$35.00
+aa00064,In-Person,infinity knot 16+ zele R,,,1,Delivered,,,,,,$0.00,$15.00
+aa0007,In-Person,gcBMechaMan,Phosar Mecha,Man,1,Delivered,5,$16.83,$30.00,,,$30.00,$30.00
+aa0008,Tayang,gcsmallPachapChain,Gachung Pachap,Chain,1,Delivered,7,$5.61,$40.00,,,$40.00,$25.00
+aa0008,Tayang,gcBPinkapBig,Pinkap,Big,1,Delivered,0,$1.12,$8.00,,,$8.00,$8.00
+aa0009,In-Person,gcSCharmaSmallGold,Blue-Lined Charma,SmallGold,1,Delivered,0,$11.92,$30.00,,,$30.00,$30.00
+aa0010,In-Person,ptlMetokRedXL,Metok Wonju,Red,1,Delivered,3,$7.43,$35.00,,,$35.00,$35.00
+aa0010,In-Person,tbPlainWonjuWhiteXL,Plain Wonju,White,1,Delivered,4,$8.13,$30.00,,,$30.00,$30.00
+aa0010,In-Person,dfCuffLinkPearlChain,Pearl Cuff Link,PearlChain,1,Delivered,19,$0.00,$2.00,,,$2.00,$2.00
+aa0011,In-Person,ptlMetokRedL,Metok Wonju,Red,1,Delivered,2,$7.43,$35.00,,,$35.00,$35.00
+aa0012,In-Person,tbPlainWonjuWhiteXL,Plain Wonju,White,1,Delivered,4,$8.13,$30.00,,,$30.00,$30.00
+aa0013,In-Person,gcSweetSilvTurqouise,Silver Gachung Earring,Turqouise,1,Delivered,6,$1.12,$8.00,,,$8.00,$8.00
+aa0014,Dechen Wangmo,gcSweetSilvTurqouise,Silver Gachung Earring,Turqouise,1,Delivered,6,$1.12,$8.00,,,$8.00,$8.00
+aa0014,Dechen Wangmo,gcSweetSilvCoral,Silver Gachung Earring,Coral,1,Delivered,10,$1.12,$8.00,,,$8.00,$8.00
+aa0014,Dechen Wangmo,gcCoralStackWhite,,,1,Delivered,3,,,,,$0.00,$15.00
+aa0014,Dechen Wangmo,gcLapChain3darksilverg,3 Chain Lap Rack,darksilverg,1,Delivered,0,$6.31,$30.00,,,$30.00,$30.00
+aa0014,Dechen Wangmo,gcLapChain3lightsilverg,,lightsilverg,1,Delivered,1,$6.26,$30.00,,,$30.00,$30.00
+aa0014,Dechen Wangmo,ptlMetokRedL,Metok Wonju,Red,1,Delivered,2,$7.43,$35.00,,,$35.00,$35.00
+aa0014,Dechen Wangmo,ptlMetokBrownXXL,Plain Wonju,Brown,1,Delivered,2,$8.13,$30.00,,,$30.00,$35.00
+aa0014,Dechen Wangmo,btplaindhiBrownXL,Yangkar Chupa,Brown,1,Delivered,4,$15.15,$70.00,,,$70.00,$70.00
+aa0014,Dechen Wangmo,tbPlainWonjuWhiteL,,White,1,Delivered,1,,,,,$0.00,$30.00
+aa0014,Dechen Wangmo,tbPlainWonjuWhiteXL,Plain Wonju,White,1,Delivered,4,$8.13,$30.00,,,$30.00,$30.00
+aa0015,Sonam Chokey,btplaindhiRedXL,Yangkar Chupa,Red,1,Delivered,3,$15.15,$70.00,,,$70.00,$70.00
+ca00032,Sonam Chokey,tbPlainWonjuMaroonXL,,Maroon,1,Delivered,5,,,,,$0.00,$30.00
+ca00032,Sonam Chokey,tbPlainWonjuBrownXL,,Brown,1,Delivered,7,,,,,$0.00,$30.00
+cal00010,Tsetan Dolma,gcBCharmaBigSilver,Blue-Lined Charma,BigSilver,1,Delivered,2,$12.62,$35.00,0%,$0.00,$35.00,$35.00
+cal00010,Tsetan Dolma,gcSCharmaSmallGold,Blue-Lined Charma,SmallGold,2,Delivered,0,$11.92,$30.00,0%,$0.00,$30.00,$60.00
+cal00010,Tsetan Dolma,gcsmallPachapChain,Gachung Pachap,Chain,2,Delivered,7,$5.61,$40.00,0%,$0.00,$40.00,$50.00
+cal00010,Tsetan Dolma,gcKnifeGirl,Girl's Decor Dagger,Girl,2,Delivered,-1,$4.21,$30.00,0%,$0.00,$30.00,$40.00
+cal00010,Tsetan Dolma,gcGyenrakAllRound,All-Round Kapshop,AllRound,1,Delivered,6,$4.91,$20.00,0%,$0.00,$20.00,$20.00
+ct00013,Lobsang Choedon,blLhasaGuchenOrangeL,,Orange,1,Delivered,2,,,,,$0.00,$70.00
+ct00014,In-Person (Lo Choedon),btplaindhiBlackL,Yangkar Chupa,Black,1,Delivered,3,$15.15,$70.00,0%,$0.00,$70.00,$70.00
+ct00014,In-Person (Lo Choedon),gcKnifeGirl,Girl's Decor Dagger,Girl,1,Delivered,-1,$4.21,$30.00,0%,$0.00,$30.00,$20.00
+ct00015,In-Person (Choezom),gcKnifeGirl,Girl's Decor Dagger,Girl,1,Delivered,-1,$4.21,$30.00,0%,$0.00,$30.00,$20.00
+ct00016,In-Person (Acha Tashi Lhamo,btplaindhiOrangeXL,Yangkar Chupa,Orange,1,Delivered,0,$15.15,$70.00,,,$70.00,$70.00
+ct00016,In-Person (Acha Tashi Lhamo,ptlMetokBlueXL,Metok Wonju,Blue,1,Delivered,0,$7.43,$35.00,,,$35.00,$35.00
+ct00016,In-Person (Acha Tashi Lhamo,gcsmallPachapChain,Gachung Pachap,Chain,1,Delivered,7,$5.61,$40.00,,,$40.00,$20.00
+ct00016,In-Person (Acha Tashi Lhamo,btfullGuchenBurgundyXL,Guchen Chupa,Burgundy,1,Delivered,0,$12.62,$75.00,,,$75.00,$75.00
+ct00017,In-Person (Acha Jangchup),gcsmallPachapChain,Gachung Pachap,Chain,1,Delivered,7,$5.61,$40.00,,,$40.00,$20.00
+ct00017,In-Person (Acha Jangchup),ptlMetokBlueXL,Metok Wonju,Blue,1,Delivered,0,$7.43,$35.00,,,$35.00,$35.00
+ct00018,In-Person (Tsultrim Palmo),gcKnifeGirl,Girl's Decor Dagger,Girl,1,Delivered,-1,$4.21,$30.00,,,$30.00,$20.00
+ct00021,In-Person (Acha Pema),ptlMetokBlackXL,Metok Fold Chupa,Black,1,Delivered,1,$26.65,$75.00,,,$75.00,$35.00
+ct00023,In-Person (Acha Wangmo),btplaindhiRedXL,Yangkar Chupa,Red,1,Delivered,3,$15.15,$70.00,,,$70.00,$70.00
+ct00023,In-Person (Acha Wangmo),ptlMetokBlueXL,Metok Wonju,Blue,1,Delivered,0,$7.43,$35.00,,,$35.00,$35.00
+ct00023,In-Person (Acha Wangmo),ptlFoldBlueCreamXL,Metok Wonju,BlueCream,1,Delivered,4,$7.43,$35.00,,,$35.00,$75.00
+ct00023,In-Person (Acha Wangmo),gcBPinkapBig,Pinkap,Big,1,Delivered,0,$1.12,$8.00,,,$8.00,$8.00
+ct00024,In-Person (Lo Tsewang),gcBMechaMan,Phosar Mecha,Man,1,Delivered,5,$16.83,$30.00,,,$30.00,$30.00
+ct00026,In-Person (Dawa Dolma),ptlFoldBlackCreamXL,Metok Fold Chupa,BlackCream,1,Delivered,3,$26.65,$75.00,,,$75.00,$75.00
+ct00026,In-Person (Dawa Dolma),ptlMetokBlackXXL,Metok Fold Chupa,Black,1,Delivered,0,$26.65,$75.00,,,$75.00,$35.00
+ct00026,In-Person (Dawa Dolma),gcSPinkapSmall,Pinkap,Small,2,Delivered,20,$0.98,$5.00,,,$5.00,$10.00
+ct00027,In-Person (anang),gcOrnamentDropchain,Kapshop Ornament,Dropchain,1,Delivered,5,$3.65,$20.00,,,$20.00,$20.00
+ct00027,In-Person (anang),dfCuffLinkPearlChain,Pearl Cuff Link,PearlChain,1,Delivered,19,$0.00,$2.00,,,$2.00,$2.00
+ct00029,In-Person (Acha Wangmo),btplaindhiOrangeXL,Yangkar Chupa,Orange,1,Delivered,0,$15.15,$70.00,,,$70.00,$70.00
+ct00029,In-Person (Acha Wangmo),tbPlainWonjuWhiteXL,Plain Wonju,White,1,Delivered,4,$8.13,$30.00,,,$30.00,$30.00
+ct00030,In-Person (Acha Pema Khando),dfLhasaOGGreenL,Classic Lhasa Chupa,Green,1,Delivered,3,$20.34,$65.00,,,$65.00,$65.00
+ct00030,In-Person (Acha Pema Khando),btplaindhiBlackL,Yangkar Chupa,Black,1,Delivered,3,$15.15,$70.00,,,$70.00,$70.00
+ct00031,In-Person (Lo CHoedon),ptlMetokBrownXL,Plain Wonju,Brown,1,Delivered,2,$8.13,$30.00,,,$30.00,$35.00
+ct00033,Sonam Lhamo (Tenzin Dargye mom),gcBPinkapBig,Pinkap,Big,1,Delivered,0,$1.12,$8.00,,,$8.00,$8.00
+ct00035,In-Person,ptlMetokBlackXXL,Metok Fold Chupa,Black,1,Delivered,0,$26.65,$75.00,,,$75.00,$35.00
+ct00037,Acha Tenzin (Tashi Nyima),blLhasaGuchenGreenL,,Green,1,Delivered,2,,,,,$0.00,$70.00
+ct00038,Acha Pema Yangzom,blLhasaGuchenBurgundyL,,Burgundy,1,Delivered,2,,,,,$0.00,$70.00
+ct00039,Acha Chima (Jathar),blLhasaGuchenBlueXL,,Blue,1,Delivered,2,,,,,$0.00,$70.00
+ct00039,Acha Chima (Jathar),gcSPinkapSmall,Pinkap,Small,5,Delivered,20,$0.98,$5.00,,,$5.00,$25.00
+ct00039,Acha Chima (Jathar),gcGhawuBlueGirl,Small Ghawu,BlueGirl,1,Delivered,2,$1.40,$30.00,,,$30.00,$15.00
+ct00040,Lo Choedon,gcSPinkapSmall,Pinkap,Small,3,Delivered,20,$0.98,$5.00,,,$5.00,$15.00
+ct00041,Acha Choedon (Chophel),gcKnifeGirlSilver,,GirlSilver,1,Delivered,4,,,,,$0.00,$25.00
+ct00042,Acha Dolkar,gcKnifeGirlGold,,GirlGold,1,Delivered,3,,,,,$0.00,$25.00
+ct00042,Acha Dolkar,gcGyenrakAllRound,All-Round Kapshop,AllRound,1,Delivered,6,$4.91,$20.00,,,$20.00,$20.00
+ma00025,Tenzin Choekyi,ptlMetokBlackXXL,Metok Fold Chupa,Black,1,Delivered,0,$26.65,$75.00,,,$75.00,$35.00
+ma00025,Tenzin Choekyi,ptlMetokBlueXL,Metok Wonju,Blue,1,Delivered,0,$7.43,$35.00,,,$35.00,$35.00
+ma00025,Tenzin Choekyi,ptlMetokRedXL,Metok Wonju,Red,2,Delivered,3,$7.43,$35.00,,,$35.00,$35.00
+ny00002,Kalsang Choedon,ptlMetokBlueL,Metok Wonju,Blue,1,Delivered,4,$7.43,$35.00,0%,$5.00,$30.00,$30.00
+ny00003,Tsetan Namdol,btfullGuchenBurgundyL,Classic Lhasa Chupa,Burgundy,1,Delivered,0,$20.34,$65.00,0%,$0.00,$65.00,$65.00
+ny00007,Karma Lhamo (Yeshi),gcGyenrakAllRound,All-Round Kapshop,AllRound,1,Delivered,6,$4.91,$20.00,0%,$0.00,$20.00,$20.00
+ny00009,Acha Bawa Dolma,gcLapChain2silverc,Single Lap Chain,silverc,1,Delivered,12,$3.51,$20.00,0%,$0.00,$20.00,$20.00
+ny00009,Acha Bawa Dolma,dfCuffLinkPearlChain,Pearl Cuff Link,PearlChain,2,Delivered,19,$0.00,$2.00,,,$2.00,$4.00
+ny00011,Pema Lachi,gcSPinkapSmall,Pinkap,Small,5,Delivered,20,$0.98,$5.00,0%,$0.00,$5.00,$25.00
+ny00011,Pema Lachi,tbPlainWonjuWhiteL,,White,1,Delivered,1,,,,,$0.00,$30.00
+ny00020,Sithar Dolma,gcCoralStackWhite,,White,1,Delivered,3,,,,,$0.00,$15.00
+ny00020,Sithar Dolma,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,6,$3.93,$15.00,,,$15.00,$15.00
+ny00020,Sithar Dolma,gcSweetSilvTurqouise,Silver Gachung Earring,Turqouise,1,Delivered,6,$1.12,$8.00,,,$8.00,$8.00
+ny00036,Sonam,blue dxi 15 pro max,,,1,Delivered,,,,,,$0.00,$15.00
+sc00022,In-Person (Tenzin Nyima),gcBMechaMan,Phosar Mecha,Man,1,Delivered,5,$16.83,$30.00,,,$30.00,$30.00
+sea00032,Sonam Tso,ptlMetokWhiteXL,Plain Wonju,White,1,Delivered,1,$8.13,$30.00,,,$30.00,$35.00
+sea00032,Sonam Tso,gcLapChain2silverc,Single Lap Chain,silverc,2,Delivered,12,$3.51,$20.00,,,$20.00,$40.00

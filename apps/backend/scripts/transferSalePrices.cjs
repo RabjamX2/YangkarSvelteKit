@@ -28,8 +28,8 @@ async function main() {
         const legacySku = row["Full SKU"]?.trim();
         let salePriceRaw = row["Sale Price"]?.trim();
         // Sanitize salePrice: remove $ and commas
-        const salePrice = salePriceRaw ? salePriceRaw.replace(/[$,]/g, "") : "";
-        if (!legacySku || !salePrice || isNaN(Number(salePrice))) {
+        let newSalePrice = salePriceRaw ? salePriceRaw.replace(/[$,]/g, "") : "";
+        if (!legacySku || !newSalePrice || isNaN(Number(newSalePrice))) {
             console.warn(`Skipping row ${index + 1}: missing or invalid Full SKU or Sale Price.`);
             continue;
         }
@@ -41,9 +41,13 @@ async function main() {
                 console.warn(`No productVariant found for legacySku: ${legacySku} (row ${index + 1})`);
                 continue;
             }
+            // if variant category is Phone Cases set price to 15
+            if (row["Category"]?.trim() === "Phone Cases") {
+                newSalePrice = 15;
+            }
             await prisma.productVariant.update({
                 where: { id: variant.id },
-                data: { salePrice: Number(salePrice) },
+                data: { salePrice: Number(newSalePrice) },
             });
             updatedCount++;
             console.log(`Updated salePrice for legacySku: ${legacySku} to ${salePrice}`);
