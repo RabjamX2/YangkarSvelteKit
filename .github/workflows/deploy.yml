@@ -77,7 +77,24 @@ jobs:
                   cache: "pnpm"
 
             - name: Install dependencies
-              run: pnpm install
+              run:
+                  pnpm install
+
+                  # Install dependencies on the server before restarting
+            - name: Install Dependencies
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.FRONTEND_SSH_HOST }}
+                  username: ${{ secrets.FRONTEND_SSH_USERNAME }}
+                  password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
+                  script: |
+                      export NVM_DIR="$HOME/.nvm"
+                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+                      cd /home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit
+                      git pull origin main
+
+                      pnpm install --prod --filter frontend
 
             - name: Build SvelteKit App
               env:
@@ -98,7 +115,7 @@ jobs:
                   strip_components: 3 # This removes the first 3 path segments (apps/frontend/build) when copying
 
             # Install dependencies on the server before restarting
-            - name: Install Dependencies and Restart Frontend Server
+            - name: Restart Frontend Server
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.FRONTEND_SSH_HOST }}
@@ -109,8 +126,4 @@ jobs:
                       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
                       cd /home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit
-                      git pull origin main
-
-                      pnpm install --prod --filter frontend
-
                       pm2 restart frontend
