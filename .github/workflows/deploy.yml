@@ -95,7 +95,7 @@ jobs:
                   # This copies the built frontend app to the server
                   source: "apps/frontend/build/"
                   target: "/home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit/apps/frontend/build/"
-                  strip_components: 2 # This removes 'apps/frontend/' from the path
+                  strip_components: 3 # This removes the first 3 path segments (apps/frontend/build) when copying
 
             # Install dependencies on the server before restarting
             - name: Install Dependencies and Restart Frontend Server
