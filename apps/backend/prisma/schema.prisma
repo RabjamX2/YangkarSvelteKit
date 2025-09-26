@@ -106,6 +106,8 @@ model Product {
     skuBase     String  @unique // e.g., "ptl_chup_metok"
     barcodeBase String? @unique // e.g., UPC or EAN barcode
 
+    visable Boolean? @default(true) // Whether this product is visible in the catalog
+
     // Relationships
     supplierId Int
     supplier   Supplier @relation(fields: [supplierId], references: [id])
@@ -129,6 +131,8 @@ model ProductVariant {
     color        String?
     displayColor String? // e.g., "Red"
     colorHex     String? // e.g., "#FF0000"
+
+    visable Boolean? @default(true) // Whether this variant is visible in the catalog
 
     size   String?
     imgUrl String? @default("/Placeholder4-5.png") // Default image URL
@@ -293,8 +297,8 @@ model CustomerOrder {
     orderDate    DateTime?     @default(now())
     salesChannel SalesChannel? @default(IN_PERSON)
 
-    paymentStatus     PaymentStatus     @default(PENDING)
-    fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+    paymentStatus     PaymentStatus     @default(PAID)
+    fulfillmentStatus FulfillmentStatus @default(PICKED_UP)
     returnStatus      ReturnStatus      @default(NONE)
     paymentMethod     PaymentMethod?
     // TODO: Make paymentMethod non-nullable and always set it

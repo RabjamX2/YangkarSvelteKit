@@ -52,7 +52,7 @@ export const actions = {
                     httpOnly: true,
                     secure: true,
                     sameSite: "none",
-                    domain: ".yangkarbhoeche.com",
+                    domain: isProduction ? ".yangkarbhoeche.com" : undefined,
                     maxAge: 60 * 60 * 24 * 7, // 1 week
                 });
             }

@@ -102,12 +102,51 @@ const updateProductVariant = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     // Only allow updating certain fields for safety
-    const allowedFields = ["sku", "color", "size", "salePrice", "stock"];
+    const allowedFields = ["sku", "color", "displayColor", "size", "salePrice", "stock", "visable"];
     const updateData = {};
     for (const field of allowedFields) {
         if (field in data) updateData[field] = data[field];
     }
+    // If id is a string that can be converted to a number, do so (Prisma expects Int)
+    let variantId = id;
+    if (!isNaN(Number(id))) {
+        variantId = Number(id);
+    } else {
+        return res.status(400).json({ error: "Invalid id: must be an integer for ProductVariant" });
+    }
     const updated = await prisma.productVariant.update({
+        where: { id: variantId },
+        data: updateData,
+    });
+    res.json({
+        received: {
+            id: variantId,
+            updateData,
+        },
+        updated,
+    });
+});
+
+// Update product (for visable and other fields)
+const updateProduct = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = req.body;
+    // Only allow updating certain fields for safety
+    const allowedFields = [
+        "displayName",
+        "notes",
+        "skuIntBase",
+        "skuBase",
+        "barcodeBase",
+        "visable",
+        "supplierId",
+        "categoryId",
+    ];
+    const updateData = {};
+    for (const field of allowedFields) {
+        if (field in data) updateData[field] = data[field];
+    }
+    const updated = await prisma.product.update({
         where: { id: Number(id) },
         data: updateData,
     });
@@ -149,11 +188,13 @@ const getProductsWithVariants = asyncHandler(async (req, res) => {
 });
 
 // --- Route Definitions ---
+
 router.get("/products", getProducts);
 router.get("/products-with-variants", getProductsWithVariants);
 router.get("/products/:skuBase", getProductBySku); // New route for single product
 router.get("/categories", getCategories);
 router.put("/variants/:id", updateProductVariant);
+router.put("/products/:id", updateProduct);
 // You would add POST, PUT, DELETE product routes here later
 
 export default router;

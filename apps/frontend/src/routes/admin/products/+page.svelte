@@ -13,10 +13,14 @@
     // Used to trigger refresh animation
     const refreshAnim = writable({}); // { [productId]: true }
     const search = writable("");
+
     const loading = writable(true);
     const error = writable(null);
     const edits = writable({}); // { [id]: { field: value } }
     const bulkPrice = writable({}); // { [productId]: price }
+
+    // Advanced view toggle
+    const advancedView = writable(false);
 
     // Feedback messages for actions
     const feedback = writable({}); // { [id]: { type: 'success'|'error', message: string } }
@@ -70,6 +74,41 @@
 
     function handleEdit(id, field, value) {
         edits.update((e) => ({ ...e, [id]: { ...e[id], [field]: value } }));
+    }
+
+    // Toggle visable for product or variant
+    async function toggleVisable(type, id, currentValue) {
+        try {
+            let url, body;
+            if (type === "product") {
+                url = `${PUBLIC_BACKEND_URL}/api/products/${id}`;
+                body = { visable: !currentValue };
+            } else if (type === "variant") {
+                url = `${PUBLIC_BACKEND_URL}/api/variants/${id}`;
+                body = { visable: !currentValue };
+            } else {
+                throw new Error("Invalid type");
+            }
+            const res = await fetch(url, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) throw new Error("Failed to update visable");
+            if (type === "product") {
+                products.update((list) => list.map((p) => (p.id === id ? { ...p, visable: !currentValue } : p)));
+            } else {
+                products.update((list) =>
+                    list.map((p) => ({
+                        ...p,
+                        variants: p.variants.map((v) => (v.id === id ? { ...v, visable: !currentValue } : v)),
+                    }))
+                );
+            }
+            showFeedback(id + "-visable", "success", "Visibility updated!");
+        } catch (e) {
+            showFeedback(id + "-visable", "error", e instanceof Error ? e.message : String(e));
+        }
     }
 
     async function saveEdit(id) {
@@ -172,7 +211,7 @@
 
 <div class="admin-container">
     <h1>Product List</h1>
-    <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1.2rem;">
+    <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;">
         <input
             type="text"
             class="search-input"
@@ -195,6 +234,10 @@
             <option value="salePriceAsc">Sort by Sale Price (Low → High)</option>
             <option value="salePriceDesc">Sort by Sale Price (High → Low)</option>
         </select>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:1rem;">
+            <input type="checkbox" bind:checked={$advancedView} />
+            Advanced View
+        </label>
     </div>
     {#if $loading}
         <p>Loading...</p>
@@ -234,38 +277,92 @@
                 }) as product}
                 <div class="product-card">
                     <div style="display:flex;align-items:center;width:100%;">
-                        <button
-                            type="button"
-                            class="product-main"
-                            aria-expanded={($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]}
-                            aria-controls={`variants-${product.id}`}
-                            on:click={() => {
-                                if (!$keepExpanded) expanded.update((e) => ({ ...e, [product.id]: !e[product.id] }));
-                            }}
-                            style="width:100%;text-align:left;background:none;border:none;padding:0;"
-                            disabled={$keepExpanded}
-                        >
-                            <div class="product-info">
-                                <span class="sku-base">{product.skuBase}</span>
-                                <span class="product-name">{product.displayName ?? product.name}</span>
-                                <span class="product-category"
-                                    >{categoryIdToName[product.categoryId] ?? "No Category"}</span
-                                >
-                                <span class="product-price" style="margin-left:1.2rem;color:#059669;font-weight:600;">
-                                    {(() => {
-                                        const prices = product.variants.map((v) => v.salePrice);
-                                        if (prices.length === 0) return "";
-                                        const allSame = prices.every((p) => p === prices[0]);
-                                        return allSame ? `$${prices[0]}` : "Varies";
-                                    })()}
-                                </span>
-                            </div>
-                            <span class="expand-btn-label"
-                                >{($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]
-                                    ? "Hide Variants"
-                                    : "Show Variants"}</span
+                        <div style="display:flex;align-items:center;width:100%;">
+                            <button
+                                type="button"
+                                class="product-main"
+                                aria-expanded={($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]}
+                                aria-controls={`variants-${product.id}`}
+                                on:click={() => {
+                                    if (!$keepExpanded)
+                                        expanded.update((e) => ({ ...e, [product.id]: !e[product.id] }));
+                                }}
+                                style="width:100%;text-align:left;background:none;border:none;padding:0;"
+                                disabled={$keepExpanded}
                             >
-                        </button>
+                                <div class="product-info">
+                                    <span class="sku-base">{product.skuBase}</span>
+                                    {#if !$advancedView}
+                                        <span class="product-name">{product.displayName ?? product.style}</span>
+                                    {/if}
+                                    <span class="product-category"
+                                        >{categoryIdToName[product.categoryId] ?? "No Category"}</span
+                                    >
+                                    <span
+                                        class="product-price"
+                                        style="margin-left:1.2rem;color:#059669;font-weight:600;"
+                                    >
+                                        {(() => {
+                                            const prices = product.variants.map((v) => v.salePrice);
+                                            if (prices.length === 0) return "";
+                                            const allSame = prices.every((p) => p === prices[0]);
+                                            return allSame ? `$${prices[0]}` : "Varies";
+                                        })()}
+                                    </span>
+                                    {#if $advancedView}
+                                        <span class="product-visable-toggle" style="margin-left:1.2rem;">
+                                            <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.98em;">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={product.visable ?? true}
+                                                    on:change={() =>
+                                                        toggleVisable("product", product.id, product.visable ?? true)}
+                                                />
+                                                <span style="color:#666;">Visible</span>
+                                            </label>
+                                            {#if $feedback[product.id + "-visable"]}
+                                                <span
+                                                    style="margin-left:0.5rem;color:{$feedback[product.id + '-visable']
+                                                        .type === 'success'
+                                                        ? '#059669'
+                                                        : 'red'}">{$feedback[product.id + "-visable"].message}</span
+                                                >
+                                            {/if}
+                                        </span>
+                                    {/if}
+                                </div>
+                                <span class="expand-btn-label"
+                                    >{($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]
+                                        ? "Hide Variants"
+                                        : "Show Variants"}</span
+                                >
+                            </button>
+                            {#if $advancedView}
+                                <input
+                                    type="text"
+                                    class="edit-input"
+                                    style="min-width:120px;max-width:220px;margin-left:1rem;"
+                                    value={$edits[product.id]?.displayName ?? product.displayName ?? product.name}
+                                    on:input={(e) => handleEdit(product.id, "displayName", e.currentTarget.value)}
+                                    placeholder="Display Name"
+                                />
+                                <button
+                                    class="save-btn"
+                                    style="margin-left:0.5rem;"
+                                    on:click={() => saveEdit(product.id)}
+                                    disabled={!$edits[product.id] ||
+                                        ($edits[product.id]?.displayName ?? product.displayName) ===
+                                            product.displayName}>Save</button
+                                >
+                                {#if $feedback[product.id]}
+                                    <span
+                                        style="margin-left:0.5rem;color:{$feedback[product.id].type === 'success'
+                                            ? '#059669'
+                                            : 'red'}">{$feedback[product.id].message}</span
+                                    >
+                                {/if}
+                            {/if}
+                        </div>
                         <div style="display:flex;align-items:center;gap:0.7rem;margin-left:1.2rem;">
                             <input
                                 type="number"
@@ -323,9 +420,41 @@
                                                 ? '#fff'
                                                 : 'var(--color-link-hover)'}"
                                         >
-                                            {variant.displayColor ?? variant.color ?? "No Color"}
+                                            {variant.displayColor !== undefined &&
+                                            variant.displayColor !== null &&
+                                            variant.displayColor !== ""
+                                                ? variant.displayColor
+                                                : (variant.color ?? "No Color")}
                                         </span>
                                         <span class="variant-size">{variant.size ?? "No Size"}</span>
+                                        {#if $advancedView}
+                                            <span class="variant-visable-toggle" style="margin-left:0.7rem;">
+                                                <label
+                                                    style="display:flex;align-items:center;gap:0.3rem;font-size:0.97em;"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={variant.visable ?? true}
+                                                        on:change={() =>
+                                                            toggleVisable(
+                                                                "variant",
+                                                                variant.id,
+                                                                variant.visable ?? true
+                                                            )}
+                                                    />
+                                                    <span style="color:#666;">Visible</span>
+                                                </label>
+                                                {#if $feedback[variant.id + "-visable"]}
+                                                    <span
+                                                        style="margin-left:0.3rem;color:{$feedback[
+                                                            variant.id + '-visable'
+                                                        ].type === 'success'
+                                                            ? '#059669'
+                                                            : 'red'}">{$feedback[variant.id + "-visable"].message}</span
+                                                    >
+                                                {/if}
+                                            </span>
+                                        {/if}
                                     </div>
                                     <div class="variant-details">
                                         <span class="variant-price">${variant.salePrice}</span>
@@ -341,14 +470,17 @@
                                     <div class="variant-edit">
                                         <input
                                             type="text"
-                                            value={$edits[variant.id]?.displayColor ??
-                                                variant.displayColor ??
-                                                $edits[variant.id]?.color ??
-                                                variant.color ??
-                                                ""}
+                                            value={$edits[variant.id]?.displayColor ?? variant.displayColor ?? ""}
                                             on:input={(e) =>
                                                 handleEdit(variant.id, "displayColor", e.currentTarget.value)}
                                             placeholder="Display Color"
+                                            class="edit-input color"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={$edits[variant.id]?.color ?? variant.color ?? ""}
+                                            on:input={(e) => handleEdit(variant.id, "color", e.currentTarget.value)}
+                                            placeholder="Color"
                                             class="edit-input color"
                                         />
                                         <input
@@ -372,6 +504,8 @@
                                             on:click={() => saveVariantEdit(variant.id)}
                                             disabled={!$edits[variant.id] ||
                                                 (($edits[variant.id]?.color ?? variant.color) === variant.color &&
+                                                    ($edits[variant.id]?.displayColor ?? variant.displayColor) ===
+                                                        variant.displayColor &&
                                                     ($edits[variant.id]?.size ?? variant.size) === variant.size &&
                                                     ($edits[variant.id]?.salePrice ?? variant.salePrice) ==
                                                         variant.salePrice)}
@@ -383,10 +517,8 @@
                                                 style="margin-left:0.7rem;color:{$feedback[variant.id].type ===
                                                 'success'
                                                     ? '#059669'
-                                                    : 'red'}"
+                                                    : 'red'}">{$feedback[variant.id].message}</span
                                             >
-                                                {$feedback[variant.id].message}
-                                            </span>
                                         {/if}
                                     </div>
                                 </div>

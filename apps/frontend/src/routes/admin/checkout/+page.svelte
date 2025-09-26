@@ -16,7 +16,9 @@
     const loading = writable(false);
     const error = writable(null);
     const success = writable(null);
-    const paymentMethod = writable("");
+    const paymentMethod = writable("CASH");
+    const salesChannel = writable("IN_PERSON");
+    const orderNotes = writable("");
 
     onMount(async () => {
         loading.set(true);
@@ -68,8 +70,20 @@
                 const parent = $products.find((p) => p.variants.some((vv) => vv.id === v.id));
                 if (parent) v.product = { skuBase: parent.skuBase, displayName: parent.displayName };
             }
-            return [...list, { variant: v, quantity: 1 }];
+            // Add default discount and isPreOrder fields
+            return [...list, { variant: v, quantity: 1, discount: 0, isPreOrder: false }];
         });
+    }
+    function updateDiscount(variantId, discount) {
+        cart.update((list) =>
+            list.map((item) =>
+                item.variant.id === variantId ? { ...item, discount: Math.max(0, Number(discount) || 0) } : item
+            )
+        );
+    }
+
+    function updateIsPreOrder(variantId, isPreOrder) {
+        cart.update((list) => list.map((item) => (item.variant.id === variantId ? { ...item, isPreOrder } : item)));
     }
 
     function updateQuantity(variantId, qty) {
@@ -86,8 +100,35 @@
         $cart.reduce((sum, item) => sum + Number(item.variant.salePrice || 0) * item.quantity, 0)
     );
 
+    // Advanced options state
+    const showAdvanced = writable(false);
+    const customOrderDate = writable("");
+    const paymentStatus = writable("PAID");
+    const fulfillmentStatus = writable("PICKED_UP");
+    const returnStatus = writable("NONE");
+    const shippingRequired = writable(false);
+    const shippingAddress = writable({
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "",
+    });
+
     async function completeSale() {
-        let $cart, $customerPhone, $customerName, $total, $moneyHolder;
+        let $cart,
+            $customerPhone,
+            $customerName,
+            $total,
+            $moneyHolder,
+            $salesChannel,
+            $orderNotes,
+            $customOrderDate,
+            $paymentStatus,
+            $fulfillmentStatus,
+            $returnStatus,
+            $shippingRequired,
+            $shippingAddress;
         cart.subscribe((v) => ($cart = v))();
         customerPhone.subscribe((v) => ($customerPhone = v))();
         customerName.subscribe((v) => ($customerName = v))();
@@ -95,37 +136,82 @@
         let $paymentMethod;
         moneyHolder.subscribe((v) => ($moneyHolder = v))();
         paymentMethod.subscribe((v) => ($paymentMethod = v))();
+        salesChannel.subscribe((v) => ($salesChannel = v))();
+        orderNotes.subscribe((v) => ($orderNotes = v))();
+        customOrderDate.subscribe((v) => ($customOrderDate = v))();
+        paymentStatus.subscribe((v) => ($paymentStatus = v))();
+        fulfillmentStatus.subscribe((v) => ($fulfillmentStatus = v))();
+        returnStatus.subscribe((v) => ($returnStatus = v))();
+        shippingRequired.subscribe((v) => ($shippingRequired = v))();
+        shippingAddress.subscribe((v) => ($shippingAddress = v))();
         if (!$cart.length) {
             error.set("Cart is empty");
             return;
+        }
+        if ($shippingRequired) {
+            // Validate all address fields
+            const requiredFields = ["street", "city", "state", "zipCode", "country"];
+            for (const field of requiredFields) {
+                if (!$shippingAddress[field] || !$shippingAddress[field].trim()) {
+                    error.set("All shipping address fields are required.");
+                    return;
+                }
+            }
         }
         loading.set(true);
         error.set(null);
         success.set(null);
         try {
+            const body = {
+                customer: { phone: $customerPhone, name: $customerName },
+                items: $cart.map((item) => ({
+                    productVariantId: item.variant.id,
+                    quantity: item.quantity,
+                    salePrice: item.variant.salePrice,
+                    discount: item.discount,
+                    isPreOrder: item.isPreOrder,
+                })),
+                total: $total,
+                moneyHolder: $moneyHolder,
+                paymentMethod: $paymentMethod,
+                salesChannel: $salesChannel,
+                notes: $orderNotes,
+            };
+            if ($customOrderDate) {
+                body.orderDate = new Date($customOrderDate).toISOString();
+            }
+            if ($paymentStatus) {
+                body.paymentStatus = $paymentStatus;
+            }
+            if ($fulfillmentStatus) {
+                body.fulfillmentStatus = $fulfillmentStatus;
+            }
+            if ($returnStatus) {
+                body.returnStatus = $returnStatus;
+            }
+            if ($shippingRequired) {
+                body.shippingAddress = $shippingAddress;
+            }
             const res = await fetch(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 credentials: "include",
-                body: JSON.stringify({
-                    customer: { phone: $customerPhone, name: $customerName },
-                    items: $cart.map((item) => ({
-                        productVariantId: item.variant.id,
-                        quantity: item.quantity,
-                        salePrice: item.variant.salePrice,
-                    })),
-                    total: $total,
-                    moneyHolder: $moneyHolder,
-                    paymentMethod: $paymentMethod,
-                }),
+                body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error("Failed to complete sale");
             cart.set([]);
             customerPhone.set("");
             customerName.set("");
             moneyHolder.set("");
+            orderNotes.set("");
+            customOrderDate.set("");
+            paymentStatus.set("");
+            fulfillmentStatus.set("");
+            returnStatus.set("");
+            shippingRequired.set(false);
+            shippingAddress.set({ street: "", city: "", state: "", zipCode: "", country: "" });
             success.set("Sale completed!");
         } catch (e) {
             error.set(e.message);
@@ -275,6 +361,8 @@
                             <th>Size</th>
                             <th>Price</th>
                             <th>Qty</th>
+                            <th>Discount</th>
+                            <th>Pre-Order</th>
                             <th>Subtotal</th>
                             <th></th>
                         </tr>
@@ -316,7 +404,29 @@
                                         on:input={(e) => updateQuantity(item.variant.id, +e.target.value)}
                                     />
                                 </td>
-                                <td>{Number(item.variant.salePrice || 0) * item.quantity}</td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.discount}
+                                        on:input={(e) => updateDiscount(item.variant.id, e.target.value)}
+                                        style="width:60px;"
+                                    />
+                                </td>
+                                <td>
+                                    <input
+                                        type="checkbox"
+                                        checked={item.isPreOrder}
+                                        on:change={(e) => updateIsPreOrder(item.variant.id, e.target.checked)}
+                                    />
+                                </td>
+                                <td
+                                    >{(
+                                        (Number(item.variant.salePrice || 0) - (item.discount || 0)) *
+                                        item.quantity
+                                    ).toFixed(2)}</td
+                                >
                                 <td><button on:click={() => removeFromCart(item.variant.id)}>Remove</button></td>
                             </tr>
                         {/each}
@@ -340,14 +450,138 @@
                 <div style="margin-top:0.7rem;">
                     <label for="payment-method">Payment Method</label>
                     <select id="payment-method" bind:value={$paymentMethod}>
-                        <option value="">Select...</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Zelle">Zelle</option>
-                        <option value="Venmo">Venmo</option>
-                        <option value="Apple Pay">Apple Pay</option>
+                        <option value="CASH">Cash</option>
+                        <option value="CREDIT_CARD">Credit Card</option>
+                        <option value="DEBIT_CARD">Debit Card</option>
+                        <option value="ZELLE">Zelle</option>
+                        <option value="VENMO">Venmo</option>
+                        <option value="OTHER">Other</option>
                     </select>
                 </div>
+                <div style="margin-top:0.7rem;">
+                    <label for="sales-channel">Sales Channel</label>
+                    <select id="sales-channel" bind:value={$salesChannel}>
+                        <option value="IN_PERSON">In Person</option>
+                        <option value="ONLINE">Online</option>
+                        <option value="SOCIAL">Social</option>
+                    </select>
+                </div>
+                <div style="margin-top:0.7rem;">
+                    <label for="order-notes">Order Notes</label>
+                    <textarea
+                        id="order-notes"
+                        bind:value={$orderNotes}
+                        rows="2"
+                        style="width:100%;border-radius:4px;border:1px solid var(--color-border);padding:0.4rem;"
+                    ></textarea>
+                </div>
             </div>
+            <div class="advanced-toggle" style="margin:1.2rem 0 0.7rem 0;">
+                <button
+                    type="button"
+                    on:click={() => showAdvanced.update((v) => !v)}
+                    style="background:none;border:none;color:var(--color-signup-bg,#6366f1);font-weight:600;cursor:pointer;"
+                >
+                    {#if $showAdvanced}▲ Hide Advanced Options{:else}▼ Show Advanced Options{/if}
+                </button>
+            </div>
+            {#if $showAdvanced}
+                <div
+                    class="advanced-box"
+                    style="border:1px solid var(--color-border);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1.2rem;background:var(--color-user-badge-bg,#f8fafc);"
+                >
+                    <div style="margin-bottom:0.8rem;">
+                        <label for="custom-order-date" style="font-weight:500;">Custom Order Date/Time</label>
+                        <input
+                            id="custom-order-date"
+                            type="datetime-local"
+                            bind:value={$customOrderDate}
+                            style="margin-left:0.7rem;"
+                        />
+                        <span style="font-size:0.95em;color:#888;margin-left:0.5rem;"
+                            >(Leave blank to use current time)</span
+                        >
+                    </div>
+                    <div style="margin-bottom:0.8rem;">
+                        <label for="payment-status" style="font-weight:500;">Payment Status</label>
+                        <select id="payment-status" bind:value={$paymentStatus} style="margin-left:0.7rem;">
+                            <option value="PAID">Paid (Default)</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="REFUNDED">Refunded</option>
+                            <option value="FAILED">Failed</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:0.8rem;">
+                        <label for="fulfillment-status" style="font-weight:500;">Fulfillment Status</label>
+                        <select id="fulfillment-status" bind:value={$fulfillmentStatus} style="margin-left:0.7rem;">
+                            <option value="PICKED_UP">Picked Up (Default)</option>
+                            <option value="UNFULFILLED">Unfulfilled</option>
+                            <option value="PROCESSING">Processing</option>
+                            <option value="SHIPPED">Shipped</option>
+                            <option value="DELIVERED">Delivered</option>
+                            <option value="CANCELLED">Cancelled</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:0.8rem;">
+                        <label for="return-status" style="font-weight:500;">Return Status</label>
+                        <select id="return-status" bind:value={$returnStatus} style="margin-left:0.7rem;">
+                            <option value="NONE">None (Default)</option>
+                            <option value="REQUESTED">Requested</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="RECEIVED">Received</option>
+                            <option value="COMPLETED">Completed</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:0.8rem;">
+                        <label style="font-weight:500;">
+                            <input type="checkbox" bind:checked={$shippingRequired} style="margin-right:0.5em;" />
+                            Shipping?
+                        </label>
+                    </div>
+                    {#if $shippingRequired}
+                        <div style="margin-bottom:0.8rem;">
+                            <label style="font-weight:500;">Shipping Address</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:0.7rem;margin-top:0.5rem;">
+                                <input
+                                    type="text"
+                                    placeholder="Street"
+                                    bind:value={$shippingAddress.street}
+                                    style="flex:2 1 200px;"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="City"
+                                    bind:value={$shippingAddress.city}
+                                    style="flex:1 1 120px;"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="State"
+                                    bind:value={$shippingAddress.state}
+                                    style="flex:1 1 80px;"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Zip Code"
+                                    bind:value={$shippingAddress.zipCode}
+                                    style="flex:1 1 80px;"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Country"
+                                    bind:value={$shippingAddress.country}
+                                    style="flex:1 1 120px;"
+                                    required
+                                />
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            {/if}
             <button class="complete-btn" on:click={completeSale} disabled={$loading || !$cart.length}>
                 {#if $loading}
                     <span class="spinner"></span> Processing...
