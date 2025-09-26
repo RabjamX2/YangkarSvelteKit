@@ -97,7 +97,18 @@ jobs:
                   target: "/home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit/apps/frontend/build/"
                   strip_components: 2 # This removes 'apps/frontend/' from the path
 
-            - name: Restart Frontend PM2 Process
+            # Sync package files to ensure dependencies are up to date
+            - name: Sync package files to Frontend Server
+              uses: appleboy/scp-action@v0.1.7
+              with:
+                  host: ${{ secrets.FRONTEND_SSH_HOST }}
+                  username: ${{ secrets.FRONTEND_SSH_USERNAME }}
+                  password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
+                  source: "package.json, pnpm-lock.yaml"
+                  target: "/home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit/"
+
+            # Install dependencies on the server before restarting
+            - name: Install Dependencies and Restart Frontend Server
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.FRONTEND_SSH_HOST }}
@@ -107,7 +118,9 @@ jobs:
                       export NVM_DIR="$HOME/.nvm"
                       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
+                      cd /home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit
                       git pull origin main
-                      pnpm install
+
+                      pnpm install --prod --filter frontend
 
                       pm2 restart frontend
