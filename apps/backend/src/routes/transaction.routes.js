@@ -241,8 +241,6 @@ const getStockChanges = asyncHandler(async (req, res) => {
         include: {
             variant: { include: { product: true } },
         },
-        orderBy: { date: "desc" },
-        take: 100, // limit for performance
     });
     res.json({ data: changes });
 });
@@ -300,7 +298,7 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
                 reason: "Sale",
                 user: userFromToken?.username || customer?.name || "Guest",
                 orderId: order.id,
-                orderType: "customer",
+                orderType: "CUSTOMER",
             },
         });
     }
@@ -327,10 +325,11 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
             data: {
                 productVariantId: item.productVariantId,
                 change: item.quantityOrdered,
+                changeTime: purchaseOrder.arrivalDate || new Date(),
                 reason: "Purchase Order Received",
                 user: req.user?.username || "System",
                 orderId: purchaseOrder.id,
-                orderType: "purchase",
+                orderType: "PURCHASE",
             },
         });
     }
@@ -404,7 +403,7 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
                     reason: "Void Sale",
                     user: order.customer?.name || "Unknown",
                     orderId: order.id,
-                    orderType: "customer",
+                    orderType: "CUSTOMER",
                 },
             });
         }
@@ -433,6 +432,7 @@ const createStockChange = asyncHandler(async (req, res) => {
             change: Number(change),
             reason,
             user: userFromToken?.username || "Manual",
+            orderType: "MANUAL",
         },
     });
     res.status(201).json({ data: stockChange });

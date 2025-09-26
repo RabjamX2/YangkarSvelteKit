@@ -8,6 +8,7 @@
 
     const products = writable([]);
     const variants = writable([]);
+    const inventoryBatches = writable([]);
     const cart = writable([]); // [{variant, quantity}]
     const customerPhone = writable("");
     const customerName = writable("");
@@ -20,11 +21,11 @@
     onMount(async () => {
         loading.set(true);
         try {
+            // Fetch products and variants
             const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch products");
             const data = await res.json();
             products.set(data.data);
-            // Flatten all variants for search
             let allVariants = [];
             data.data.forEach((p) => {
                 p.variants.forEach((v) => {
@@ -32,6 +33,18 @@
                 });
             });
             variants.set(allVariants);
+
+            // Fetch inventory batches for stock calculation
+            const batchRes = await fetch(`${PUBLIC_BACKEND_URL}/api/inventory-batches`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include", // include cookies for auth
+            });
+            if (!batchRes.ok) throw new Error("Failed to fetch inventory batches");
+            const batchData = await batchRes.json();
+            inventoryBatches.set(batchData.data || []);
         } catch (e) {
             error.set(e.message);
         } finally {
@@ -122,20 +135,34 @@
     }
     const moneyHolder = writable("");
 
-    const groupedProducts = derived([products, search], ([$products, $search]) => {
+    // Calculate stock per variant from inventory batches
+    const variantStockMap = derived(inventoryBatches, ($inventoryBatches) => {
+        const map = {};
+        for (const batch of $inventoryBatches) {
+            if (!batch.productVariantId) continue;
+            map[batch.productVariantId] = (map[batch.productVariantId] || 0) + batch.quantity;
+        }
+        return map;
+    });
+
+    const groupedProducts = derived([products, search, variantStockMap], ([$products, $search, $variantStockMap]) => {
         // Sort products alphabetically
         let filtered = $products
             .map((p) => ({
                 ...p,
                 variants: p.variants
+                    .map((v) => ({
+                        ...v,
+                        stock: $variantStockMap[v.id] || 0,
+                    }))
                     .filter((v) => {
                         if (!$search) return true;
                         const s = $search.toLowerCase();
                         return (
-                            v.sku?.toLowerCase().includes(s) ||
-                            p.displayName?.toLowerCase().includes(s) ||
-                            (v.color ? v.color.toLowerCase().includes(s) : false) ||
-                            (v.size ? v.size.toLowerCase().includes(s) : false)
+                            (v.sku && v.sku.toLowerCase().includes(s)) ||
+                            (v.color && v.color.toLowerCase().includes(s)) ||
+                            (v.size && v.size.toLowerCase().includes(s)) ||
+                            (p.displayName && p.displayName.toLowerCase().includes(s))
                         );
                     })
                     .sort((a, b) => {
@@ -198,7 +225,13 @@
                                         <td>${variant.salePrice}</td>
                                         <td>{variant.stock}</td>
                                         <td>
-                                            <button type="button" on:click={() => addToCart(variant)}> Add </button>
+                                            <button
+                                                type="button"
+                                                on:click={() => addToCart(variant)}
+                                                disabled={variant.stock === 0}
+                                            >
+                                                Add
+                                            </button>
                                         </td>
                                     </tr>
                                 {/each}
