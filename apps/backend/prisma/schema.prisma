@@ -21,6 +21,9 @@ model StockChange {
 
     orderId   Int? // Optionally, link to a CustomerOrder or PurchaseOrder
     orderType String? // "customer" or "purchase" or null
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 enum Role {
@@ -37,8 +40,15 @@ model User {
     role     Role      @default(USER)
     sessions Session[]
 
+    customer Customer?
+
     passwordResetToken   String?   @unique
     passwordResetExpires DateTime?
+
+    ordersCreated CustomerOrder[] @relation("OrdersByStaff")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Session {
@@ -47,6 +57,8 @@ model Session {
     expiresAt DateTime
 
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
 }
 
 /// Represents a supplier or seller from whom you purchase goods.
@@ -60,7 +72,7 @@ model Supplier {
     products      Product[]
 
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 /// Product categories like "Chupa", "Jewelry", etc.
@@ -71,7 +83,7 @@ model Category {
     products Product[]
 
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 /// Represents the core product concept, like "Metok Wonju" or "plaindhi".
@@ -83,8 +95,9 @@ model Product {
 
     notes String?
 
-    skuIntBase Int?   @unique // e.g., 1001
-    skuBase    String @unique // e.g., "ptl_chup_metok"
+    skuIntBase  Int?    @unique // e.g., 1001
+    skuBase     String  @unique // e.g., "ptl_chup_metok"
+    barcodeBase String? @unique // e.g., UPC or EAN barcode
 
     // Relationships
     supplierID Int
@@ -95,7 +108,7 @@ model Product {
     variants ProductVariant[]
 
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 /// Represents a specific, sellable version of a Product.
@@ -104,6 +117,7 @@ model ProductVariant {
     id        Int     @id @default(autoincrement())
     legacySku String? @unique // Old SKU from previous system, e.g., "ptlMetokRedXL"
     sku       String? @unique // specific SKU e.g., "ptl_chup_metok_red_xl"
+    barcode   String? @unique // e.g., UPC or EAN barcode
 
     color        String?
     displayColor String? // e.g., "Red"
@@ -123,7 +137,7 @@ model ProductVariant {
     inventoryBatches   InventoryBatch[]
 
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 
     // This line adds the index to the productSkuBase field for faster lookups.
     @@index([productID])
@@ -140,10 +154,11 @@ model InventoryBatch {
     costUSD  Decimal?
     costCNY  Decimal?
 
-    createdAt DateTime @default(now())
-
     purchaseOrderItemId Int               @unique
     purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 /// Represents a purchase order made to a Supplier/s.
@@ -155,8 +170,9 @@ model PurchaseOrder {
     shippingCostCny Decimal?
     shippingCostUsd Decimal?
 
-    shipDate   DateTime?
-    hasArrived Boolean   @default(false)
+    shipDate    DateTime?
+    arrivalDate DateTime?
+    hasArrived  Boolean   @default(false)
 
     notes String?
 
@@ -164,7 +180,7 @@ model PurchaseOrder {
     items PurchaseOrderItem[]
 
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 model PurchaseOrderItem {
@@ -183,7 +199,7 @@ model PurchaseOrderItem {
     inventoryBatch InventoryBatch?
 
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Customer {
@@ -193,41 +209,130 @@ model Customer {
     phone  String?
     orders CustomerOrder[]
 
-    hasAccount Boolean? @default(false)
-    //  if hasAccount is true, link to a User account
+    userId String? @unique
+    user   User?   @relation(fields: [userId], references: [id])
+
+    addresses Address[]
 
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
-enum OrderStatus {
-    PENDING // Order placed, awaiting payment/fulfillment
-    SHIPPED
-    COMPLETED
-    CANCELLED
-    REFUNDED
+model Address {
+    id        Int     @id @default(autoincrement())
+    street    String
+    city      String
+    state     String
+    zipCode   String
+    country   String
+    isDefault Boolean @default(false)
+
+    customerId Int
+    customer   Customer @relation(fields: [customerId], references: [id])
+
+    ordersAsShipping CustomerOrder[] @relation("ShippingAddress")
+    ordersAsBilling  CustomerOrder[] @relation("BillingAddress")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+}
+
+// 1. Define the new, specific enums at the top of your schema
+enum PaymentStatus {
+    PENDING // Awaiting payment
+    PAID // Payment confirmed
+    REFUNDED // Payment has been returned
+    FAILED // Payment attempt failed
+}
+
+enum FulfillmentStatus {
+    UNFULFILLED // Paid, but not yet packed
+    PROCESSING // In the process of being packed
+    SHIPPED // Shipped to the customer
+    DELIVERED // Confirmed delivery
+    PICKED_UP // Customer picked up in-store
+    CANCELLED // The order was cancelled before fulfillment
+}
+
+enum ReturnStatus {
+    NONE // No return requested
+    REQUESTED // Customer has requested a return
+    APPROVED // Return approved
+    RECEIVED // We have received the returned items
+    COMPLETED // Refund or exchange processed
+}
+
+enum SalesChannel {
+    IN_PERSON // For In-person sales
+    ONLINE // For website sales
+    SOCIAL // For sales via Instagram, Facebook, etc.
+}
+
+enum PaymentMethod {
+    CASH
+    CREDIT_CARD
+    DEBIT_CARD
+    ZELLE
+    VENMO
+    OTHER
 }
 
 model CustomerOrder {
-    id            Int         @id @default(autoincrement())
-    invoiceNumber String?     @unique
-    orderDate     DateTime    @default(now())
-    orderType     String? // e.g., "in-store", "online", etc.
-    status        OrderStatus @default(PENDING)
+    id Int @id @default(autoincrement())
+
+    legacyInvoiceNumber String? @unique
+    invoiceNumber       String? @unique
+
+    orderDate    DateTime?     @default(now())
+    salesChannel SalesChannel? @default(IN_PERSON)
+
+    paymentStatus     PaymentStatus     @default(PENDING)
+    fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+    returnStatus      ReturnStatus      @default(NONE)
+    paymentMethod     PaymentMethod?
+    // TODO: Make paymentMethod non-nullable and always set it
+
+    moneyHolder    String? // Who has the money
+    moneyCollected Boolean @default(false) // Has the money been collected from moneyHolder?
+
+    notes String?
+
     customerName  String?
     customerPhone String?
 
-    paid Boolean @default(false)
+    // --- Financial Details ---
+    // TODO: Make subtotal and total non-nullable and always set them
+    subtotal Decimal? // Sum of (salePrice * quantity) for all items
+    taxes    Decimal  @default(0) // For future tax calculations
+    shipping Decimal  @default(0) // For future shipping costs
+    discount Decimal  @default(0) // For order-level discounts (e.g., coupon codes)
+    total    Decimal? // The final amount charged to the customer
+    paid     Boolean  @default(false)
 
-    staffName     String? // Who handled the order
-    moneyHolder   String? // Who has the money
-    paymentMethod String?
-    notes         String?
+    // --- Fulfillment Details ---
+    shippingMethod String? // e.g., "USPS Priority", "In-Store Pickup"
+    trackingNumber String?
+
+    shippingAddressId Int?
+    shippingAddress   Address? @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+    billingAddressId  Int? // For separate billing address
+    billingAddress    Address? @relation("BillingAddress", fields: [billingAddressId], references: [id])
+
+    // --- Timestamps for Auditing & Analytics ---
+    paidAt      DateTime? @default(now()) // When the payment was successfully processed
+    fulfilledAt DateTime? @default(now()) // When all items have been shipped/picked up
+    cancelledAt DateTime? // When the order was cancelled
+
+    staffId String?
+    staff   User?   @relation("OrdersByStaff", fields: [staffId], references: [id])
 
     customerId Int?
     customer   Customer? @relation(fields: [customerId], references: [id])
 
     items CustomerOrderItem[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 model CustomerOrderItem {
@@ -236,10 +341,21 @@ model CustomerOrderItem {
     cogs      Decimal?
     salePrice Decimal
 
+    // --- Product details at the time of sale ---
+    // This ensures we have a historical record even if the product or variant changes later
+    productName String? // e.g., "Metok Wonju"
+    productSku  String? // e.g., "ptl_wonj_metok_red_xl"
+
+    isPreOrder        Boolean   @default(false)
+    estimatedShipDate DateTime?
+
     discount Decimal?      @default(0)
     orderId  Int
     order    CustomerOrder @relation(fields: [orderId], references: [id])
 
     productVariantID Int
     variant          ProductVariant @relation(fields: [productVariantID], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
