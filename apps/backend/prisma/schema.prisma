@@ -10,6 +10,7 @@ datasource db {
 enum OrderType {
     CUSTOMER
     PURCHASE
+    MANUAL
 }
 
 /// Tracks all stock changes for audit/history purposes
@@ -23,7 +24,7 @@ model StockChange {
     change     Int // Positive for addition, negative for removal
     reason     String?
     user       String? // Optionally, who made the change
-    changeTime DateTime?
+    changeTime DateTime? @default(now())
 
     orderId   Int? // Optionally, link to a CustomerOrder or PurchaseOrder
     orderType OrderType?
@@ -352,8 +353,7 @@ model CustomerOrderItem {
     productName String? // e.g., "Metok Wonju"
     productSku  String? // e.g., "ptl_wonj_metok_red_xl"
 
-    isPreOrder        Boolean   @default(false)
-    estimatedShipDate DateTime?
+    isPreOrder Boolean @default(false)
 
     discount Decimal?      @default(0)
     orderId  Int
