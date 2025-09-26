@@ -171,8 +171,8 @@ const addPurchaseOrderItem = asyncHandler(async (req, res) => {
     // Add item to purchase order
     const newItem = await prisma.purchaseOrderItem.create({
         data: {
-            PurchaseOrderId: orderId,
-            ProductVariantId: variant.id,
+            purchaseOrderId: orderId,
+            productVariantId: variant.id,
             quantityOrdered,
             costPerItemUsd,
         },
