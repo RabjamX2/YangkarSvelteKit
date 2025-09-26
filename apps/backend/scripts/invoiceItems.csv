@@ -54,13 +54,13 @@ aa00044,In-Person,gcLapChain3darksilverg,3 Chain Lap Rack,darksilverg,1,Delivere
 aa00045,In-Person,ptlMetokBlueXL,Metok Wonju,Blue,1,Delivered,0,$7.43,$35.00,,,$35.00,$35.00
 aa00046,In-Person,gcLapChain2silverc,Single Lap Chain,silverc,1,Delivered,12,$3.51,$20.00,,,$20.00,$20.00
 aa00047,In-Person,tbPlainWonjuMaroonL,,Maroon,1,Delivered,7,,,,,$0.00,$30.00
-aa00048,In-Person,snowlion 13 pro max case,,,1,Delivered,,,,,,$0.00,$15.00
-aa00049,In-Person,pink tashi delek 16 pro max,,,1,Delivered,,,,,,$0.00,$15.00
+aa00048,In-Person,phon_phon_snowlion_iphone_13-pro-max,,,1,Delivered,,,,,,$0.00,$15.00
+aa00049,In-Person,phon_phon_tashidelekpink_iphone_16-pro-max,,,1,Delivered,,,,,,$0.00,$15.00
 aa0005,In-Person,ptlFoldBlackCreamXL,Metok Fold Chupa,BlackCream,1,Delivered,3,$26.65,$75.00,,,$75.00,$75.00
-aa00050,In-Person,15 pro pink tashi delek,,,1,Delivered,,,,,,$0.00,$15.00
+aa00050,In-Person,phon_phon_tashidelekpink_iphone_15-pro,,,1,Delivered,,,,,,$0.00,$15.00
 aa00054,Palzom,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,,,$15.00,,,$0.00,$15.00
-aa00055,In-Person,Endless KNot 15 pro Max,,,1,Delivered,,,,,,$0.00,$15.00
-aa00056,In-Person,snowlion case 13,,,1,Delivered,,,,,,$0.00,$15.00
+aa00055,In-Person,phon_phon_knot_iphone_15-pro-max,,,1,Delivered,,,,,,$0.00,$15.00
+aa00056,In-Person,phon_phon_snowlion_iphone_13,,,1,Delivered,,,,,,$0.00,$15.00
 aa00057,In-Person,jmDhiMenOrangeXL,,Orange,1,Delivered,2,,,,,$0.00,$35.00
 aa00058,In-Person,jmDhiMenBurgundyXXL,,Burgundy,1,Delivered,4,,,,,$0.00,$35.00
 aa00059,In-Person,jmDhiMenBlackL,,Black,1,Delivered,2,,,,,$0.00,$35.00
@@ -69,7 +69,7 @@ aa00060,In-Person,jmDhiMenBurgundyXL,,Burgundy,1,Delivered,3,,,,,$0.00,$35.00
 aa00061,In-Person,gcKnifeGirlGold,,GirlGold,1,Delivered,3,,,,,$0.00,$25.00
 aa00062,In-Person,blLhasaGuchenOrangeL,,Orange,1,Delivered,2,,,,,$0.00,$70.00
 aa00063,In-Person,losVestShirtMenWine RedXXL,,Wine Red,1,Delivered,2,,,,,$0.00,$35.00
-aa00064,In-Person,infinity knot 16+ zele R,,,1,Delivered,,,,,,$0.00,$15.00
+aa00064,In-Person,phon_phon_knot_iphone_16-pro-max,,,1,Delivered,,,,,,$0.00,$15.00
 aa0007,In-Person,gcBMechaMan,Phosar Mecha,Man,1,Delivered,5,$16.83,$30.00,,,$30.00,$30.00
 aa0008,Tayang,gcsmallPachapChain,Gachung Pachap,Chain,1,Delivered,7,$5.61,$40.00,,,$40.00,$25.00
 aa0008,Tayang,gcBPinkapBig,Pinkap,Big,1,Delivered,0,$1.12,$8.00,,,$8.00,$8.00
@@ -149,7 +149,7 @@ ny00011,Pema Lachi,tbPlainWonjuWhiteL,,White,1,Delivered,1,,,,,$0.00,$30.00
 ny00020,Sithar Dolma,gcCoralStackWhite,,White,1,Delivered,3,,,,,$0.00,$15.00
 ny00020,Sithar Dolma,gcCoralStackBlack,Stack Coral Earring,Black,1,Delivered,6,$3.93,$15.00,,,$15.00,$15.00
 ny00020,Sithar Dolma,gcSweetSilvTurqouise,Silver Gachung Earring,Turqouise,1,Delivered,6,$1.12,$8.00,,,$8.00,$8.00
-ny00036,Sonam,blue dxi 15 pro max,,,1,Delivered,,,,,,$0.00,$15.00
+ny00036,Sonam,phon_phon_dzi_iphone_15-pro-max,,,1,Delivered,,,,,,$0.00,$15.00
 sc00022,In-Person (Tenzin Nyima),gcBMechaMan,Phosar Mecha,Man,1,Delivered,5,$16.83,$30.00,,,$30.00,$30.00
 sea00032,Sonam Tso,ptlMetokWhiteXL,Plain Wonju,White,1,Delivered,1,$8.13,$30.00,,,$30.00,$35.00
 sea00032,Sonam Tso,gcLapChain2silverc,Single Lap Chain,silverc,2,Delivered,12,$3.51,$20.00,,,$20.00,$40.00

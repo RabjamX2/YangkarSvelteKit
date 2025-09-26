@@ -100,20 +100,22 @@ async function main() {
                     // for example, If it includes "zelle r" (case insensitive), set moneyHolder to "R"
                     const moneyHolderMatch = invoice["Payment Type"].toLowerCase().match(/zelle\s*(.*)/)[1];
                     if (moneyHolderMatch[1]) {
+                        console.log(`Money holder match for invoice ${invoiceNum}:`, moneyHolderMatch);
                         let orderMoneyHolderLetter = moneyHolderMatch[1].trim();
                         switch (orderMoneyHolderLetter) {
-                            case "R":
+                            case "r":
                                 orderMoneyHolder = "Rabjam";
                                 break;
-                            case "P":
+                            case "p":
                                 orderMoneyHolder = "Pema";
                                 break;
-                            case "D":
+                            case "d":
                                 orderMoneyHolder = "Dechen";
                                 break;
                             default:
                                 orderMoneyHolder = null;
                         }
+                        console.log(console.log(`                      is `, orderMoneyHolder));
                     }
                 }
             } else {
@@ -126,11 +128,13 @@ async function main() {
                     legacyInvoiceNumber: invoiceNum,
                     salesChannel: orderSalesChannel,
                     fulfillmentStatus: orderFulfillmentStatus,
+                    fulfilledAt: new Date(invoice["Order date"]),
                     customerName,
                     orderDate: invoice["Order date"] ? new Date(invoice["Order date"]) : undefined,
                     paymentStatus: PaymentStatus.PAID, // TODO: change if all aren't paid in this dataset
                     paymentMethod: orderPaymentMethod,
                     moneyHolder: orderMoneyHolder,
+                    moneyCollected: true,
                     notes: invoice["Notes"] || null,
                     items: {
                         create: await Promise.all(
@@ -145,9 +149,21 @@ async function main() {
                                 }
                                 if (!variant) {
                                     console.error(
-                                        `No productVariant found for SKU: ${variantSku} (invoice ${invoiceNum})`
+                                        `No productVariant found for legacySku: ${variantSku} (invoice ${invoiceNum})`
                                     );
-                                    return null;
+                                    variant = await prisma.productVariant.findFirst({
+                                        where: { sku: variantSku },
+                                    });
+                                    if (!variant) {
+                                        console.error(
+                                            `No productVariant found for SKU: ${variantSku} (invoice ${invoiceNum}) _______`
+                                        );
+                                        return null;
+                                    } else {
+                                        console.log(
+                                            `! Found productVariant by SKU for sku: ${variantSku} (invoice ${invoiceNum})`
+                                        );
+                                    }
                                 }
                                 return {
                                     variant: { connect: { id: variant.id } },
@@ -162,6 +178,71 @@ async function main() {
                 },
                 include: { items: true },
             });
+
+            // FIFO fulfillment: update inventory and COGS for each item
+            for (const item of order.items) {
+                try {
+                    // FIFO fulfillment
+                    const batches = await prisma.inventoryBatch.findMany({
+                        where: {
+                            productVariantId: item.productVariantId,
+                            quantity: { gt: 0 },
+                        },
+                        include: {
+                            purchaseOrderItem: {
+                                include: { order: true },
+                            },
+                        },
+                    });
+                    batches.sort((a, b) => {
+                        const aArrival = a.purchaseOrderItem?.order?.arrivalDate
+                            ? new Date(a.purchaseOrderItem.order.arrivalDate).getTime()
+                            : 0;
+                        const bArrival = b.purchaseOrderItem?.order?.arrivalDate
+                            ? new Date(b.purchaseOrderItem.order.arrivalDate).getTime()
+                            : 0;
+                        if (aArrival !== bArrival) return aArrival - bArrival;
+                        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                    });
+                    let quantityToFulfill = item.quantity;
+                    let totalCogs = 0;
+                    for (const batch of batches) {
+                        if (quantityToFulfill === 0) break;
+                        const quantityFromThisBatch = Math.min(quantityToFulfill, batch.quantity);
+                        const cost = batch.costCNY ?? batch.costUSD ?? 0;
+                        totalCogs += quantityFromThisBatch * parseFloat(cost);
+                        await prisma.inventoryBatch.update({
+                            where: { id: batch.id },
+                            data: {
+                                quantity: { decrement: quantityFromThisBatch },
+                            },
+                        });
+                        quantityToFulfill -= quantityFromThisBatch;
+                    }
+                    await prisma.customerOrderItem.update({
+                        where: { id: item.id },
+                        data: { cogs: totalCogs },
+                    });
+
+                    // Log stock change for sale
+                    await prisma.stockChange.create({
+                        data: {
+                            productVariantId: item.productVariantId,
+                            variant: { connect: { id: item.productVariantId } },
+                            change: -item.quantity,
+                            changeTime: order.fulfilledAt,
+                            reason: "Sale",
+                            user: "Imported",
+                            orderId: order.id,
+                            orderType: "CUSTOMER",
+                        },
+                    });
+
+                    console.log(`Stock before changes for invoice ${invoiceNum}:`, stockAfterChanges);
+                } catch (fifoErr) {
+                    console.error(`FIFO fulfillment error for item ${item.id} in order ${order.id}:`, fifoErr);
+                }
+            }
             createdCount++;
             console.log(`Created CustomerOrder for invoice ${invoiceNum} with ${items.length} items.`);
         } catch (err) {
