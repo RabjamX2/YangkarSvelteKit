@@ -44,7 +44,9 @@ export const actions = {
                 cookies.set(cookieName, cookieValue, {
                     path: "/",
                     httpOnly: true,
-                    sameSite: "lax",
+                    sameSite: "none",
+                    domain: ".yangkarbhoeche.com",
+                    secure: true,
                     maxAge: 60 * 60 * 24, // 24 hours
                 });
             }

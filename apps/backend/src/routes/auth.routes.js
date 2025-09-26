@@ -26,7 +26,7 @@ const getCookieOptions = () => {
         return {
             httpOnly: true,
             secure: false, // Allow HTTP
-            sameSite: "lax",
+            sameSite: "none",
             expires: new Date(Date.now() + SESSION_DURATION),
         };
     }

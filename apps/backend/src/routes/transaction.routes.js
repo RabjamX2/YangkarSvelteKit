@@ -1,3 +1,23 @@
+/**
+ * Updates customer order info (name, moneyHolder, fulfillmentStatus).
+ */
+const updateCustomerOrder = asyncHandler(async (req, res) => {
+    const orderId = Number(req.params.id);
+    const { customerName, moneyHolder, fulfillmentStatus } = req.body;
+    const data = {};
+    if (typeof customerName === "string") data.customerName = customerName;
+    if (typeof moneyHolder === "string") data.moneyHolder = moneyHolder;
+    if (typeof fulfillmentStatus === "string") data.fulfillmentStatus = fulfillmentStatus;
+    if (Object.keys(data).length === 0) {
+        res.status(400);
+        throw new Error("No valid fields to update");
+    }
+    const updated = await prisma.customerOrder.update({
+        where: { id: orderId },
+        data,
+    });
+    res.json({ data: updated });
+});
 import express from "express";
 import prismaPkg from "@prisma/client";
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -445,6 +465,7 @@ const createStockChange = asyncHandler(async (req, res) => {
 // Customer Orders
 router.get("/customer-orders", authenticateToken, getCustomerOrders);
 router.post("/customer-orders", authenticateToken, createCustomerOrder);
+router.patch("/customer-orders/:id", authenticateToken, updateCustomerOrder);
 router.post("/void-sale/:orderId", authenticateToken, voidCustomerOrder);
 
 // Purchase Orders

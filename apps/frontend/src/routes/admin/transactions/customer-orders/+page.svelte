@@ -11,6 +11,8 @@
     const loadingTransactions = writable(false);
     const errorTransactions = writable(null);
     const expandedOrder = writable(null);
+    const editingOrder = writable(null); // order id being edited
+    const editForm = writable({}); // temp form state
 
     let loggedInUser = "";
     $: loggedInUser = $page.data?.user?.name || $page.data?.user?.username || $page.data?.user?.email || "";
@@ -19,6 +21,47 @@
     const fetchAuth = (url, options = {}) => {
         return fetch(url, { ...options, credentials: "include" });
     };
+
+    async function startEdit(order) {
+        editingOrder.set(order.id);
+        editForm.set({
+            name: order.customerName || order.customer?.name || "",
+            moneyHolder: order.moneyHolder || "",
+            status: order.fulfillmentStatus || "",
+        });
+    }
+
+    function cancelEdit() {
+        editingOrder.set(null);
+        editForm.set({});
+    }
+
+    async function saveEdit(order) {
+        let $editForm;
+        editForm.subscribe((v) => ($editForm = v))();
+        try {
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders/${order.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customerName: $editForm.name,
+                    moneyHolder: $editForm.moneyHolder,
+                    fulfillmentStatus: $editForm.status,
+                }),
+            });
+            if (!res.ok) throw new Error("Failed to update order");
+            // Refresh orders
+            const custRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`);
+            if (custRes.ok) {
+                const custData = await custRes.json();
+                customerOrders.set(custData.data || []);
+            }
+            editingOrder.set(null);
+            editForm.set({});
+        } catch (e) {
+            alert(e instanceof Error ? e.message : String(e));
+        }
+    }
 
     async function voidOrder(orderId) {
         if (!confirm("Are you sure you want to void this transaction? This cannot be undone.")) return;
@@ -85,29 +128,85 @@
                             </button>
                         </td>
                         <td>{order.id}</td>
-                        <td
-                            >{order.customer?.name || order.customerName || "-"} ({order.customer?.phone ||
-                                order.customerPhone ||
-                                "-"})</td
-                        >
-                        <td>{order.orderDate ? new Date(order.orderDate).toLocaleString() : "-"}</td>
-                        <td>{order.total ?? "-"}</td>
-                        <td>{order.paymentMethod ?? "-"}</td>
-                        <td>{order.moneyHolder ?? "-"}</td>
-                        <td>
-                            {order.fulfillmentStatus === "CANCELLED"
-                                ? "Voided"
-                                : order.fulfillmentStatus?.charAt(0) + order.fulfillmentStatus?.slice(1).toLowerCase()}
-                        </td>
-                        <td>
-                            <button
-                                on:click={() => voidOrder(order.id)}
-                                style="color:red;"
-                                disabled={order.fulfillmentStatus === "CANCELLED"}
+                        {#if $editingOrder === order.id}
+                            <td>
+                                <input
+                                    type="text"
+                                    bind:value={$editForm.name}
+                                    placeholder="Customer Name"
+                                    style="width:120px;background:var(--color-bg);color:var(--color-link);border:1px solid var(--color-border);border-radius:4px;padding:0.2rem 0.5rem;"
+                                />
+                                <div style="font-size:0.92em;color:var(--color-link-hover);margin-top:0.2em;">
+                                    ({order.customer?.phone || order.customerPhone || "-"})
+                                </div>
+                            </td>
+                            <td>{order.orderDate ? new Date(order.orderDate).toLocaleString() : "-"}</td>
+                            <td>{order.total ?? "-"}</td>
+                            <td>{order.paymentMethod ?? "-"}</td>
+                            <td>
+                                <input
+                                    type="text"
+                                    bind:value={$editForm.moneyHolder}
+                                    placeholder="Money Holder"
+                                    style="width:90px;background:var(--color-bg);color:var(--color-link);border:1px solid var(--color-border);border-radius:4px;padding:0.2rem 0.5rem;"
+                                />
+                            </td>
+                            <td>
+                                <select
+                                    bind:value={$editForm.status}
+                                    style="background:var(--color-bg);color:var(--color-link);border:1px solid var(--color-border);border-radius:4px;padding:0.2rem 0.5rem;"
+                                >
+                                    <option value="UNFULFILLED">Unfulfilled</option>
+                                    <option value="PROCESSING">Processing</option>
+                                    <option value="SHIPPED">Shipped</option>
+                                    <option value="DELIVERED">Delivered</option>
+                                    <option value="PICKED_UP">Picked Up</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                </select>
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <button
+                                    on:click={() => saveEdit(order)}
+                                    style="background:var(--color-signup-bg);color:var(--color-signup);border:none;border-radius:4px;padding:0.25rem 0.9rem;font-weight:600;box-shadow:0 1px 2px 0 var(--color-shadow);margin-right:0.4rem;cursor:pointer;transition:background 0.18s;"
+                                    >💾 Save</button
+                                >
+                                <button
+                                    on:click={cancelEdit}
+                                    style="background:var(--color-link-bg-hover);color:var(--color-link);border:none;border-radius:4px;padding:0.25rem 0.9rem;font-weight:500;box-shadow:0 1px 2px 0 var(--color-shadow);cursor:pointer;transition:background 0.18s;"
+                                    >✕ Cancel</button
+                                >
+                            </td>
+                        {:else}
+                            <td
+                                >{order.customer?.name || order.customerName || "-"} ({order.customer?.phone ||
+                                    order.customerPhone ||
+                                    "-"})</td
                             >
-                                Void
-                            </button>
-                        </td>
+                            <td>{order.orderDate ? new Date(order.orderDate).toLocaleString() : "-"}</td>
+                            <td>{order.total ?? "-"}</td>
+                            <td>{order.paymentMethod ?? "-"}</td>
+                            <td>{order.moneyHolder ?? "-"}</td>
+                            <td>
+                                {order.fulfillmentStatus === "CANCELLED"
+                                    ? "Voided"
+                                    : order.fulfillmentStatus?.charAt(0) +
+                                      order.fulfillmentStatus?.slice(1).toLowerCase()}
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <button
+                                    on:click={() => startEdit(order)}
+                                    style="background:var(--color-link-bg-hover);color:var(--color-link);border:none;border-radius:4px;padding:0.3rem 1rem;margin-right:0.5rem;cursor:pointer;"
+                                    >Edit</button
+                                >
+                                <button
+                                    on:click={() => voidOrder(order.id)}
+                                    style="color:red;background:var(--color-bg);border:1px solid var(--color-border);border-radius:4px;padding:0.3rem 1rem;cursor:pointer;"
+                                    disabled={order.fulfillmentStatus === "CANCELLED"}
+                                >
+                                    Void
+                                </button>
+                            </td>
+                        {/if}
                     </tr>
                     {#if $expandedOrder === order.id}
                         <tr class:order-cancelled={order.fulfillmentStatus === "CANCELLED"}>
