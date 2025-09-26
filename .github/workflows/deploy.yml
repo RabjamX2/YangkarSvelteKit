@@ -107,4 +107,7 @@ jobs:
                       export NVM_DIR="$HOME/.nvm"
                       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
+                      git pull origin main
+                      pnpm install
+
                       pm2 restart frontend
