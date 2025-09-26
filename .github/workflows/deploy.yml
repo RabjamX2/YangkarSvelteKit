@@ -82,7 +82,7 @@ jobs:
             - name: Build SvelteKit App
               env:
                   # This sets the public backend URL during the build process
-                  PUBLIC_BACKEND_URL: "https://api.yangkarbhoeche.com"
+                  VITE_PUBLIC_BACKEND_URL: "https://api.yangkarbhoeche.com"
               # This runs the 'build' script specifically for the 'frontend' app
               run: pnpm --filter frontend build
 
