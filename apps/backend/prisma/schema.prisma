@@ -7,20 +7,26 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
+enum OrderType {
+    CUSTOMER
+    PURCHASE
+}
+
 /// Tracks all stock changes for audit/history purposes
 model StockChange {
     id   Int      @id @default(autoincrement())
     date DateTime @default(now())
 
-    productVariantID Int
-    variant          ProductVariant @relation(fields: [productVariantID], references: [id])
+    productVariantId Int
+    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
 
-    change Int // Positive for addition, negative for removal
-    reason String?
-    user   String? // Optionally, who made the change
+    change     Int // Positive for addition, negative for removal
+    reason     String?
+    user       String? // Optionally, who made the change
+    changeTime DateTime?
 
     orderId   Int? // Optionally, link to a CustomerOrder or PurchaseOrder
-    orderType String? // "customer" or "purchase" or null
+    orderType OrderType?
 
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
@@ -100,10 +106,10 @@ model Product {
     barcodeBase String? @unique // e.g., UPC or EAN barcode
 
     // Relationships
-    supplierID Int
-    supplier   Supplier @relation(fields: [supplierID], references: [id])
-    categoryID Int
-    category   Category @relation(fields: [categoryID], references: [id])
+    supplierId Int
+    supplier   Supplier @relation(fields: [supplierId], references: [id])
+    categoryId Int
+    category   Category @relation(fields: [categoryId], references: [id])
 
     variants ProductVariant[]
 
@@ -128,8 +134,8 @@ model ProductVariant {
 
     salePrice Decimal?
 
-    productID Int
-    product   Product @relation(fields: [productID], references: [id], onDelete: Cascade)
+    productId Int
+    product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
     purchaseOrderItems PurchaseOrderItem[]
     customerOrderItems CustomerOrderItem[]
@@ -140,7 +146,7 @@ model ProductVariant {
     updatedAt DateTime @default(now()) @updatedAt
 
     // This line adds the index to the productSkuBase field for faster lookups.
-    @@index([productID])
+    @@index([productId])
 }
 
 // This model tracks each incoming batch of stock with its specific cost.
@@ -190,11 +196,11 @@ model PurchaseOrderItem {
     costPerItemCny  Decimal?
     costPerItemUsd  Decimal?
 
-    PurchaseOrderID Int
-    order           PurchaseOrder @relation(fields: [PurchaseOrderID], references: [id])
+    purchaseOrderId Int
+    order           PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
 
-    ProductVariantID Int
-    variant          ProductVariant @relation(fields: [ProductVariantID], references: [id])
+    productVariantId Int
+    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
 
     inventoryBatch InventoryBatch?
 
@@ -353,8 +359,8 @@ model CustomerOrderItem {
     orderId  Int
     order    CustomerOrder @relation(fields: [orderId], references: [id])
 
-    productVariantID Int
-    variant          ProductVariant @relation(fields: [productVariantID], references: [id])
+    productVariantId Int
+    variant          ProductVariant @relation(fields: [productVariantId], references: [id])
 
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt

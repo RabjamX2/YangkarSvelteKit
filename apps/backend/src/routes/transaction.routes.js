@@ -171,8 +171,8 @@ const addPurchaseOrderItem = asyncHandler(async (req, res) => {
     // Add item to purchase order
     const newItem = await prisma.purchaseOrderItem.create({
         data: {
-            PurchaseOrderID: orderId,
-            ProductVariantID: variant.id,
+            PurchaseOrderId: orderId,
+            ProductVariantId: variant.id,
             quantityOrdered,
             costPerItemUsd,
         },
@@ -295,7 +295,7 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
         // Log stock change only; no direct productVariant stock update
         await prisma.stockChange.create({
             data: {
-                productVariantID: item.productVariantId,
+                productVariantId: item.productVariantId,
                 change: -item.quantity,
                 reason: "Sale",
                 user: userFromToken?.username || customer?.name || "Guest",
@@ -322,10 +322,10 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "Purchase order not found" });
     }
     for (const item of purchaseOrder.items) {
-        await receiveStock(item.ProductVariantID, item.quantityOrdered, parseFloat(item.costPerItemCny), item.id);
+        await receiveStock(item.productVariantId, item.quantityOrdered, parseFloat(item.costPerItemCny), item.id);
         await prisma.stockChange.create({
             data: {
-                productVariantID: item.ProductVariantID,
+                productVariantId: item.productVariantId,
                 change: item.quantityOrdered,
                 reason: "Purchase Order Received",
                 user: req.user?.username || "System",
@@ -429,7 +429,7 @@ const createStockChange = asyncHandler(async (req, res) => {
     }
     const stockChange = await prisma.stockChange.create({
         data: {
-            productVariantID: Number(productVariantId),
+            productVariantId: Number(productVariantId),
             change: Number(change),
             reason,
             user: userFromToken?.username || "Manual",

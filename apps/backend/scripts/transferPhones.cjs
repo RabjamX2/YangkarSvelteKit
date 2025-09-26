@@ -41,7 +41,7 @@ async function main() {
         purchaseOrder = await prisma.purchaseOrder.create({
             data: {
                 batchNumber: batchNumber,
-                arrivalDate: null,
+                arrivalDate: new Date("2025-08-12 EST"),
             },
         });
     }
@@ -92,16 +92,16 @@ async function main() {
                     displayName: item["Item name"] || skuBase,
                     style: item["Style"],
                     notes: null,
-                    supplierID: supplier.id,
-                    categoryID: category.id,
+                    supplierId: supplier.id,
+                    categoryId: category.id,
                 },
                 create: {
                     skuBase,
                     displayName: item["Item name"] || skuBase,
                     style: item["Style"],
                     notes: null,
-                    supplierID: supplier.id,
-                    categoryID: category.id,
+                    supplierId: supplier.id,
+                    categoryId: category.id,
                 },
             });
             // ProductVariant: sku = skuBase + Color/Type + Size (e.g., "phoneCaseSnowlioniPhone13")
@@ -112,14 +112,14 @@ async function main() {
                     color: item["Color / Type"] || null,
                     size: item["Size"] || null,
                     salePrice: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
-                    productID: product.id,
+                    productId: product.id,
                 },
                 create: {
                     sku,
                     color: item["Color / Type"] || null,
                     size: item["Size"] || null,
                     salePrice: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
-                    productID: product.id,
+                    productId: product.id,
                 },
             });
             // Create PurchaseOrderItem
@@ -128,8 +128,8 @@ async function main() {
                     quantityOrdered: item["Quantity"] ? parseInt(item["Quantity"], 10) : 0,
                     costPerItemCny: item["CNY Per"] ? parseFloat(item["CNY Per"].replace(/[¥,]/g, "")) : null,
                     costPerItemUsd: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
-                    PurchaseOrderID: purchaseOrder.id,
-                    ProductVariantID: variant.id,
+                    purchaseOrderId: purchaseOrder.id,
+                    productVariantId: variant.id,
                 },
             });
             console.log(`Processed row ${index + 1}: ${sku}`);

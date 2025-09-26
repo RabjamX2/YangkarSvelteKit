@@ -214,7 +214,7 @@
                                     .toLowerCase()
                                     .includes(s)) || (v.size && v.size.toLowerCase().includes(s)));
                     // Category filter
-                    if ($selectedCategory && p.categoryID !== Number($selectedCategory)) return false;
+                    if ($selectedCategory && p.categoryId !== Number($selectedCategory)) return false;
                     // Show product if product matches or any variant matches
                     return !$search || productMatch || variants.length > 0;
                 })
@@ -249,7 +249,7 @@
                                 <span class="sku-base">{product.skuBase}</span>
                                 <span class="product-name">{product.displayName ?? product.name}</span>
                                 <span class="product-category"
-                                    >{categoryIdToName[product.categoryID] ?? "No Category"}</span
+                                    >{categoryIdToName[product.categoryId] ?? "No Category"}</span
                                 >
                                 <span class="product-price" style="margin-left:1.2rem;color:#059669;font-weight:600;">
                                     {(() => {
@@ -298,7 +298,7 @@
                                 // If product matches, show all variants
                                 const productMatch = product.skuBase?.toLowerCase().includes(s) || product.displayName
                                         ?.toLowerCase()
-                                        .includes(s) || (categoryIdToName[product.categoryID]
+                                        .includes(s) || (categoryIdToName[product.categoryId]
                                         ?.toLowerCase()
                                         .includes(s) ?? false);
                                 if (!$search || productMatch) {

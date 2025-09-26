@@ -174,16 +174,16 @@ async function main() {
                         displayName: item["Item name"],
                         style: item["Style"],
                         notes: item["Notes"] || null,
-                        supplierID: supplier.id,
-                        categoryID: category.id,
+                        supplierId: supplier.id,
+                        categoryId: category.id,
                     },
                     create: {
                         skuBase: skuBase,
                         displayName: item["Item name"],
                         style: item["Style"],
                         notes: item["Notes"] || null,
-                        supplierID: supplier.id,
-                        categoryID: category.id,
+                        supplierId: supplier.id,
+                        categoryId: category.id,
                     },
                 });
 
@@ -194,14 +194,14 @@ async function main() {
                     update: {
                         color: item["Color / Type"] || null,
                         size: item["Size"] || null,
-                        productID: product.id,
+                        productId: product.id,
                     },
                     create: {
                         sku: skuSpecific,
                         legacySku: item["SKU Specific"] || null,
                         color: item["Color / Type"] || null,
                         size: item["Size"] || null,
-                        productID: product.id,
+                        productId: product.id,
                     },
                 });
                 // 5. Create PurchaseOrderItem

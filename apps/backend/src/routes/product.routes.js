@@ -43,7 +43,7 @@ const getProducts = asyncHandler(async (req, res) => {
     const categoryIds = categories.map((cat) => categoryDict[cat]).filter(Boolean);
     if (categories.length > 0) {
         if (categoryIds.length > 0) {
-            whereClauses.push(Prisma.sql`p."categoryID" IN (${Prisma.join(categoryIds)})`);
+            whereClauses.push(Prisma.sql`p."categoryId" IN (${Prisma.join(categoryIds)})`);
         }
     }
     const where = whereClauses.length > 0 ? Prisma.sql`WHERE ${Prisma.join(whereClauses, " AND ")}` : Prisma.empty;
@@ -51,15 +51,15 @@ const getProducts = asyncHandler(async (req, res) => {
     const products = await prisma.$queryRaw`
       SELECT
         p.id, p."skuBase", p."displayName", p."createdAt",
-        (SELECT MIN(pv."salePrice") FROM "ProductVariant" pv WHERE pv."productID" = p."id" AND pv."salePrice" IS NOT NULL) as "minSalePrice",
-        (SELECT pv."imgUrl" FROM "ProductVariant" pv WHERE pv."productID" = p."id" AND pv."salePrice" IS NOT NULL ORDER BY pv."salePrice" ASC LIMIT 1) as "displayImageUrl"
+        (SELECT MIN(pv."salePrice") FROM "ProductVariant" pv WHERE pv."productId" = p."id" AND pv."salePrice" IS NOT NULL) as "minSalePrice",
+        (SELECT pv."imgUrl" FROM "ProductVariant" pv WHERE pv."productId" = p."id" AND pv."salePrice" IS NOT NULL ORDER BY pv."salePrice" ASC LIMIT 1) as "displayImageUrl"
       FROM "Product" p
       ${where}
       ORDER BY ${orderBy}
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const whereFilter = categoryIds.length > 0 ? { categoryID: { in: categoryIds } } : {};
+    const whereFilter = categoryIds.length > 0 ? { categoryId: { in: categoryIds } } : {};
     const totalProductsResult = await prisma.product.count({ where: whereFilter });
 
     res.json({
