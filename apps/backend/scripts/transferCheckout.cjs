@@ -166,7 +166,7 @@ async function main() {
                                     }
                                 }
                                 return {
-                                    variant: { connect: { id: variant.id } },
+                                    productVariantId: variant.id,
                                     quantity: Number(item["Quantity"] || 0),
                                     salePrice:
                                         Number(item["Total Final Price"].replace(/[$,]/g, "")) /
@@ -228,7 +228,6 @@ async function main() {
                     await prisma.stockChange.create({
                         data: {
                             productVariantId: item.productVariantId,
-                            variant: { connect: { id: item.productVariantId } },
                             change: -item.quantity,
                             changeTime: order.fulfilledAt,
                             reason: "Sale",
@@ -237,8 +236,6 @@ async function main() {
                             orderType: "CUSTOMER",
                         },
                     });
-
-                    console.log(`Stock before changes for invoice ${invoiceNum}:`, stockAfterChanges);
                 } catch (fifoErr) {
                     console.error(`FIFO fulfillment error for item ${item.id} in order ${order.id}:`, fifoErr);
                 }

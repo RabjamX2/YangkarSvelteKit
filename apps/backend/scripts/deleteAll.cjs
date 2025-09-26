@@ -16,7 +16,7 @@ const tableNameList = ["CustomerOrderItem", "CustomerOrder", "Customer"];
 const tableNameList3 = ["InventoryBatch", "StockChange", "CustomerOrderItem", "CustomerOrder", "Customer"];
 
 async function main() {
-    for (const tableName of tableNameList2) {
+    for (const tableName of tableNameList3) {
         await prisma.$executeRawUnsafe(`DELETE FROM "${tableName}" CASCADE`);
         await prisma.$executeRawUnsafe(`ALTER SEQUENCE "${tableName}_id_seq" RESTART WITH 1`);
         // Set all entries in a table to null for a specific column
