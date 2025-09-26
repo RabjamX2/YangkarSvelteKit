@@ -38,12 +38,21 @@ export const actions = {
                 const isProduction = process.env.NODE_ENV === "production";
                 console.log(`Code is running in ${isProduction ? "production" : "development"} mode.`);
 
+                // cookies.set("session_token", sessionToken, {
+                //     path: "/",
+                //     httpOnly: true,
+                //     secure: isProduction ? true : false,
+                //     sameSite: isProduction ? "none" : "lax",
+                //     domain: isProduction ? ".yangkarbhoeche.com" : undefined,
+                //     maxAge: 60 * 60 * 24 * 7, // 1 week
+                // });
+
                 cookies.set("session_token", sessionToken, {
                     path: "/",
                     httpOnly: true,
-                    secure: isProduction, // Use secure cookies in production
-                    sameSite: isProduction ? "none" : "lax",
-                    domain: isProduction ? ".yangkarbhoeche.com" : undefined, // Do not set domain for localhost
+                    secure: true,
+                    sameSite: "none",
+                    domain: ".yangkarbhoeche.com",
                     maxAge: 60 * 60 * 24 * 7, // 1 week
                 });
             }

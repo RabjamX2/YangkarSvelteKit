@@ -12,24 +12,31 @@ const prisma = new PrismaClient();
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 const getCookieOptions = () => {
-    if (process.env.NODE_ENV === "production") {
-        // Production settings
-        return {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            domain: ".yangkarbhoeche.com",
-            expires: new Date(Date.now() + SESSION_DURATION),
-        };
-    } else {
-        // Development settings
-        return {
-            httpOnly: true,
-            secure: false, // Allow HTTP
-            sameSite: "none",
-            expires: new Date(Date.now() + SESSION_DURATION),
-        };
-    }
+    // if (process.env.NODE_ENV === "production") {
+    //     // Production settings
+    //     return {
+    //         httpOnly: true,
+    //         secure: true,
+    //         sameSite: "none",
+    //         domain: ".yangkarbhoeche.com",
+    //         expires: new Date(Date.now() + SESSION_DURATION),
+    //     };
+    // } else {
+    //     // Development settings
+    //     return {
+    //         httpOnly: true,
+    //         secure: false, // Allow HTTP
+    //         sameSite: "none",
+    //         expires: new Date(Date.now() + SESSION_DURATION),
+    //     };
+    // }
+    return {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        domain: ".yangkarbhoeche.com",
+        expires: new Date(Date.now() + SESSION_DURATION),
+    };
 };
 
 // --- Route Controllers ---
