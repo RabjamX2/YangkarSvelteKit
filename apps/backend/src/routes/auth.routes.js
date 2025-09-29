@@ -18,7 +18,7 @@ const getCookieOptions = () => {
     //         httpOnly: true,
     //         secure: true,
     //         sameSite: "none",
-    //         domain: ".yangkarbhoeche.com",
+    //         domain: "yangkarbhoeche.com",
     //         expires: new Date(Date.now() + SESSION_DURATION),
     //     };
     // } else {
@@ -34,7 +34,7 @@ const getCookieOptions = () => {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        domain: ".yangkarbhoeche.com",
+        domain: "yangkarbhoeche.com",
         expires: new Date(Date.now() + SESSION_DURATION),
     };
 };
@@ -74,7 +74,7 @@ const signup = asyncHandler(async (req, res) => {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        domain: ".yangkarbhoeche.com",
+        domain: "yangkarbhoeche.com",
         expires: expiresAt,
     });
 
@@ -137,7 +137,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
             httpOnly: true,
             secure: true,
             sameSite: "none",
-            domain: ".yangkarbhoeche.com",
+            // domain: "yangkarbhoeche.com",
             expires: newExpiresAt,
         });
 

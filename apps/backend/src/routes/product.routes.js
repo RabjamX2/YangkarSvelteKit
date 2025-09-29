@@ -102,7 +102,7 @@ const updateProductVariant = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = req.body;
     // Only allow updating certain fields for safety
-    const allowedFields = ["sku", "color", "displayColor", "size", "salePrice", "stock", "visable"];
+    const allowedFields = ["sku", "color", "displayColor", "size", "salePrice", "stock", "visable", "imgUrl"];
     const updateData = {};
     for (const field of allowedFields) {
         if (field in data) updateData[field] = data[field];

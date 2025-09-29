@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import cartRoutes from "./routes/cart.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js"; // Import transaction routes
+import imageRoutes from "./routes/image.routes.js"; // Import image routes
 
 // Import middleware
 import errorHandler from "./middleware/errorHandler.js";
@@ -31,13 +32,15 @@ app.use(express.json());
 app.use(cookieParser());
 
 // --- API Routes ---
-// All authentication routes will be prefixed with /api
+// All authentication routes
 app.use("/api", authRoutes);
-// All product-related routes will be prefixed with /api
+// All product-related routes
 app.use("/api", productRoutes);
-// All cart-related routes will be prefixed with /api
+// All cart-related routes
 app.use("/api", cartRoutes); // Use cart routes
 app.use("/api", transactionRoutes); // Use transaction routes
+// All image-related routes
+app.use("/api", imageRoutes);
 
 // --- Centralized Error Handler ---
 // This should be the LAST middleware you use

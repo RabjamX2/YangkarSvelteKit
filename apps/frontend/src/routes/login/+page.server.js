@@ -43,7 +43,7 @@ export const actions = {
                 //     httpOnly: true,
                 //     secure: isProduction ? true : false,
                 //     sameSite: isProduction ? "none" : "lax",
-                //     domain: isProduction ? ".yangkarbhoeche.com" : undefined,
+                //     domain: isProduction ? "yangkarbhoeche.com" : undefined,
                 //     maxAge: 60 * 60 * 24 * 7, // 1 week
                 // });
 
@@ -52,7 +52,7 @@ export const actions = {
                     httpOnly: true,
                     secure: true,
                     sameSite: "none",
-                    domain: isProduction ? ".yangkarbhoeche.com" : undefined,
+                    domain: isProduction ? "yangkarbhoeche.com" : undefined,
                     maxAge: 60 * 60 * 24 * 7, // 1 week
                 });
             }

@@ -45,7 +45,7 @@ export const actions = {
                     path: "/",
                     httpOnly: true,
                     sameSite: "none",
-                    domain: ".yangkarbhoeche.com",
+                    domain: "yangkarbhoeche.com",
                     secure: true,
                     maxAge: 60 * 60 * 24, // 24 hours
                 });

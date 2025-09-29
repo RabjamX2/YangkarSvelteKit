@@ -1,3 +1,17 @@
+import express from "express";
+import prismaPkg from "@prisma/client";
+import asyncHandler from "../middleware/asyncHandler.js";
+import authenticateToken from "../middleware/authenticateToken.js";
+import { fulfillStock, receiveStock } from "../services/inventory.service.js";
+
+const { PrismaClient } = prismaPkg;
+const router = express.Router();
+const prisma = new PrismaClient();
+
+// =========================
+// Route Controllers
+// =========================
+
 /**
  * Updates customer order info (name, moneyHolder, fulfillmentStatus).
  */
@@ -18,19 +32,7 @@ const updateCustomerOrder = asyncHandler(async (req, res) => {
     });
     res.json({ data: updated });
 });
-import express from "express";
-import prismaPkg from "@prisma/client";
-import asyncHandler from "../middleware/asyncHandler.js";
-import authenticateToken from "../middleware/authenticateToken.js";
-import { fulfillStock, receiveStock } from "../services/inventory.service.js";
 
-const { PrismaClient } = prismaPkg;
-const router = express.Router();
-const prisma = new PrismaClient();
-
-// =========================
-// Route Controllers
-// =========================
 /**
  * Adds a new inventory batch, creating a new variant if needed.
  */

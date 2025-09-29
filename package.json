@@ -15,8 +15,12 @@
         "pnpm": ">=10.13.1"
     },
     "devDependencies": {
+        "@tailwindcss/postcss": "^4.1.13",
+        "autoprefixer": "^10.4.21",
+        "postcss": "^8.5.6",
         "prettier": "^3.6.2",
-        "prettier-plugin-svelte": "^3.4.0"
+        "prettier-plugin-svelte": "^3.4.0",
+        "tailwindcss": "^4.1.13"
     },
     "dependencies": {
         "pnpm": "^10.17.1"

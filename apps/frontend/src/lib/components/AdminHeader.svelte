@@ -8,6 +8,11 @@
                     </a>
                 </div>
                 <div class="nav-item">
+                    <a class="nav-link" href="/admin/image-upload">
+                        <span class="nav-link-text">Image Upload</span>
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a class="nav-link" href="/admin/transactions/customer-orders">
                         <span class="nav-link-text">Transaction History</span>
                     </a>
