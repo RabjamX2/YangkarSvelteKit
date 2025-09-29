@@ -1,6 +1,68 @@
 <script>
+    // @ts-nocheck
+    import { enhance } from "$app/forms";
+    import { goto } from "$app/navigation";
+    import { onMount } from "svelte";
+    import { hashPassword, isWebCryptoAvailable } from "$lib/utils/password.js";
+
     /** @type {import('./$types').ActionData} */
     export let form;
+    /** @type {import('./$types').PageData} */
+    export let data;
+
+    // Track login progress
+    let isSubmitting = false;
+
+    // Handle successful login with onMount to avoid timing issues
+    onMount(() => {
+        if (form?.success) {
+            // Use window.location.href instead of goto() to force a full page reload
+            // This ensures the layout will get the updated user state
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 100);
+        }
+    });
+
+    // Enhanced form handler with client-side password hashing
+    function handlePasswordHash() {
+        return async ({ formData }) => {
+            isSubmitting = true;
+
+            try {
+                // Check if Web Crypto API is available
+                const password = formData.get("password");
+                if (password && isWebCryptoAvailable()) {
+                    try {
+                        // Hash the password with SHA-256 before sending
+                        const hashedPassword = await hashPassword(password.toString());
+                        formData.set("password", hashedPassword);
+                        formData.set("passwordHashMethod", "sha256-client");
+                    } catch (cryptoError) {
+                        console.warn("Client-side hashing failed:", cryptoError);
+                        // Continue with unhashed password - server will handle it
+                    }
+                } else if (!isWebCryptoAvailable()) {
+                    console.warn("Web Crypto API not available - using server-side hashing only");
+                }
+            } catch (error) {
+                console.error("Form enhancement error:", error);
+            }
+
+            // Return a callback for post-submission handling
+            return ({ update, result }) => {
+                isSubmitting = false;
+
+                if (result?.type === "success") {
+                    // Force a full page reload instead of client-side navigation
+                    // This ensures that the root layout gets the latest user data
+                    setTimeout(() => {
+                        window.location.href = "/";
+                    }, 100);
+                }
+            };
+        };
+    }
 </script>
 
 <svelte:head>
@@ -9,9 +71,13 @@
 
 <div class="auth-container">
     <h2>Login to Your Account</h2>
-    <form method="POST">
+    <form method="POST" use:enhance={handlePasswordHash()}>
         {#if form?.error}
             <p class="error">{form.error}</p>
+        {/if}
+
+        {#if data.success}
+            <p class="success">{data.success}</p>
         {/if}
 
         <div class="form-group">
@@ -26,7 +92,9 @@
 
         <div class="form-actions">
             <a href="/forgot-password" class="forgot-password-link">Forgot Password?</a>
-            <button type="submit" class="submit-btn">Login</button>
+            <button type="submit" class="submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Logging in..." : "Login"}
+            </button>
         </div>
     </form>
     <p class="auth-switch">
@@ -92,6 +160,15 @@
         color: #e53e3e;
         background-color: #fef2f2;
         border: 1px solid #fecaca;
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    .success {
+        color: #059669;
+        background-color: #ecfdf5;
+        border: 1px solid #a7f3d0;
         padding: 0.75rem;
         border-radius: 4px;
         margin-bottom: 1rem;

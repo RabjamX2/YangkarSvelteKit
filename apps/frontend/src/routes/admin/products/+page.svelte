@@ -5,6 +5,8 @@
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
+    import { createAuthFetch } from "$lib/utils/csrf";
+    import { page } from "$app/stores";
     import "./productTable.css";
 
     const products = writable([]);
@@ -54,14 +56,16 @@
     onMount(async () => {
         loading.set(true);
         try {
+            const fetchAuth = createAuthFetch($page);
+
             // Fetch categories
-            const catRes = await fetch(`${PUBLIC_BACKEND_URL}/api/categories`);
+            const catRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/categories`);
             if (catRes.ok) {
                 const catData = await catRes.json();
                 categories.set(catData);
             }
             // Fetch products with variants (all for admin)
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch products");
             const data = await res.json();
             products.set(data.data);
@@ -89,7 +93,8 @@
             } else {
                 throw new Error("Invalid type");
             }
-            const res = await fetch(url, {
+            const fetchAuth = createAuthFetch($page);
+            const res = await fetchAuth(url, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
@@ -116,7 +121,8 @@
         edits.subscribe((v) => ($edits = v))();
         if (!$edits[id]) return;
         try {
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products/${id}`, {
+            const fetchAuth = createAuthFetch($page);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify($edits[id]),
@@ -138,7 +144,8 @@
         edits.subscribe((v) => ($edits = v))();
         if (!$edits[variantId]) return;
         try {
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
+            const fetchAuth = createAuthFetch($page);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify($edits[variantId]),
@@ -169,9 +176,10 @@
         const variantIds = product.variants.map((v) => v.id);
         try {
             // Update all variants in parallel
+            const fetchAuth = createAuthFetch($page);
             await Promise.all(
                 variantIds.map(async (variantId) => {
-                    const res = await fetch(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
+                    const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ salePrice: price }),

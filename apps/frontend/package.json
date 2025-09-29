@@ -25,6 +25,7 @@
 	},
 	"dependencies": {
 		"browser-image-compression": "^2.0.2",
-		"cropperjs": "^2.0.1"
+		"cropperjs": "^2.0.1",
+		"set-cookie-parser": "^2.7.1"
 	}
 }

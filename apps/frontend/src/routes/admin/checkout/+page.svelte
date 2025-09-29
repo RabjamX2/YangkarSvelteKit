@@ -5,6 +5,8 @@
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
+    import { createAuthFetch } from "$lib/utils/csrf";
+    import { page } from "$app/stores";
 
     const products = writable([]);
     const variants = writable([]);
@@ -23,8 +25,10 @@
     onMount(async () => {
         loading.set(true);
         try {
+            const fetchAuth = createAuthFetch($page);
+
             // Fetch products and variants
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch products");
             const data = await res.json();
             products.set(data.data);
@@ -37,13 +41,7 @@
             variants.set(allVariants);
 
             // Fetch inventory batches for stock calculation
-            const batchRes = await fetch(`${PUBLIC_BACKEND_URL}/api/inventory-batches`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include", // include cookies for auth
-            });
+            const batchRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/inventory-batches`);
             if (!batchRes.ok) throw new Error("Failed to fetch inventory batches");
             const batchData = await batchRes.json();
             inventoryBatches.set(batchData.data || []);
@@ -192,12 +190,12 @@
             if ($shippingRequired) {
                 body.shippingAddress = $shippingAddress;
             }
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
+            const fetchAuth = createAuthFetch($page);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                credentials: "include",
                 body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error("Failed to complete sale");

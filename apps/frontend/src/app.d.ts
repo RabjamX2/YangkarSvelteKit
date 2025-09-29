@@ -8,7 +8,10 @@ declare global {
                 id: string;
                 username: string;
                 role: "USER" | "ADMIN";
+                name?: string;
+                email?: string;
             } | null;
+            csrfToken: string | null;
         }
         // interface PageData {}
         // interface Platform {}

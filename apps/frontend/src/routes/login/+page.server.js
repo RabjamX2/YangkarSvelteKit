@@ -1,62 +1,106 @@
-import { fail, redirect } from "@sveltejs/kit";
+import { fail } from "@sveltejs/kit";
 const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+
+/** @type {import('./$types').PageServerLoad} */
+export function load({ url }) {
+    const success = url.searchParams.get("success");
+    return { success };
+}
 
 /** @type {import('./$types').Actions} */
 export const actions = {
     // This is the 'default' action for the form
     default: async ({ cookies, request, fetch }) => {
-        const data = await request.formData();
-        const username = data.get("username");
-        const password = data.get("password");
+        let username, password, passwordHashMethod;
 
-        // 1. Send the login request to your backend API
-        const response = await fetch(`${PUBLIC_BACKEND_URL}/api/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
-            credentials: "include",
-        });
+        // Check if the request is JSON (from our client-side enhance handler)
+        const contentType = request.headers.get("content-type");
 
-        // 2. If login fails, return an error message
-        if (!response.ok) {
-            const result = await response.json();
-            // The `fail` function sends back a 400-level status
-            // and the error data to the form.
-            return fail(401, {
-                error: result.error || "Login failed",
-                username: username, // Send back the username to pre-fill the form
+        if (contentType && contentType.includes("application/json")) {
+            // Handle JSON requests with pre-hashed passwords
+            const data = await request.json();
+            username = data.username;
+            password = data.password; // This is already hashed on client side
+            passwordHashMethod = data.passwordHashMethod;
+        } else {
+            // Handle traditional form submissions (fallback)
+            const formData = await request.formData();
+            username = formData.get("username")?.toString();
+            password = formData.get("password")?.toString();
+        }
+
+        // Basic validation
+        if (!username || !password) {
+            return fail(400, {
+                error: "Username and password are required",
+                username: username || "",
             });
         }
 
-        // 3. Forward the 'set-cookie' header from the API response
-        // to the browser.
-        const setCookieHeader = response.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const match = setCookieHeader.match(/session_token=([^;]+)/);
-            const sessionToken = match ? match[1] : null;
-            if (sessionToken) {
-                const isProduction = process.env.NODE_ENV === "production";
-                console.log(`Code is running in ${isProduction ? "production" : "development"} mode.`);
+        try {
+            // Direct fetch to backend
+            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username,
+                    password,
+                    passwordHashMethod, // Pass this to backend if it exists
+                }),
+            });
 
-                // cookies.set("session_token", sessionToken, {
-                //     path: "/",
-                //     httpOnly: true,
-                //     secure: isProduction ? true : false,
-                //     sameSite: isProduction ? "none" : "lax",
-                //     domain: isProduction ? "yangkarbhoeche.com" : undefined,
-                //     maxAge: 60 * 60 * 24 * 7, // 1 week
-                // });
-
-                cookies.set("session_token", sessionToken, {
-                    path: "/",
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: "none",
-                    domain: isProduction ? "yangkarbhoeche.com" : undefined,
-                    maxAge: 60 * 60 * 24 * 7, // 1 week
+            // Handle authentication failures
+            if (!response.ok) {
+                return fail(401, {
+                    error: "Invalid username or password",
+                    username,
                 });
             }
+
+            // Handle success
+            try {
+                const userData = await response.json();
+
+                // Store tokens as cookies
+                if (userData.accessToken) {
+                    cookies.set("access_token", userData.accessToken, {
+                        path: "/",
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: "lax",
+                        maxAge: 15 * 60, // 15 minutes
+                    });
+                }
+
+                if (userData.refreshToken) {
+                    cookies.set("refresh_token", userData.refreshToken, {
+                        path: "/",
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: "lax",
+                        maxAge: 7 * 24 * 60 * 60, // 7 days
+                    });
+                }
+
+                // Return data needed for client-side navigation
+                return {
+                    success: true,
+                    user: {
+                        username: userData.username || username,
+                        role: userData.role || "USER",
+                    },
+                };
+            } catch (parseError) {
+                return fail(500, {
+                    error: "Couldn't process login response",
+                    username,
+                });
+            }
+        } catch (error) {
+            return fail(500, {
+                error: "Connection error. Please try again.",
+                username,
+            });
         }
-        throw redirect(303, "/");
     },
 };

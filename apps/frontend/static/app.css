@@ -1,0 +1,62 @@
+:root {
+    --color-bg: #fff;
+    --color-nav-bg: #fff;
+    --color-border: #000000;
+    --color-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    --color-logo: #2d3748;
+    --color-logo-hover: #2563eb;
+    --color-link: #374151;
+    --color-link-hover: #2563eb;
+    --color-link-bg-hover: #f1f5f9;
+    --color-signup-bg: #2563eb;
+    --color-signup-bg-hover: #1e40af;
+    --color-signup: #fff;
+    --color-user-badge-bg: #f1f5f9;
+    --color-user-badge: #2563eb;
+    --color-logout-bg: #e53e3e;
+    --color-logout-bg-hover: #b91c1c;
+    --color-logout: #fff;
+    --font-size-small: 0.875rem; /* 14px */
+    --font-size-medium: 1rem; /* 16px */
+    --font-size-large: 1.25rem; /* 20px */
+    --custom-letter-spacing: 0.8px;
+    --font-primary: "Inter", Arial, sans-serif;
+
+    /* Voided order row colors */
+    --order-cancelled-bg: #ffeaea;
+    --order-cancelled-color: #b91c1c;
+    /* Purchase order status colors */
+    --status-pending-bg: #fff3cd;
+    --status-pending-color: #856404;
+    --status-received-bg: #d4edda;
+    --status-received-color: #155724;
+}
+
+.dark {
+    --color-bg: #18181b;
+    --color-nav-bg: #23232a;
+    --color-border: #6f6f72;
+    --color-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --color-logo: #e0e7ef;
+    --color-logo-hover: #60a5fa;
+    --color-link: #e0e7ef;
+    --color-link-hover: #60a5fa;
+    --color-link-bg-hover: #23232a;
+    --color-signup-bg: #60a5fa;
+    --color-signup-bg-hover: #2563eb;
+    --color-signup: #23232a;
+    --color-user-badge-bg: #23232a;
+    --color-user-badge: #60a5fa;
+    --color-logout-bg: #ef4444;
+    --color-logout-bg-hover: #991b1b;
+    --color-logout: #fff;
+
+    /* Voided order row colors for dark mode */
+    --order-cancelled-bg: #3b1c1c;
+    --order-cancelled-color: #f87171;
+    /* Purchase order status colors for dark mode */
+    --status-pending-bg: #4b3f1c;
+    --status-pending-color: #ffe082;
+    --status-received-bg: #1e4620;
+    --status-received-color: #b2f5ea;
+}

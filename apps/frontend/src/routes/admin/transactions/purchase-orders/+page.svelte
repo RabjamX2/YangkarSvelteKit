@@ -3,6 +3,8 @@
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
+    import { createAuthFetch } from "$lib/utils/csrf";
+    import { page } from "$app/stores";
     import "../transactionTable.css";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
@@ -29,17 +31,9 @@
         return status;
     });
 
-    // Helper to include credentials for authentication
-    const fetchAuth = (url, options = {}) => {
-        const defaultOptions = {
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-                ...options.headers,
-            },
-        };
-        return fetch(url, { ...options, ...defaultOptions });
-    };
+    // Create authenticated fetch with CSRF protection
+    $: csrfToken = $page.data?.csrfToken;
+    $: fetchAuth = createAuthFetch(csrfToken);
 
     function toggleOrderExpansion(orderId) {
         expandedOrders.update((set) => {

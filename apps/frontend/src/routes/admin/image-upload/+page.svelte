@@ -3,12 +3,13 @@
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import AdminHeader from "../AdminHeader.svelte";
+    import { createAuthFetch } from "$lib/utils/csrf";
+    import { page } from "$app/stores";
     import "./image-upload.css";
 
     // Declare Cropper and instance variables
     let Cropper;
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
-    // NOTE: This app uses cookie-based authentication, not token-based
 
     // Stores
     const products = writable([]);
@@ -38,12 +39,11 @@
     let maxWidth = 1000; // Maximum width for the uploaded image
 
     onMount(async () => {
-        // Check for authentication first using cookie-based auth
+        // Check for authentication first using JWT-based auth
         try {
-            // Get current user info - this endpoint checks the session_token cookie
-            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/me`, {
-                credentials: "include", // Important: This sends the cookies
-            });
+            // Get current user info using our authenticated fetch utility
+            const fetchAuth = createAuthFetch($page);
+            const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/me`);
 
             const userData = await response.json();
 
@@ -83,10 +83,9 @@
         console.log("Backend URL:", PUBLIC_BACKEND_URL);
 
         try {
-            // Just use cookies for authentication - no headers needed
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`, {
-                credentials: "include", // This sends the session_token cookie
-            });
+            // Use our authenticated fetch utility
+            const fetchAuth = createAuthFetch($page);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
             console.log("Response status:", res.status);
 
             if (!res.ok) {
@@ -558,12 +557,11 @@
 
             console.log("Proceeding with upload using cookie authentication");
 
-            // Upload to backend
-            const res = await fetch(`${PUBLIC_BACKEND_URL}/api/upload-image`, {
+            // Upload to backend with CSRF protection
+            const fetchAuth = createAuthFetch($page);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/upload-image`, {
                 method: "POST",
                 body: formData,
-                // No Authorization header - using cookies instead
-                credentials: "include", // This sends the session_token cookie
             });
 
             if (!res.ok) {
@@ -584,16 +582,14 @@
             const uploadResult = await res.json();
 
             // Update product variant with new image URL
-            const updateRes = await fetch(`${PUBLIC_BACKEND_URL}/api/variants/${$selectedVariant.id}`, {
+            const updateRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${$selectedVariant.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    // No Authorization header - using cookies instead
                 },
                 body: JSON.stringify({
                     imgUrl: uploadResult.location,
                 }),
-                credentials: "include", // This sends the session_token cookie
             });
 
             if (!updateRes.ok) {

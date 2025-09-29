@@ -1,66 +1,3 @@
-:root {
-    --color-bg: #fff;
-    --color-nav-bg: #fff;
-    --color-border: #000000;
-    --color-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-    --color-logo: #2d3748;
-    --color-logo-hover: #2563eb;
-    --color-link: #374151;
-    --color-link-hover: #2563eb;
-    --color-link-bg-hover: #f1f5f9;
-    --color-signup-bg: #2563eb;
-    --color-signup-bg-hover: #1e40af;
-    --color-signup: #fff;
-    --color-user-badge-bg: #f1f5f9;
-    --color-user-badge: #2563eb;
-    --color-logout-bg: #e53e3e;
-    --color-logout-bg-hover: #b91c1c;
-    --color-logout: #fff;
-    --font-size-small: 0.875rem; /* 14px */
-    --font-size-medium: 1rem; /* 16px */
-    --font-size-large: 1.25rem; /* 20px */
-    --custom-letter-spacing: 0.8px;
-    --font-primary: "Inter", Arial, sans-serif;
-
-    /* Voided order row colors */
-    --order-cancelled-bg: #ffeaea;
-    --order-cancelled-color: #b91c1c;
-    /* Purchase order status colors */
-    --status-pending-bg: #fff3cd;
-    --status-pending-color: #856404;
-    --status-received-bg: #d4edda;
-    --status-received-color: #155724;
-}
-
-.dark {
-    --color-bg: #18181b;
-    --color-nav-bg: #23232a;
-    --color-border: #6f6f72;
-    --color-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-    --color-logo: #e0e7ef;
-    --color-logo-hover: #60a5fa;
-    --color-link: #e0e7ef;
-    --color-link-hover: #60a5fa;
-    --color-link-bg-hover: #23232a;
-    --color-signup-bg: #60a5fa;
-    --color-signup-bg-hover: #2563eb;
-    --color-signup: #23232a;
-    --color-user-badge-bg: #23232a;
-    --color-user-badge: #60a5fa;
-    --color-logout-bg: #ef4444;
-    --color-logout-bg-hover: #991b1b;
-    --color-logout: #fff;
-
-    /* Voided order row colors for dark mode */
-    --order-cancelled-bg: #3b1c1c;
-    --order-cancelled-color: #f87171;
-    /* Purchase order status colors for dark mode */
-    --status-pending-bg: #4b3f1c;
-    --status-pending-color: #ffe082;
-    --status-received-bg: #1e4620;
-    --status-received-color: #b2f5ea;
-}
-
 a,
 abbr,
 acronym,
@@ -157,24 +94,64 @@ html {
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
 }
 
 .logout-btn:hover {
     background: var(--color-logout-bg-hover);
 }
 
-.theme-toggle {
-    background: none;
+.cart-button {
+    background: var(--color-user-badge-bg);
     border: none;
-    font-size: 1.5rem;
+    height: 36px;
+    width: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    color: var(--color-link);
-    transition: color 0.2s;
+    color: var(--color-user-badge);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cart-button:hover {
+    background: var(--color-link-bg-hover);
+    color: var(--color-link-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.cart-button:active {
+    transform: scale(0.95);
+}
+
+.theme-toggle {
+    background: var(--color-user-badge-bg);
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--color-user-badge);
+    height: 36px;
+    width: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .theme-toggle:hover {
     color: var(--color-link-hover);
+    background: var(--color-link-bg-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.theme-toggle:active {
+    transform: scale(0.95);
 }
 
 /* Header Section Layout */
@@ -233,7 +210,125 @@ html {
 .main-header-right {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    padding-right: 1rem;
+}
+
+/* User Dropdown Styles */
+.user-dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-badge {
+    background: var(--color-user-badge-bg);
+    color: var(--color-user-badge);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.user-badge:hover,
+.user-badge:focus {
+    background: var(--color-link-bg-hover);
+    color: var(--color-link-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 200px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    z-index: 200;
+    padding: 0.5rem 0;
+    display: none;
+    flex-direction: column;
+    animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top right;
+    overflow: hidden;
+}
+.user-dropdown.open .user-dropdown-menu {
+    display: flex;
+}
+.user-dropdown-menu a,
+.user-dropdown-menu button,
+.user-dropdown-menu .dropdown-item {
+    background: none;
+    border: none;
+    color: var(--color-link);
+    text-align: left;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.95rem;
+    width: 100%;
+    transition: all 0.2s ease;
+    border-radius: 0;
+    position: relative;
+}
+
+.user-dropdown-menu a,
+.user-dropdown-menu button {
+    cursor: pointer;
+}
+
+.user-dropdown-menu .username {
+    font-weight: 600;
+    color: var(--color-user-badge);
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    margin-bottom: 0.25rem;
+}
+
+.dark .user-dropdown-menu .username {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.user-dropdown-menu a:hover,
+.user-dropdown-menu button:hover {
+    background: var(--color-link-bg-hover);
+    color: var(--color-link-hover);
+}
+
+.user-dropdown-menu a:active,
+.user-dropdown-menu button:active {
+    transform: scale(0.98);
+}
+
+.user-dropdown-menu .dropdown-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 0.2rem 0;
+    opacity: 0.1;
+    border: none;
+}
+
+.dark .user-dropdown-menu .dropdown-divider {
+    opacity: 0.15;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .header-nav {

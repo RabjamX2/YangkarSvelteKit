@@ -1,49 +1,102 @@
 import express from "express";
 import prismaPkg from "@prisma/client";
 import argon2 from "argon2";
-import { v4 as uuidv4 } from "uuid";
+import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import asyncHandler from "../middleware/asyncHandler.js";
+import rateLimit from "express-rate-limit";
 
 const { PrismaClient } = prismaPkg;
 const router = express.Router();
 const prisma = new PrismaClient();
 
-const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+// Environment variables (should be set in your .env file)
+const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "change-me-access-secret";
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "change-me-refresh-secret";
+const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET || "change-me-reset-secret";
 
-const getCookieOptions = () => {
-    // if (process.env.NODE_ENV === "production") {
-    //     // Production settings
-    //     return {
-    //         httpOnly: true,
-    //         secure: true,
-    //         sameSite: "none",
-    //         domain: "yangkarbhoeche.com",
-    //         expires: new Date(Date.now() + SESSION_DURATION),
-    //     };
-    // } else {
-    //     // Development settings
-    //     return {
-    //         httpOnly: true,
-    //         secure: false, // Allow HTTP
-    //         sameSite: "none",
-    //         expires: new Date(Date.now() + SESSION_DURATION),
-    //     };
-    // }
+// Token durations
+const ACCESS_TOKEN_EXPIRY = "15m"; // 15 minutes
+const REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
+const RESET_TOKEN_EXPIRY = "10m"; // 10 minutes
+
+// Rate limiting for authentication attempts
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 requests per windowMs per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many login attempts, please try again later" },
+});
+
+// Cookie settings based on environment
+const getCookieOptions = (maxAge) => {
+    const isProduction = process.env.NODE_ENV === "production";
     return {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        domain: "yangkarbhoeche.com",
-        expires: new Date(Date.now() + SESSION_DURATION),
+        httpOnly: true, // Cannot be accessed by client-side JS
+        secure: isProduction, // HTTPS only in production
+        sameSite: isProduction ? "none" : "lax", // Cross-site cookie policy
+        domain: isProduction ? "yangkarbhoeche.com" : undefined,
+        maxAge: maxAge, // Time in milliseconds
     };
+};
+
+// Verify password - handles both raw and pre-hashed passwords
+const verifyPassword = async (storedHash, providedPassword, hashMethod) => {
+    // If the password was pre-hashed on the client side with SHA-256
+    if (hashMethod === "sha256-client") {
+        try {
+            // We need a special verification approach:
+            // 1. First try normal verification (in case passwords were stored pre-hashed)
+            const normalVerify = await argon2.verify(storedHash, providedPassword);
+            if (normalVerify) return true;
+
+            // 2. If that fails, we need to try getting the raw input that was used
+            //    to create the Argon2 hash, then SHA-256 hash it ourselves to compare
+            //    This is a best-effort approach as we can't extract the original password
+
+            // For now, we'll use standard verification but log the attempt
+            console.log("Client-side hashed password received - verification might not work correctly");
+            return await argon2.verify(storedHash, providedPassword);
+        } catch (err) {
+            console.error("Error verifying client-side hashed password:", err);
+            return false;
+        }
+    }
+
+    // Default: Use Argon2 to verify the password (standard way)
+    return await argon2.verify(storedHash, providedPassword);
+};
+
+// Generate tokens for user
+const generateTokens = (user) => {
+    // Generate payload (don't include sensitive data)
+    const tokenPayload = {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+    };
+
+    // Create CSRF token for front-end validation
+    const csrfToken = crypto.randomBytes(16).toString("hex");
+
+    // Create access token with CSRF
+    const accessToken = jwt.sign({ ...tokenPayload, csrf: csrfToken }, JWT_ACCESS_SECRET, {
+        expiresIn: ACCESS_TOKEN_EXPIRY,
+    });
+
+    // Create refresh token (no CSRF in refresh token)
+    const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
+
+    return { accessToken, refreshToken, csrfToken };
 };
 
 // --- Route Controllers ---
 
 const signup = asyncHandler(async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, passwordHashMethod } = req.body;
 
+    // Enhanced validation
     if (!username || typeof username !== "string" || username.length < 3) {
         res.status(400);
         throw new Error("Username must be at least 3 characters long");
@@ -52,98 +105,265 @@ const signup = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("Please provide a valid email address");
     }
-    if (!password || typeof password !== "string" || password.length < 6) {
-        res.status(400);
-        throw new Error("Password must be at least 6 characters long");
+
+    // Strong password requirements - skip complex validation if it's already client-side hashed
+    if (passwordHashMethod === "sha256-client") {
+        // For client-side hashed passwords, just check that we got something valid
+        if (!password || typeof password !== "string" || password.length !== 64) {
+            res.status(400);
+            throw new Error("Invalid hashed password format");
+        }
+        console.log("Client-side hashed password validated, length:", password.length);
+    } else {
+        // For plain passwords, do full validation
+        if (!password || typeof password !== "string" || password.length < 8) {
+            res.status(400);
+            throw new Error("Password must be at least 8 characters long");
+        }
+
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+            res.status(400);
+            throw new Error(
+                "Password must contain at least one lowercase letter, one uppercase letter, and one number"
+            );
+        }
     }
 
-    const hashedPassword = await argon2.hash(password);
+    // Check for existing user
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            OR: [{ username }, { email }],
+        },
+    });
+
+    if (existingUser) {
+        res.status(400);
+        throw new Error("Username or email already exists");
+    }
+
+    // Hash password with Argon2, handling client-side pre-hashed passwords
+    let finalPassword = password;
+
+    // If we received a client-side SHA-256 hashed password, log it for debugging
+    if (passwordHashMethod === "sha256-client") {
+        console.log("Received client-side SHA-256 hashed password during signup");
+        // We still hash with Argon2 on the server for extra security
+    }
+
+    const hashedPassword = await argon2.hash(finalPassword, {
+        type: argon2.argon2id, // Most secure variant of Argon2
+        memoryCost: 2 ** 16, // 64MB memory usage
+        timeCost: 3, // 3 iterations
+        parallelism: 1, // 1 thread
+    });
+
+    // Create user in database
     const user = await prisma.user.create({
         data: { username, email, password: hashedPassword },
     });
+
     req.log.info({ event: "user_signup", userId: user.id, username: user.username }, "User signed up");
 
-    const sessionToken = uuidv4();
-    const expiresAt = new Date(Date.now() + SESSION_DURATION);
+    // Generate tokens
+    const { accessToken, refreshToken, csrfToken } = generateTokens(user);
+
+    // Store refresh token in database
+    const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
 
     await prisma.session.create({
-        data: { id: sessionToken, userId: user.id, expiresAt },
+        data: {
+            id: refreshTokenHash,
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
     });
 
-    res.cookie("session_token", sessionToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        domain: "yangkarbhoeche.com",
-        expires: expiresAt,
-    });
+    // Set cookies
+    const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
+    const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
-    res.status(201).json({ id: user.id, username: user.username, role: user.role });
+    res.cookie("access_token", accessToken, getCookieOptions(accessMaxAge));
+    res.cookie("refresh_token", refreshToken, getCookieOptions(refreshMaxAge));
+
+    // Return user data, tokens, and CSRF token
+    res.status(201).json({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        accessToken,
+        refreshToken,
+        csrfToken,
+    });
 });
 
 const login = asyncHandler(async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, passwordHashMethod } = req.body;
     const user = await prisma.user.findUnique({ where: { username } });
 
-    if (!user || !(await argon2.verify(user.password, password))) {
+    // Verify user and password using the appropriate method
+    if (!user || !(await verifyPassword(user.password, password, passwordHashMethod))) {
         res.status(401);
         throw new Error("Invalid username or password");
     }
 
-    const sessionToken = uuidv4();
-    const expiresAt = new Date(Date.now() + SESSION_DURATION);
+    // Generate tokens
+    const { accessToken, refreshToken, csrfToken } = generateTokens(user);
+
+    // Store hashed refresh token
+    const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
 
     await prisma.session.create({
-        data: { id: sessionToken, userId: user.id, expiresAt },
+        data: {
+            id: refreshTokenHash,
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
     });
 
-    const cookieOptions = getCookieOptions();
-    cookieOptions.expires = expiresAt; // Set the correct expiration date
+    // Set cookies
+    const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
+    const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
-    res.cookie("session_token", sessionToken, cookieOptions);
+    res.cookie("access_token", accessToken, getCookieOptions(accessMaxAge));
+    res.cookie("refresh_token", refreshToken, getCookieOptions(refreshMaxAge));
 
     req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in");
-    res.status(200).json({ id: user.id, username: user.username, role: user.role });
+
+    // Return user data, tokens, and CSRF token
+    res.status(200).json({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        accessToken,
+        refreshToken,
+        csrfToken,
+    });
+});
+
+const refreshToken = asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies.refresh_token;
+
+    if (!refreshToken) {
+        res.status(401);
+        throw new Error("No refresh token provided");
+    }
+
+    try {
+        // Verify refresh token
+        const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+
+        // Get refresh token hash
+        const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+
+        // Check if token exists in database and hasn't expired
+        const session = await prisma.session.findUnique({
+            where: { id: refreshTokenHash },
+            include: { user: true },
+        });
+
+        if (!session || !session.user || session.expiresAt < new Date()) {
+            res.status(401);
+            throw new Error("Invalid or expired refresh token");
+        }
+
+        // Generate new tokens
+        const { accessToken, refreshToken: newRefreshToken, csrfToken } = generateTokens(session.user);
+
+        // Update session in database with new refresh token
+        const newRefreshTokenHash = crypto.createHash("sha256").update(newRefreshToken).digest("hex");
+
+        // Delete old session
+        await prisma.session.delete({
+            where: { id: refreshTokenHash },
+        });
+
+        // Create new session
+        await prisma.session.create({
+            data: {
+                id: newRefreshTokenHash,
+                userId: session.user.id,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            },
+        });
+
+        // Set new cookies
+        const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
+        const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
+        res.cookie("access_token", accessToken, getCookieOptions(accessMaxAge));
+        res.cookie("refresh_token", newRefreshToken, getCookieOptions(refreshMaxAge));
+
+        // Return user data, tokens, and CSRF token
+        res.status(200).json({
+            user: {
+                id: session.user.id,
+                username: session.user.username,
+                role: session.user.role,
+                email: session.user.email,
+                name: session.user.name,
+            },
+            accessToken,
+            refreshToken: newRefreshToken,
+            csrfToken,
+        });
+    } catch (error) {
+        res.clearCookie("access_token");
+        res.clearCookie("refresh_token");
+        res.status(401);
+        throw new Error("Invalid refresh token");
+    }
 });
 
 const logout = asyncHandler(async (req, res) => {
-    const sessionToken = req.cookies.session_token;
-    if (sessionToken) {
-        await prisma.session.delete({ where: { id: sessionToken } }).catch(() => {});
+    const refreshToken = req.cookies.refresh_token;
+
+    if (refreshToken) {
+        try {
+            // Hash the refresh token to find it in the database
+            const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+
+            // Delete the session
+            await prisma.session.delete({ where: { id: refreshTokenHash } }).catch(() => {});
+        } catch (error) {
+            // Ignore errors on logout
+        }
     }
-    res.clearCookie("session_token");
-    res.status(200).json({ message: "Logged out" });
+
+    // Clear cookies regardless of whether deletion was successful
+    res.clearCookie("access_token");
+    res.clearCookie("refresh_token");
+
+    res.status(200).json({ message: "Logged out successfully" });
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-    const sessionToken = req.cookies.session_token;
-    if (!sessionToken) {
+    const accessToken = req.cookies.access_token;
+
+    if (!accessToken) {
         return res.status(200).json({ user: null }); // Not an error, just no user
     }
 
-    const session = await prisma.session.findUnique({
-        where: { id: sessionToken, expiresAt: { gt: new Date() } },
-        include: { user: { select: { id: true, username: true, role: true, name: true, email: true } } },
-    });
+    try {
+        // Verify the token
+        const decoded = jwt.verify(accessToken, JWT_ACCESS_SECRET);
 
-    if (session?.user) {
-        const newExpiresAt = new Date(Date.now() + SESSION_DURATION);
-        await prisma.session.update({
-            where: { id: sessionToken },
-            data: { expiresAt: newExpiresAt },
+        // Get user from database
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { id: true, username: true, role: true, name: true, email: true },
         });
 
-        res.cookie("session_token", sessionToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            // domain: "yangkarbhoeche.com",
-            expires: newExpiresAt,
-        });
+        if (!user) {
+            return res.status(200).json({ user: null });
+        }
 
-        return res.status(200).json({ user: session.user });
-    } else {
-        res.clearCookie("session_token");
+        // Return the CSRF token for the front end to use
+        return res.status(200).json({
+            user,
+            csrfToken: decoded.csrf,
+        });
+    } catch (error) {
+        // Token expired or invalid - try to refresh
         return res.status(200).json({ user: null });
     }
 });
@@ -156,9 +376,16 @@ const forgotPassword = asyncHandler(async (req, res) => {
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
+
     if (user) {
-        const resetToken = crypto.randomBytes(32).toString("hex");
+        // Generate reset token using JWT
+        const resetToken = jwt.sign({ id: user.id, email: user.email }, JWT_RESET_SECRET, {
+            expiresIn: RESET_TOKEN_EXPIRY,
+        });
+
+        // Hash the token for storage
         const passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
         const passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         await prisma.user.update({
@@ -166,61 +393,96 @@ const forgotPassword = asyncHandler(async (req, res) => {
             data: { passwordResetToken, passwordResetExpires },
         });
 
+        // In a real app, you'd send an email here with the reset link
+        // For testing purposes, log the link
+        const API_BASE_URL = process.env.FRONT_END_URL || "http://localhost:5173";
         const resetUrl = `${API_BASE_URL}/reset-password/${resetToken}`;
+
         console.log("--------------------");
         console.log("PASSWORD RESET LINK (for testing only):");
         console.log(resetUrl);
         console.log("--------------------");
     }
 
+    // Always return 200 to prevent email enumeration
     res.status(200).json({ message: "If a user with that email exists, a password reset link has been sent." });
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
     const { token, password } = req.body;
+
     if (!token || !password) {
         res.status(400);
         throw new Error("Token and new password are required.");
     }
-    if (password.length < 6) {
+
+    // Password strength validation
+    if (password.length < 8) {
         res.status(400);
-        throw new Error("Password must be at least 6 characters long");
+        throw new Error("Password must be at least 8 characters long");
     }
 
-    const passwordResetToken = crypto.createHash("sha256").update(token).digest("hex");
-    const user = await prisma.user.findFirst({
-        where: {
-            passwordResetToken,
-            passwordResetExpires: { gt: new Date() },
-        },
-    });
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+        res.status(400);
+        throw new Error("Password must contain at least one lowercase letter, one uppercase letter, and one number");
+    }
 
-    if (!user) {
+    try {
+        // Verify the token
+        const decoded = jwt.verify(token, JWT_RESET_SECRET);
+
+        // Hash the token to look it up in the database
+        const passwordResetToken = crypto.createHash("sha256").update(token).digest("hex");
+
+        const user = await prisma.user.findFirst({
+            where: {
+                id: decoded.id,
+                email: decoded.email,
+                passwordResetToken,
+                passwordResetExpires: { gt: new Date() },
+            },
+        });
+
+        if (!user) {
+            res.status(400);
+            throw new Error("Password reset token is invalid or has expired.");
+        }
+
+        // Hash the new password
+        const hashedPassword = await argon2.hash(password, {
+            type: argon2.argon2id,
+            memoryCost: 2 ** 16,
+            timeCost: 3,
+            parallelism: 1,
+        });
+
+        // Update the user's password and clear reset token
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                password: hashedPassword,
+                passwordResetToken: null,
+                passwordResetExpires: null,
+            },
+        });
+
+        // Invalidate all existing sessions for security
+        await prisma.session.deleteMany({ where: { userId: user.id } });
+
+        res.status(200).json({ message: "Password has been reset successfully." });
+    } catch (error) {
         res.status(400);
         throw new Error("Password reset token is invalid or has expired.");
     }
-
-    const hashedPassword = await argon2.hash(password);
-    await prisma.user.update({
-        where: { id: user.id },
-        data: {
-            password: hashedPassword,
-            passwordResetToken: null,
-            passwordResetExpires: null,
-        },
-    });
-
-    await prisma.session.deleteMany({ where: { userId: user.id } });
-
-    res.status(200).json({ message: "Password has been reset successfully." });
 });
 
 // --- Route Definitions ---
 router.post("/signup", signup);
-router.post("/login", login);
+router.post("/login", authLimiter, login); // Apply rate limiting to login
+router.post("/refresh", refreshToken);
 router.post("/logout", logout);
 router.get("/me", getCurrentUser);
-router.post("/forgot-password", forgotPassword);
+router.post("/forgot-password", authLimiter, forgotPassword); // Apply rate limiting
 router.post("/reset-password", resetPassword);
 
 export default router;

@@ -3,6 +3,8 @@
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
+    import { createAuthFetch } from "$lib/utils/csrf";
+    import { page } from "$app/stores";
     import "../transactionTable.css";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
@@ -10,13 +12,15 @@
     const loadingBatches = writable(false);
     const errorBatches = writable(null);
 
+    // Create authenticated fetch with CSRF protection
+    $: csrfToken = $page.data?.csrfToken;
+    $: fetchAuth = createAuthFetch(csrfToken);
+
     onMount(async () => {
         loadingBatches.set(true);
         errorBatches.set(null);
         try {
-            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/inventory-batches`, {
-                credentials: "include",
-            });
+            const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/inventory-batches`);
             if (!response.ok) {
                 throw new Error("Failed to fetch inventory batches.");
             }
