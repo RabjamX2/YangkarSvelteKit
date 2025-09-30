@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import logger from "./logger.js";
 
 // Import route handlers
@@ -21,10 +23,40 @@ const app = express();
 // Trust proxies like Nginx for correct https detection
 app.set("trust proxy", 1);
 
+// Add request logger
 app.use((req, res, next) => {
     req.log = logger;
     next();
 });
+
+// Add security headers
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:", "*.yangkarbhoeche.com", "*.cloudflare.com"],
+            },
+        },
+        crossOriginEmbedderPolicy: false,
+    })
+);
+
+// Rate limiting
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    message: { error: "Too many requests, please try again later" },
+    // Skip rate limiting in development
+    skip: () => process.env.NODE_ENV !== "production",
+});
+
+// Apply rate limiting to all routes
+app.use(apiLimiter);
 
 // --- Middleware Setup ---
 app.use(
@@ -34,21 +66,59 @@ app.use(
                 FRONT_END_URL,
                 "https://yangkarbhoeche.com",
                 "https://www.yangkarbhoeche.com",
-                // Allow requests with no origin (like mobile apps, curl requests)
-                undefined,
+                // For development
+                "http://localhost:5173",
+                "http://localhost:5174",
+                // Note: Requests with no origin are handled separately
             ];
-            if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+
+            // In development, allow all origins for easier testing
+            const isDevelopment = process.env.NODE_ENV !== "production";
+            if (isDevelopment) {
                 callback(null, true);
+                return;
+            }
+
+            // In production, enforce the origin check
+            if (allowedOrigins.includes(origin)) {
+                // Origin is explicitly in our allowed list
+                callback(null, true);
+            } else if (!origin) {
+                // No origin header (server-side requests, Postman, curl, etc.)
+                // Log these requests for monitoring and block them
+                req.log.warn(
+                    {
+                        event: "no_origin_request_blocked",
+                        ip: req.ip,
+                        path: req.path,
+                        method: req.method,
+                    },
+                    "Blocked request with no origin header"
+                );
+                callback(new Error("Requests without origin headers are currently disabled"));
             } else {
-                console.log("Blocked by CORS: ", origin);
-                callback(null, true); // Still allow for now, but log it
+                // Blocked origin
+                req.log.warn(
+                    {
+                        event: "cors_blocked",
+                        origin,
+                        ip: req.ip,
+                        path: req.path,
+                    },
+                    "Blocked by CORS"
+                );
+                callback(new Error("Not allowed by CORS"));
             }
         },
         credentials: true, // Allow cookies to be sent and received
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
     })
 );
 
-app.use(express.json());
+// Parse JSON with size limits to prevent large payload attacks
+app.use(express.json({ limit: "1mb" }));
+// Parse cookies
 app.use(cookieParser());
 
 // --- API Routes ---

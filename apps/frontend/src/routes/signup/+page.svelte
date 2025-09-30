@@ -3,6 +3,7 @@
     import { enhance } from "$app/forms";
     import { onMount } from "svelte";
     import { hashPassword } from "$lib/utils/password.js";
+    import { goto } from "$app/navigation";
 
     /** @type {import('./$types').ActionData} */
     export let form;
@@ -13,7 +14,12 @@
     // Check if we have success on mount
     onMount(() => {
         if (form?.success) {
-            console.log("Signup successful!");
+            console.log("Signup successful! Will redirect in 2 seconds...");
+            // Auto-redirect to login after a short delay
+            setTimeout(() => {
+                console.log("Redirecting to login now...");
+                goto("/login");
+            }, 2000); // 2 second delay to show the success message before redirect
         }
     });
 
@@ -51,11 +57,23 @@
             }
 
             // Handle the result after form submission
-            return ({ result }) => {
+            return ({ result, update }) => {
                 isSubmitting = false;
 
                 if (result.type === "success") {
-                    console.log("Form submitted successfully");
+                    console.log("Form submitted successfully", result);
+
+                    // Update the form with result data
+                    update({ reset: false });
+
+                    // Try to redirect directly from here
+                    if (result.data && result.data.success) {
+                        console.log("Success detected in form result, will redirect soon...");
+                        setTimeout(() => {
+                            console.log("Redirecting to login page...");
+                            goto("/login");
+                        }, 2000);
+                    }
                 } else if (result.type === "failure") {
                     console.error("Form submission failed:", result.data);
                 }
@@ -72,8 +90,8 @@
     <h2>Create an Account</h2>
     {#if form?.success}
         <div class="success">
-            <p>{form.message || "Account created successfully! Please log in."}</p>
-            <a href="/login" class="login-btn">Go to Login</a>
+            <p>{form.message || "Account created successfully! You will be redirected to the login page..."}</p>
+            <a href="/login" class="login-btn">Go to Login Now</a>
         </div>
     {:else}
         <form method="POST" use:enhance={handlePasswordHash()}>
