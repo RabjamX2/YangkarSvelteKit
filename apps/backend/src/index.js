@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import logger from "./logger.js";
-import { FRONT_END_URL } from "./config.js";
 
 // Import route handlers
 import authRoutes from "./routes/auth.routes.js";
@@ -13,6 +12,9 @@ import imageRoutes from "./routes/image.routes.js"; // Import image routes
 
 // Import middleware
 import errorHandler from "./middleware/errorHandler.js";
+
+const FRONT_END_URL = process.env.FRONT_END_URL;
+const PORT = process.env.PORT;
 
 const app = express();
 app.use((req, res, next) => {
@@ -46,7 +48,6 @@ app.use("/api", imageRoutes);
 // This should be the LAST middleware you use
 app.use(errorHandler);
 
-const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`Backend server listening on port ${PORT}`);
     logger.info(`Backend server listening on port ${PORT}`);
