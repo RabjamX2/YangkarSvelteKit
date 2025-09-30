@@ -29,7 +29,7 @@ jobs:
                   cache: "pnpm"
 
             - name: Install dependencies
-              run: pnpm install
+              run: pnpm install --no-frozen-lockfile
 
             - name: Deploy to Backend Server
               uses: appleboy/ssh-action@v1.0.3
@@ -51,7 +51,7 @@ jobs:
                       git pull origin main
 
                       # Then install dependencies
-                      pnpm install
+                      pnpm install --no-frozen-lockfile
 
                       # Ensure all backend dependencies are installed properly
                       cd apps/backend
@@ -87,7 +87,7 @@ jobs:
                   cache: "pnpm"
 
             - name: Install dependencies
-              run: pnpm install
+              run: pnpm install --no-frozen-lockfile
 
             - name: Deploy and build on the server directly
               uses: appleboy/ssh-action@v1.0.3
@@ -109,7 +109,7 @@ jobs:
                       git pull origin main
 
                       # Install all dependencies including dev dependencies
-                      pnpm install
+                      pnpm install --no-frozen-lockfile
 
                       # Ensure PostCSS plugins are installed
                       cd apps/frontend
