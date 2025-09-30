@@ -1,6 +1,8 @@
 import { fail } from "@sveltejs/kit";
 const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
+console.log(PUBLIC_BACKEND_URL);
+
 /** @type {import('./$types').PageServerLoad} */
 export function load({ url }) {
     const success = url.searchParams.get("success");
@@ -64,6 +66,7 @@ export const actions = {
                 // Store tokens as cookies
                 if (userData.accessToken) {
                     const isProd = process.env.NODE_ENV === "production";
+                    console.log(`Code setting access token cookie in ${isProd ? "production" : "development"} mode`);
 
                     if (isProd) {
                         cookies.set("access_token", userData.accessToken, {
