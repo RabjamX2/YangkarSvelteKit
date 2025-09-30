@@ -42,7 +42,7 @@ const getCookieOptions = (maxAge) => {
         NODE_ENV: process.env.NODE_ENV,
         FORCE_PRODUCTION: process.env.FORCE_PRODUCTION,
         FRONT_END_URL: process.env.FRONT_END_URL,
-        isProductionMode: isProduction
+        isProductionMode: isProduction,
     });
 
     // Base cookie options
@@ -58,10 +58,10 @@ const getCookieOptions = (maxAge) => {
         // Use api.yangkarbhoeche.com explicitly rather than .yangkarbhoeche.com
         // This should make cookies work specifically for the API domain
         options.domain = "api.yangkarbhoeche.com";
-        
+
         // Use 'none' for cross-domain cookies, required for cross-subdomain auth
-        options.sameSite = "none"; 
-        
+        options.sameSite = "none";
+
         console.log(`Using production cookie settings:`, options);
     } else {
         options.sameSite = "lax";
@@ -258,15 +258,15 @@ const login = asyncHandler(async (req, res) => {
 
     // Enhanced debugging for authentication cookies
     console.log(`LOGIN - Setting authentication cookies:`, {
-        accessTokenFirstChars: accessToken.substring(0, 10) + '...',
-        refreshTokenFirstChars: refreshToken.substring(0, 10) + '...',
+        accessTokenFirstChars: accessToken.substring(0, 10) + "...",
+        refreshTokenFirstChars: refreshToken.substring(0, 10) + "...",
         accessOptions,
         refreshOptions,
-        requestOrigin: req.headers.origin || 'unknown',
-        requestReferer: req.headers.referer || 'unknown',
-        userAgent: req.headers['user-agent'],
+        requestOrigin: req.headers.origin || "unknown",
+        requestReferer: req.headers.referer || "unknown",
+        userAgent: req.headers["user-agent"],
         requestHost: req.headers.host,
-        xForwardedFor: req.headers['x-forwarded-for'] || 'none'
+        xForwardedFor: req.headers["x-forwarded-for"] || "none",
     });
 
     // Log cookie settings for debugging
@@ -286,7 +286,7 @@ const login = asyncHandler(async (req, res) => {
 
     // Add response header debugging to verify cookie was set
     console.log(`LOGIN - Cookie headers set in response:`, {
-        'set-cookie': res.getHeader('set-cookie')?.map(c => c.split(';')[0] + ';[rest-hidden]')
+        "set-cookie": res.getHeader("set-cookie")?.map((c) => c.split(";")[0] + ";[rest-hidden]"),
     });
 
     req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V1");
@@ -357,21 +357,21 @@ const refreshToken = asyncHandler(async (req, res) => {
 
         // Enhanced debugging for refreshed tokens
         console.log(`REFRESH - Setting new authentication cookies:`, {
-            accessTokenFirstChars: accessToken.substring(0, 10) + '...',
-            newRefreshTokenFirstChars: newRefreshToken.substring(0, 10) + '...',
+            accessTokenFirstChars: accessToken.substring(0, 10) + "...",
+            newRefreshTokenFirstChars: newRefreshToken.substring(0, 10) + "...",
             accessOptions,
             refreshOptions,
-            requestOrigin: req.headers.origin || 'unknown',
-            requestReferer: req.headers.referer || 'unknown',
-            userAgent: req.headers['user-agent']
+            requestOrigin: req.headers.origin || "unknown",
+            requestReferer: req.headers.referer || "unknown",
+            userAgent: req.headers["user-agent"],
         });
 
         res.cookie("access_token", accessToken, accessOptions);
         res.cookie("refresh_token", newRefreshToken, refreshOptions);
-        
+
         // Add response header debugging to verify cookie was set
         console.log(`REFRESH - Cookie headers set in response:`, {
-            'set-cookie': res.getHeader('set-cookie')?.map(c => c.split(';')[0] + ';[rest-hidden]')
+            "set-cookie": res.getHeader("set-cookie")?.map((c) => c.split(";")[0] + ";[rest-hidden]"),
         });
 
         // Return user data, tokens, and CSRF token

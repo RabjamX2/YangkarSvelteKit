@@ -15,22 +15,22 @@ const authenticateToken = async (req, res, next) => {
     const isProd = process.env.NODE_ENV === "production";
     if (isProd) {
         // Get more detailed cookie information
-        const cookieHeader = req.headers.cookie || 'no-cookie-header';
-        const cookieParts = cookieHeader.split(';').map(c => c.trim());
-        const accessTokenCookie = cookieParts.find(c => c.startsWith('access_token='));
-        
+        const cookieHeader = req.headers.cookie || "no-cookie-header";
+        const cookieParts = cookieHeader.split(";").map((c) => c.trim());
+        const accessTokenCookie = cookieParts.find((c) => c.startsWith("access_token="));
+
         console.log(`Auth check for ${req.method} ${req.path}`, {
             hasAccessToken: !!accessToken,
             accessTokenFromCookies: !!req.cookies.access_token,
             rawCookieHeader: cookieHeader,
-            accessTokenInHeader: accessTokenCookie ? `${accessTokenCookie.substring(0, 20)}...` : 'not-found',
+            accessTokenInHeader: accessTokenCookie ? `${accessTokenCookie.substring(0, 20)}...` : "not-found",
             cookieKeys: Object.keys(req.cookies),
-            origin: req.headers.origin || 'not-set',
-            referer: req.headers.referer || 'not-set',
+            origin: req.headers.origin || "not-set",
+            referer: req.headers.referer || "not-set",
             host: req.headers.host,
-            userAgent: req.headers['user-agent'],
-            'x-forwarded-host': req.headers['x-forwarded-host'] || 'not-set',
-            'x-forwarded-proto': req.headers['x-forwarded-proto'] || 'not-set'
+            userAgent: req.headers["user-agent"],
+            "x-forwarded-host": req.headers["x-forwarded-host"] || "not-set",
+            "x-forwarded-proto": req.headers["x-forwarded-proto"] || "not-set",
         });
     }
 
