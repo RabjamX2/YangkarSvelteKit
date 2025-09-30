@@ -1,7 +1,13 @@
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";
-import helmet from "helmet";
+import cookieParser from "cookie-p                logger.info(
+                    {
+                        event: "no_origin_request_allowed",
+                        path: "unknown-path",
+                        method: "unknown-method"
+                    },
+                    "Allowed request with no origin header"
+                );mport helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import logger from "./logger.js";
 
@@ -85,28 +91,22 @@ app.use(
                 callback(null, true);
             } else if (!origin) {
                 // No origin header (server-side requests, Postman, curl, etc.)
-                // Log these requests for monitoring and block them
-                req.log.warn(
-                    {
-                        event: "no_origin_request_blocked",
-                        ip: req.ip,
-                        path: req.path,
-                        method: req.method,
-                    },
-                    "Blocked request with no origin header"
-                );
-                callback(new Error("Requests without origin headers are currently disabled"));
+                // In production we need to allow these for cookie auth to work properly
+                // Some browsers may send credentials without origin in some cases
+                callback(null, true);
+                
+                // Log these but don't block them anymore
+                logger.info({
+                    event: "no_origin_request_allowed",
+                    message: "Allowed request with no origin header"
+                });
             } else {
                 // Blocked origin
-                req.log.warn(
-                    {
-                        event: "cors_blocked",
-                        origin,
-                        ip: req.ip,
-                        path: req.path,
-                    },
-                    "Blocked by CORS"
-                );
+                logger.warn({
+                    event: "cors_blocked",
+                    origin,
+                    message: "Blocked by CORS"
+                });
                 callback(new Error("Not allowed by CORS"));
             }
         },

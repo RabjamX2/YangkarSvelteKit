@@ -289,7 +289,7 @@ const login = asyncHandler(async (req, res) => {
         "set-cookie": res.getHeader("set-cookie")?.map((c) => c.split(";")[0] + ";[rest-hidden]"),
     });
 
-    req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V1");
+    req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V3");
 
     // Return user data, tokens, and CSRF token
     res.status(200).json({
