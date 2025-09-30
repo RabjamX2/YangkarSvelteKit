@@ -4,6 +4,7 @@
     import { onMount } from "svelte";
     import { hashPassword } from "$lib/utils/password.js";
     import { goto } from "$app/navigation";
+    import { auth } from "$lib/stores/auth.store.js";
 
     /** @type {import('./$types').ActionData} */
     export let form;
@@ -15,7 +16,32 @@
     onMount(() => {
         if (form?.success) {
             console.log("Signup successful! Will redirect in 2 seconds...");
-            // Auto-redirect to login after a short delay
+
+            // Check if we have authentication data directly
+            if (form.accessToken && form.user) {
+                console.log("Authentication data received with signup, storing and redirecting to dashboard...");
+
+                // Store auth data from signup response
+                try {
+                    auth.setAuth({
+                        accessToken: form.accessToken,
+                        refreshToken: form.refreshToken,
+                        csrfToken: form.csrfToken,
+                        user: form.user,
+                    });
+
+                    // Redirect to dashboard or home page
+                    setTimeout(() => {
+                        window.location.href = "/";
+                    }, 2000);
+
+                    return;
+                } catch (e) {
+                    console.error("Failed to store auth data:", e);
+                }
+            }
+
+            // Fall back to login redirect if no direct auth
             setTimeout(() => {
                 console.log("Redirecting to login now...");
                 goto("/login?signup=success");
@@ -63,19 +89,43 @@
                 if (result.type === "success") {
                     console.log("Form submitted successfully", result);
 
-                    // Update the form with result data
-                    update({ reset: false });
+                    // Check if we have auth tokens in the response
+                    if (result.data?.accessToken && result.data?.user) {
+                        console.log("Auth data received with signup! Storing and will redirect...");
 
-                    // Try to redirect directly from here
-                    if (result.data && result.data.success) {
-                        console.log("Success detected in form result, will redirect soon...");
-                        setTimeout(() => {
-                            console.log("Redirecting to login page...");
-                            goto("/login");
-                        }, 2000);
+                        // Import auth store at the top of the file
+                        import("$lib/stores/auth.store.js").then(({ auth }) => {
+                            // Store auth data
+                            auth.setAuth({
+                                accessToken: result.data.accessToken,
+                                refreshToken: result.data.refreshToken,
+                                csrfToken: result.data.csrfToken,
+                                user: result.data.user,
+                            });
+
+                            console.log("Auth data stored, redirecting to home page");
+
+                            // Force full page refresh to ensure layout gets updated auth state
+                            setTimeout(() => {
+                                window.location.href = "/";
+                            }, 1000);
+                        });
+                    } else {
+                        // Update the form with result data
+                        update({ reset: false });
+
+                        // Try to redirect directly from here
+                        if (result.data && result.data.success) {
+                            console.log("Success detected in form result, will redirect soon...");
+                            setTimeout(() => {
+                                console.log("Redirecting to login page...");
+                                goto("/login?signup=success");
+                            }, 2000);
+                        }
                     }
                 } else if (result.type === "failure") {
                     console.error("Form submission failed:", result.data);
+                    update();
                 }
             };
         };

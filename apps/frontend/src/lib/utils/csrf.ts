@@ -25,14 +25,18 @@ export function createApiHeaders(
     const actualCsrfToken = csrfToken || authStore.csrfToken;
     const accessToken = authStore.accessToken;
 
+    // ALWAYS add Authorization header with Bearer token if available
+    // This is our primary authentication method
+    if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+        console.log("Added Bearer token to request - auth method active");
+    } else {
+        console.warn("No access token available for API request");
+    }
+
     // Add CSRF token if available
     if (actualCsrfToken) {
         headers["X-CSRF-Token"] = actualCsrfToken;
-    }
-
-    // Add Authorization header with Bearer token if available
-    if (accessToken) {
-        headers["Authorization"] = `Bearer ${accessToken}`;
     }
 
     return headers;
@@ -45,6 +49,14 @@ export function createApiHeaders(
  */
 export function createAuthFetch(csrfToken: string | null = null) {
     return async function authFetch(url: string, options: RequestInit = {}) {
+        // Check if we have an access token for this request
+        const authStore = get(auth);
+        const hasToken = !!authStore.accessToken;
+
+        if (!hasToken && url.includes("/api/") && !url.includes("/api/login") && !url.includes("/api/signup")) {
+            console.warn(`AUTH WARNING: Making authenticated request to ${url} without access token`);
+        }
+
         // Always explicitly include credentials
         const fetchOptions: RequestInit = {
             ...options,
@@ -55,8 +67,8 @@ export function createAuthFetch(csrfToken: string | null = null) {
 
         // Enhanced debugging - always log these regardless of environment
         console.log(`AUTH FETCH DEBUG to ${url}`, {
+            hasAccessToken: hasToken,
             hasCsrfToken: !!csrfToken,
-            csrfTokenFirstChars: csrfToken ? csrfToken.substring(0, 10) + "..." : "none",
             credentials: fetchOptions.credentials,
             method: options.method || "GET",
             headers: Object.keys(fetchOptions.headers || {}).join(", "),

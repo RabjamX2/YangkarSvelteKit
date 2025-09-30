@@ -65,7 +65,7 @@ app.use(
                 "https://www.yangkarbhoeche.com",
                 // Include all possible variations of your domain
                 "https://yangkarbhoeche.com",
-                "https://www.yangkarbhoeche.com", 
+                "https://www.yangkarbhoeche.com",
                 "http://yangkarbhoeche.com",
                 "http://www.yangkarbhoeche.com",
                 // For development
@@ -87,7 +87,7 @@ app.use(
                     event: "cors_origin_check",
                     origin: origin || "no-origin",
                     frontEndUrl: FRONT_END_URL,
-                    allowed: allowedOrigins.includes(origin) || !origin
+                    allowed: allowedOrigins.includes(origin) || !origin,
                 });
             }
 

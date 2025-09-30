@@ -4,6 +4,8 @@ import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import asyncHandler from "../middleware/asyncHandler.js";
+import authenticateToken from "../middleware/authenticateToken.js";
+import optionalAuthenticate from "../middleware/optionalAuthenticate.js";
 import rateLimit from "express-rate-limit";
 
 const { PrismaClient } = prismaPkg;
@@ -397,7 +399,25 @@ const refreshToken = asyncHandler(async (req, res) => {
 });
 
 const logout = asyncHandler(async (req, res) => {
-    const refreshToken = req.cookies.refresh_token;
+    // Try to get refresh token from both cookie and request body
+    let refreshToken = req.cookies.refresh_token;
+    let logoutSource = "cookie";
+
+    // If no cookie, check request body (used when token is stored in localStorage)
+    if (!refreshToken && req.body.refreshToken) {
+        refreshToken = req.body.refreshToken;
+        logoutSource = "body";
+    }
+
+    // Get user ID if authenticated
+    const userId = req.user?.id;
+
+    // Log logout attempt
+    console.log("Logout attempt", {
+        hasRefreshToken: !!refreshToken,
+        tokenSource: logoutSource,
+        authenticatedUser: userId || "none",
+    });
 
     if (refreshToken) {
         try {
@@ -405,16 +425,47 @@ const logout = asyncHandler(async (req, res) => {
             const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
 
             // Delete the session
-            await prisma.session.delete({ where: { id: refreshTokenHash } }).catch(() => {});
+            await prisma.session
+                .delete({ where: { id: refreshTokenHash } })
+                .then(() => {
+                    console.log("Session deleted successfully");
+                })
+                .catch((error) => {
+                    console.warn("Failed to delete session during logout", {
+                        error: error.message,
+                        code: error.code,
+                    });
+                });
         } catch (error) {
-            // Ignore errors on logout
+            // Log errors during logout but continue
+            console.error("Error processing refresh token during logout:", error.message);
+        }
+    } else if (userId) {
+        // If no token but we have a userId from authentication, try to delete all user's sessions
+        try {
+            // Delete all sessions for this user as a security measure
+            await prisma.session
+                .deleteMany({ where: { userId } })
+                .then((result) => {
+                    console.log(`Deleted ${result.count} sessions for user ${userId}`);
+                })
+                .catch((error) => {
+                    console.warn("Failed to delete user sessions during logout", {
+                        error: error.message,
+                        userId,
+                    });
+                });
+        } catch (error) {
+            console.error("Error deleting user sessions during logout:", error.message);
         }
     }
 
-    // Clear cookies regardless of whether deletion was successful
-    res.clearCookie("access_token");
-    res.clearCookie("refresh_token");
+    // Clear cookies with appropriate settings based on environment
+    const cookieOptions = getCookieOptions(0);
+    res.clearCookie("access_token", cookieOptions);
+    res.clearCookie("refresh_token", cookieOptions);
 
+    // Return success regardless of token invalidation success
     res.status(200).json({ message: "Logged out successfully" });
 });
 
@@ -562,8 +613,8 @@ const resetPassword = asyncHandler(async (req, res) => {
 router.post("/signup", signup);
 router.post("/login", authLimiter, login); // Apply rate limiting to login
 router.post("/refresh", refreshToken);
-router.post("/logout", logout);
-router.get("/me", getCurrentUser);
+router.post("/logout", optionalAuthenticate, logout); // Try to authenticate but don't require it
+router.get("/me", authenticateToken, getCurrentUser);
 router.post("/forgot-password", authLimiter, forgotPassword); // Apply rate limiting
 router.post("/reset-password", resetPassword);
 

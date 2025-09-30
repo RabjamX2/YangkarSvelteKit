@@ -40,14 +40,28 @@
     function handleLogout(event) {
         event.preventDefault();
 
+        // Get tokens from auth store
+        const authData = $auth;
+        const hasTokens = !!authData.accessToken || !!authData.refreshToken;
+
         // Use our authenticated fetch utility with token from auth store
         const fetchAuth = createAuthFetch();
+
+        console.log("Logging out user:", {
+            username: authData.user?.username,
+            hasAccessToken: !!authData.accessToken,
+            hasRefreshToken: !!authData.refreshToken,
+        });
 
         fetchAuth(`${PUBLIC_BACKEND_URL}/api/logout`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
+            // Include refresh token in request body to invalidate token-based sessions
+            body: JSON.stringify({
+                refreshToken: authData.refreshToken || null,
+            }),
         }).then(() => {
             // Clear auth store which will remove tokens from localStorage
             auth.clearAuth();
@@ -55,6 +69,8 @@
             // Clear cookies on client side as well (for backward compatibility)
             document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+            console.log("Logout successful, tokens cleared");
 
             // Force reload to update the UI
             location.reload();
