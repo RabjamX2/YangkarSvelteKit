@@ -61,42 +61,53 @@ export const actions = {
             try {
                 const userData = await response.json();
 
-                // Store tokens as cookies
-                if (userData.accessToken) {
-                    const isProd = process.env.NODE_ENV === "production";
-                    console.log(`Code setting access token cookie in ${isProd ? "production" : "development"} mode`);
+                // Utility function to set cookies with proper cross-domain attributes
+                function setSecureCookie(name, value, maxAge) {
+                    // Always use secure cross-domain settings in production
+                    // This ensures SameSite=None for cross-domain requests
+                    cookies.set(name, value, {
+                        path: "/",
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: "none", // CRITICAL: Must be "none" for cross-domain
+                        maxAge: maxAge,
+                    });
 
-                    if (isProd) {
-                        cookies.set("access_token", userData.accessToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "none", // Changed from "lax" to "none" to allow cross-domain
-                            maxAge: 15 * 60, // 15 minutes
-                        });
+                    console.log(`Set cookie ${name} with SameSite=None and Secure=true`);
+                }
+
+                // Store tokens as cookies
+                // Detect hostname from request
+                const host = request.headers.get("host") || "";
+                const isProduction = process.env.NODE_ENV === "production" || host.includes("yangkarbhoeche.com");
+
+                console.log(`Auth environment: ${isProduction ? "PRODUCTION" : "DEVELOPMENT"}`, {
+                    host,
+                    NODE_ENV: process.env.NODE_ENV,
+                });
+
+                // Set cookies based on whether we're in production
+                if (userData.accessToken) {
+                    // In production, ALWAYS use SameSite=None
+                    if (isProduction) {
+                        setSecureCookie("access_token", userData.accessToken, 15 * 60); // 15 minutes
                     } else {
+                        // Development mode
                         cookies.set("access_token", userData.accessToken, {
                             path: "/",
                             httpOnly: true,
                             secure: true,
-                            sameSite: "lax",
+                            sameSite: "lax", // Lax is fine for development
                             maxAge: 15 * 60, // 15 minutes
                         });
                     }
                 }
 
                 if (userData.refreshToken) {
-                    const isProd = process.env.NODE_ENV === "production";
-
-                    if (isProd) {
-                        cookies.set("refresh_token", userData.refreshToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "none", // Changed to allow cross-domain
-                            maxAge: 7 * 24 * 60 * 60, // 7 days
-                        });
+                    if (isProduction) {
+                        setSecureCookie("refresh_token", userData.refreshToken, 7 * 24 * 60 * 60); // 7 days
                     } else {
+                        // Development mode
                         cookies.set("refresh_token", userData.refreshToken, {
                             path: "/",
                             httpOnly: true,
@@ -105,6 +116,14 @@ export const actions = {
                             maxAge: 7 * 24 * 60 * 60, // 7 days
                         });
                     }
+                }
+
+                // Debug cookie headers to verify they are set correctly
+                try {
+                    const setCookieHeaders = cookies.getAll().map((c) => `${c.name}=${c.value}`);
+                    console.log("Cookies being set:", setCookieHeaders);
+                } catch (e) {
+                    console.error("Error inspecting cookies:", e);
                 }
 
                 // Return data needed for client-side navigation including tokens for localStorage
