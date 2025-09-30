@@ -43,7 +43,11 @@ jobs:
 
                       cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
 
-                      # First pull the latest code
+                      # Preserve .env and other ignored files, but force-discard tracked changes
+                      git fetch origin main
+                      git checkout -- .
+
+                      # Pull the latest code
                       git pull origin main
 
                       # Then install dependencies
@@ -94,7 +98,11 @@ jobs:
 
                       cd /home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit
 
-                      # First pull the latest code
+                      # Preserve .env and other ignored files, but force-discard tracked changes
+                      git fetch origin main
+                      git checkout -- .
+
+                      # Pull the latest code
                       git pull origin main
 
                       # Install dependencies
