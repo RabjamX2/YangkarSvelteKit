@@ -63,6 +63,11 @@ app.use(
                 FRONT_END_URL,
                 "https://yangkarbhoeche.com",
                 "https://www.yangkarbhoeche.com",
+                // Include all possible variations of your domain
+                "https://yangkarbhoeche.com",
+                "https://www.yangkarbhoeche.com", 
+                "http://yangkarbhoeche.com",
+                "http://www.yangkarbhoeche.com",
                 // For development
                 "http://localhost:5173",
                 "http://localhost:5174",
@@ -74,6 +79,16 @@ app.use(
             if (isDevelopment) {
                 callback(null, true);
                 return;
+            }
+
+            // Log all origin checks in production for debugging
+            if (process.env.NODE_ENV === "production") {
+                logger.info({
+                    event: "cors_origin_check",
+                    origin: origin || "no-origin",
+                    frontEndUrl: FRONT_END_URL,
+                    allowed: allowedOrigins.includes(origin) || !origin
+                });
             }
 
             // In production, enforce the origin check
@@ -102,8 +117,8 @@ app.use(
             }
         },
         credentials: true, // Allow cookies to be sent and received
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "Cookie", "Origin", "Accept"],
     })
 );
 
