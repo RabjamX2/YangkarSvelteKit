@@ -31,12 +31,6 @@ jobs:
             - name: Install dependencies
               run: pnpm install
 
-            - name: Run Prisma migrations
-              env:
-                  DATABASE_URL: ${{ secrets.DATABASE_URL }}
-              # This command runs the prisma migration for only the 'backend' app
-              run: pnpm --filter backend exec prisma migrate deploy
-
             - name: Deploy to Backend Server
               uses: appleboy/ssh-action@v1.0.3
               with:
@@ -49,10 +43,19 @@ jobs:
 
                       cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
 
-                      pnpm --filter backend exec prisma generate
+                      # First pull the latest code
                       git pull origin main
+
+                      # Then install dependencies
                       pnpm install
 
+                      # Run migrations with the latest schema
+                      pnpm --filter backend exec prisma migrate deploy
+
+                      # Now generate Prisma client with the updated schema
+                      pnpm --filter backend exec prisma generate
+
+                      # Finally restart the service
                       pm2 restart backend
 
     deploy-frontend:
@@ -77,11 +80,9 @@ jobs:
                   cache: "pnpm"
 
             - name: Install dependencies
-              run:
-                  pnpm install
+              run: pnpm install
 
-                  # Install dependencies on the server before restarting
-            - name: Install Dependencies
+            - name: Deploy and build on the server directly
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.FRONTEND_SSH_HOST }}
@@ -92,38 +93,15 @@ jobs:
                       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
                       cd /home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit
+
+                      # First pull the latest code
                       git pull origin main
 
-                      pnpm install --prod --filter frontend
+                      # Install dependencies
+                      pnpm install
 
-            - name: Build SvelteKit App
-              env:
-                  # This sets the public backend URL during the build process
-                  VITE_PUBLIC_BACKEND_URL: "https://api.yangkarbhoeche.com"
-              # This runs the 'build' script specifically for the 'frontend' app
-              run: pnpm --filter frontend build
+                      # Build the frontend app directly on the server
+                      VITE_PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com pnpm --filter frontend build
 
-            - name: Sync files to Frontend Server
-              uses: appleboy/scp-action@v0.1.7
-              with:
-                  host: ${{ secrets.FRONTEND_SSH_HOST }}
-                  username: ${{ secrets.FRONTEND_SSH_USERNAME }}
-                  password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
-                  # This copies the built frontend app to the server
-                  source: "apps/frontend/build/"
-                  target: "/home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit/apps/frontend/build/"
-                  strip_components: 3 # This removes the first 3 path segments (apps/frontend/build) when copying
-
-            # Install dependencies on the server before restarting
-            - name: Restart Frontend Server
-              uses: appleboy/ssh-action@v1.0.3
-              with:
-                  host: ${{ secrets.FRONTEND_SSH_HOST }}
-                  username: ${{ secrets.FRONTEND_SSH_USERNAME }}
-                  password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
-                  script: |
-                      export NVM_DIR="$HOME/.nvm"
-                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-                      cd /home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit
+                      # Restart the service
                       pm2 restart frontend
