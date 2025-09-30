@@ -55,11 +55,12 @@ const getCookieOptions = (maxAge) => {
 
     // Add production-specific settings
     if (isProduction) {
-        // Use api.yangkarbhoeche.com explicitly rather than .yangkarbhoeche.com
-        // This should make cookies work specifically for the API domain
-        options.domain = "api.yangkarbhoeche.com";
+        // *IMPORTANT* For cross-domain cookies, DON'T set a domain at all
+        // Let the browser handle the domain based on the request
+        // This is more likely to work with cross-domain requests
+        // options.domain = "api.yangkarbhoeche.com";  // Commented out as this might be causing issues
 
-        // Use 'none' for cross-domain cookies, required for cross-subdomain auth
+        // Use 'none' for cross-domain cookies, required for cross-domain auth
         options.sameSite = "none";
 
         console.log(`Using production cookie settings:`, options);
@@ -191,7 +192,7 @@ const signup = asyncHandler(async (req, res) => {
         data: { username, email, password: hashedPassword },
     });
 
-    req.log.info({ event: "user_signup", userId: user.id, username: user.username }, "User signed up");
+    req.log.info({ event: "user_signup", userId: user.id, username: user.username }, "User signed up V4");
 
     // Generate tokens
     const { accessToken, refreshToken, csrfToken } = generateTokens(user);
@@ -289,7 +290,7 @@ const login = asyncHandler(async (req, res) => {
         "set-cookie": res.getHeader("set-cookie")?.map((c) => c.split(";")[0] + ";[rest-hidden]"),
     });
 
-    req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V3");
+    req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V4");
 
     // Return user data, tokens, and CSRF token
     res.status(200).json({

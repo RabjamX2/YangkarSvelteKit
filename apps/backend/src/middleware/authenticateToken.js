@@ -8,31 +8,38 @@ const prisma = new PrismaClient();
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "change-me-access-secret";
 
 const authenticateToken = async (req, res, next) => {
-    // Check for access token
-    const accessToken = req.cookies.access_token;
+    // Try to get access token from multiple sources
+    // 1. First check cookies (primary source)
+    // 2. Then check Authorization header as fallback
+    let accessToken = req.cookies.access_token;
 
-    // Log detailed information about the request in production
-    const isProd = process.env.NODE_ENV === "production";
-    if (isProd) {
-        // Get more detailed cookie information
-        const cookieHeader = req.headers.cookie || "no-cookie-header";
-        const cookieParts = cookieHeader.split(";").map((c) => c.trim());
-        const accessTokenCookie = cookieParts.find((c) => c.startsWith("access_token="));
-
-        console.log(`Auth check for ${req.method} ${req.path}`, {
-            hasAccessToken: !!accessToken,
-            accessTokenFromCookies: !!req.cookies.access_token,
-            rawCookieHeader: cookieHeader,
-            accessTokenInHeader: accessTokenCookie ? `${accessTokenCookie.substring(0, 20)}...` : "not-found",
-            cookieKeys: Object.keys(req.cookies),
-            origin: req.headers.origin || "not-set",
-            referer: req.headers.referer || "not-set",
-            host: req.headers.host,
-            userAgent: req.headers["user-agent"],
-            "x-forwarded-host": req.headers["x-forwarded-host"] || "not-set",
-            "x-forwarded-proto": req.headers["x-forwarded-proto"] || "not-set",
-        });
+    // If no cookie, check Authorization header (Bearer token)
+    if (!accessToken && req.headers.authorization) {
+        const authHeader = req.headers.authorization;
+        if (authHeader.startsWith("Bearer ")) {
+            accessToken = authHeader.substring(7); // Remove "Bearer " prefix
+        }
     }
+
+    // ***CRITICAL DEBUGGING*** - Always log authentication requests regardless of environment
+    const isProd = process.env.NODE_ENV === "production";
+
+    // Get raw cookie header information directly
+    const cookieHeader = req.headers.cookie || "no-cookie-header";
+    const cookieParts = cookieHeader.split(";").map((c) => c.trim());
+    const accessTokenCookie = cookieParts.find((c) => c.startsWith("access_token="));
+
+    console.log(`*** AUTH DEBUG *** ${req.method} ${req.path}`, {
+        hasAccessToken: !!accessToken,
+        accessTokenFromCookies: !!req.cookies.access_token,
+        rawCookieHeader: cookieHeader.substring(0, 100) + (cookieHeader.length > 100 ? "..." : ""),
+        accessTokenInHeader: accessTokenCookie ? `${accessTokenCookie.substring(0, 20)}...` : "not-found",
+        cookieKeys: Object.keys(req.cookies),
+        allHeaders: Object.keys(req.headers).join(", "),
+        origin: req.headers.origin || "not-set",
+        referer: req.headers.referer || "not-set",
+        host: req.headers.host || "not-set",
+    });
 
     if (!accessToken) {
         return res
