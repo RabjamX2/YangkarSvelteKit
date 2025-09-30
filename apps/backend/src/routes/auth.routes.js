@@ -31,7 +31,11 @@ const authLimiter = rateLimit({
 
 // Cookie settings based on environment
 const getCookieOptions = (maxAge) => {
-    const isProduction = process.env.NODE_ENV === "production";
+    // Force production mode if we detect we're on the production domain
+    const isProduction =
+        process.env.NODE_ENV === "production" ||
+        process.env.FORCE_PRODUCTION === "true" ||
+        process.env.FRONT_END_URL?.includes("yangkarbhoeche.com");
 
     // Base cookie options
     const options = {
@@ -47,13 +51,12 @@ const getCookieOptions = (maxAge) => {
         // makes the cookie available on all subdomains
         options.domain = ".yangkarbhoeche.com";
 
-        // Use 'lax' instead of 'none' if frontend and API are on the same domain
-        // or subdomains of the same domain
-        options.sameSite = "lax";
+        // If your API is on a different subdomain than your frontend,
+        // you may need to use 'none' with secure:true
+        options.sameSite = "none"; // Changed from 'lax' to 'none' for cross-domain cookies
     } else {
         options.sameSite = "lax";
     }
-
     return options;
 };
 
@@ -240,8 +243,23 @@ const login = asyncHandler(async (req, res) => {
     const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
     const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
-    res.cookie("access_token", accessToken, getCookieOptions(accessMaxAge));
-    res.cookie("refresh_token", refreshToken, getCookieOptions(refreshMaxAge));
+    const accessOptions = getCookieOptions(accessMaxAge);
+    const refreshOptions = getCookieOptions(refreshMaxAge);
+
+    // Log cookie settings for debugging
+    req.log.info(
+        {
+            event: "setting_auth_cookies",
+            accessOptions,
+            refreshOptions,
+            env: process.env.NODE_ENV,
+            frontEndUrl: process.env.FRONT_END_URL,
+        },
+        "Setting auth cookies"
+    );
+
+    res.cookie("access_token", accessToken, accessOptions);
+    res.cookie("refresh_token", refreshToken, refreshOptions);
 
     req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in");
 

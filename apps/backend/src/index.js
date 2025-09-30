@@ -17,6 +17,10 @@ const FRONT_END_URL = process.env.FRONT_END_URL;
 const PORT = process.env.PORT;
 
 const app = express();
+
+// Trust proxies like Nginx for correct https detection
+app.set("trust proxy", 1);
+
 app.use((req, res, next) => {
     req.log = logger;
     next();
@@ -25,7 +29,21 @@ app.use((req, res, next) => {
 // --- Middleware Setup ---
 app.use(
     cors({
-        origin: `${FRONT_END_URL}`, // The default SvelteKit dev server URL
+        origin: function (origin, callback) {
+            const allowedOrigins = [
+                FRONT_END_URL,
+                "https://yangkarbhoeche.com",
+                "https://www.yangkarbhoeche.com",
+                // Allow requests with no origin (like mobile apps, curl requests)
+                undefined,
+            ];
+            if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+                callback(null, true);
+            } else {
+                console.log("Blocked by CORS: ", origin);
+                callback(null, true); // Still allow for now, but log it
+            }
+        },
         credentials: true, // Allow cookies to be sent and received
     })
 );
