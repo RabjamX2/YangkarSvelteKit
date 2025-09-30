@@ -101,7 +101,7 @@ jobs:
                       pnpm install
 
                       # Build the frontend app directly on the server
-                      VITE_PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com pnpm --filter frontend build
+                      pnpm --filter frontend build
 
                       # Restart the service
                       pm2 restart frontend
