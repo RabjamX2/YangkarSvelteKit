@@ -53,12 +53,21 @@
             return ({ update, result }) => {
                 isSubmitting = false;
 
+                // Debug the result to understand its structure
+                console.log("Form result:", result);
+
                 if (result?.type === "success") {
                     // Force a full page reload instead of client-side navigation
                     // This ensures that the root layout gets the latest user data
                     setTimeout(() => {
                         window.location.href = "/";
                     }, 100);
+                } else if (result?.type === "failure") {
+                    // If there's a data field in the result that might contain an error message
+                    console.log("Form failure data:", result.data);
+
+                    // Let Svelte update the DOM with error information
+                    update();
                 }
             };
         };
@@ -73,7 +82,35 @@
     <h2>Login to Your Account</h2>
     <form method="POST" use:enhance={handlePasswordHash()}>
         {#if form?.error}
-            <p class="error">{form.error}</p>
+            <p class="error">
+                {Array.isArray(form.error)
+                    ? form.error.join(" ")
+                    : typeof form.error === "object" && form.error !== null
+                      ? JSON.stringify(form.error)
+                      : form.error}
+            </p>
+        {/if}
+
+        {#if form?.data && typeof form.data === "string"}
+            <!-- Try to parse data field if it's a stringified array/object -->
+            <p class="error">
+                {(() => {
+                    if (form.data.startsWith("[") || form.data.startsWith("{")) {
+                        try {
+                            const parsed = JSON.parse(form.data);
+                            if (Array.isArray(parsed) && parsed[1]) {
+                                return parsed[1]; // Return the second item (error message)
+                            } else {
+                                return JSON.stringify(parsed);
+                            }
+                        } catch (e) {
+                            return form.data;
+                        }
+                    } else {
+                        return form.data;
+                    }
+                })()}
+            </p>
         {/if}
 
         {#if data.success}
