@@ -39,10 +39,10 @@ export function createAuthFetch(csrfToken: string | null = null) {
 
         // Log information about the request in production
         if (process.env.NODE_ENV === "production") {
-            console.log(`Auth fetch to ${url}`, { 
+            console.log(`Auth fetch to ${url}`, {
                 hasCsrfToken: !!csrfToken,
                 credentials: fetchOptions.credentials,
-                method: options.method || 'GET'
+                method: options.method || "GET",
             });
         }
 
