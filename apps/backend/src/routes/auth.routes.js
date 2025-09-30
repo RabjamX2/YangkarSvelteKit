@@ -37,6 +37,14 @@ const getCookieOptions = (maxAge) => {
         process.env.FORCE_PRODUCTION === "true" ||
         process.env.FRONT_END_URL?.includes("yangkarbhoeche.com");
 
+    // Log environment detection
+    console.log(`Cookie environment detection:`, {
+        NODE_ENV: process.env.NODE_ENV,
+        FORCE_PRODUCTION: process.env.FORCE_PRODUCTION,
+        FRONT_END_URL: process.env.FRONT_END_URL,
+        isProductionMode: isProduction
+    });
+
     // Base cookie options
     const options = {
         httpOnly: true, // Cannot be accessed by client-side JS
@@ -47,15 +55,17 @@ const getCookieOptions = (maxAge) => {
 
     // Add production-specific settings
     if (isProduction) {
-        // Setting the domain to '.yangkarbhoeche.com' (with leading dot)
-        // makes the cookie available on all subdomains
-        options.domain = ".yangkarbhoeche.com";
-
-        // If your API is on a different subdomain than your frontend,
-        // you may need to use 'none' with secure:true
-        options.sameSite = "none"; // Changed from 'lax' to 'none' for cross-domain cookies
+        // Use api.yangkarbhoeche.com explicitly rather than .yangkarbhoeche.com
+        // This should make cookies work specifically for the API domain
+        options.domain = "api.yangkarbhoeche.com";
+        
+        // Use 'none' for cross-domain cookies, required for cross-subdomain auth
+        options.sameSite = "none"; 
+        
+        console.log(`Using production cookie settings:`, options);
     } else {
         options.sameSite = "lax";
+        console.log(`Using development cookie settings:`, options);
     }
     return options;
 };
@@ -246,6 +256,19 @@ const login = asyncHandler(async (req, res) => {
     const accessOptions = getCookieOptions(accessMaxAge);
     const refreshOptions = getCookieOptions(refreshMaxAge);
 
+    // Enhanced debugging for authentication cookies
+    console.log(`LOGIN - Setting authentication cookies:`, {
+        accessTokenFirstChars: accessToken.substring(0, 10) + '...',
+        refreshTokenFirstChars: refreshToken.substring(0, 10) + '...',
+        accessOptions,
+        refreshOptions,
+        requestOrigin: req.headers.origin || 'unknown',
+        requestReferer: req.headers.referer || 'unknown',
+        userAgent: req.headers['user-agent'],
+        requestHost: req.headers.host,
+        xForwardedFor: req.headers['x-forwarded-for'] || 'none'
+    });
+
     // Log cookie settings for debugging
     req.log.info(
         {
@@ -260,6 +283,11 @@ const login = asyncHandler(async (req, res) => {
 
     res.cookie("access_token", accessToken, accessOptions);
     res.cookie("refresh_token", refreshToken, refreshOptions);
+
+    // Add response header debugging to verify cookie was set
+    console.log(`LOGIN - Cookie headers set in response:`, {
+        'set-cookie': res.getHeader('set-cookie')?.map(c => c.split(';')[0] + ';[rest-hidden]')
+    });
 
     req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V1");
 
@@ -324,8 +352,27 @@ const refreshToken = asyncHandler(async (req, res) => {
         const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
         const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
-        res.cookie("access_token", accessToken, getCookieOptions(accessMaxAge));
-        res.cookie("refresh_token", newRefreshToken, getCookieOptions(refreshMaxAge));
+        const accessOptions = getCookieOptions(accessMaxAge);
+        const refreshOptions = getCookieOptions(refreshMaxAge);
+
+        // Enhanced debugging for refreshed tokens
+        console.log(`REFRESH - Setting new authentication cookies:`, {
+            accessTokenFirstChars: accessToken.substring(0, 10) + '...',
+            newRefreshTokenFirstChars: newRefreshToken.substring(0, 10) + '...',
+            accessOptions,
+            refreshOptions,
+            requestOrigin: req.headers.origin || 'unknown',
+            requestReferer: req.headers.referer || 'unknown',
+            userAgent: req.headers['user-agent']
+        });
+
+        res.cookie("access_token", accessToken, accessOptions);
+        res.cookie("refresh_token", newRefreshToken, refreshOptions);
+        
+        // Add response header debugging to verify cookie was set
+        console.log(`REFRESH - Cookie headers set in response:`, {
+            'set-cookie': res.getHeader('set-cookie')?.map(c => c.split(';')[0] + ';[rest-hidden]')
+        });
 
         // Return user data, tokens, and CSRF token
         res.status(200).json({
