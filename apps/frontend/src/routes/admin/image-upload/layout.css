@@ -1,0 +1,64 @@
+/* Image Upload Layout CSS - Optimized for 4:5 aspect ratio images */
+
+/* Two-column layout for the image upload interface */
+.image-upload-layout {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    width: 100%;
+}
+
+/* Styles for the left column with selection controls */
+.selection-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Styles for the right column with cropper */
+.cropper-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 600px; /* Ensure enough vertical space for taller images */
+}
+
+/* Enhance cropper container height for 4:5 aspect ratio */
+.cropper-container {
+    height: 550px; /* Increased height for better 4:5 ratio display */
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--color-shadow);
+    background-color: var(--color-surface-alt);
+    position: relative;
+    touch-action: none;
+    direction: ltr;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    font-size: 0;
+    line-height: 0;
+    display: block;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1024px) {
+    .image-upload-layout {
+        grid-template-columns: 1fr 1.5fr; /* Adjust column ratio on medium screens */
+    }
+}
+
+@media (max-width: 768px) {
+    .image-upload-layout {
+        grid-template-columns: 1fr; /* Stack vertically on mobile */
+        gap: 1.5rem;
+    }
+
+    .cropper-container {
+        height: 450px; /* Smaller height on mobile */
+    }
+}

@@ -448,17 +448,38 @@
 .cropper-container {
     margin-bottom: 1.5rem;
     max-width: 100%;
-    height: 400px;
+    height: 550px; /* Increased height for better 4:5 ratio display */
     overflow: hidden;
     border-radius: var(--border-radius);
     border: 1px solid var(--color-border);
     box-shadow: var(--color-shadow);
     background-color: var(--color-surface-alt);
+    position: relative; /* Add this to make sure absolute positioning works properly */
+    touch-action: none;
+    direction: ltr;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    font-size: 0; /* This prevents unexpected spacing issues */
+    line-height: 0;
+    display: block;
+}
+
+/* Important! Make sure the image renders correctly inside the container */
+.cropper-container img {
+    max-width: none !important; /* Override any global max-width rules */
+    max-height: none !important;
 }
 
 .cropper {
+    display: block;
     width: 100%;
-    height: 100%;
+    max-width: 100%;
+    height: 100%; /* Ensure the image takes full height */
+    max-height: 100%;
     background-color: var(--color-surface-alt);
 }
 
