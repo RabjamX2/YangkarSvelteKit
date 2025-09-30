@@ -261,7 +261,7 @@ const login = asyncHandler(async (req, res) => {
     res.cookie("access_token", accessToken, accessOptions);
     res.cookie("refresh_token", refreshToken, refreshOptions);
 
-    req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in");
+    req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V1");
 
     // Return user data, tokens, and CSRF token
     res.status(200).json({

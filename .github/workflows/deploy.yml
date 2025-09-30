@@ -62,7 +62,7 @@ jobs:
                       pnpm --filter backend exec prisma migrate deploy
 
                       # Now generate Prisma client with the updated schema
-                      pnpm --filter backend exec prisma generate                      # Finally restart the service
+                      pnpm --filter backend exec prisma generate
                       pm2 restart backend
 
     deploy-frontend:
