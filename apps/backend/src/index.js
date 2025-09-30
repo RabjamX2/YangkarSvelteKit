@@ -20,9 +20,6 @@ const PORT = process.env.PORT;
 
 const app = express();
 
-// Trust proxies like Nginx for correct https detection
-app.set("trust proxy", 1);
-
 // Add request logger
 app.use((req, res, next) => {
     req.log = logger;
@@ -88,18 +85,18 @@ app.use(
                 // In production we need to allow these for cookie auth to work properly
                 // Some browsers may send credentials without origin in some cases
                 callback(null, true);
-                
+
                 // Log these but don't block them anymore
                 logger.info({
                     event: "no_origin_request_allowed",
-                    message: "Allowed request with no origin header"
+                    message: "Allowed request with no origin header",
                 });
             } else {
                 // Blocked origin
                 logger.warn({
                     event: "cors_blocked",
                     origin,
-                    message: "Blocked by CORS"
+                    message: "Blocked by CORS",
                 });
                 callback(new Error("Not allowed by CORS"));
             }

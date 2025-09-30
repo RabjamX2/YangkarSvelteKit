@@ -3,13 +3,11 @@ const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 console.log(PUBLIC_BACKEND_URL);
 
-/** @type {import('./$types').PageServerLoad} */
 export function load({ url }) {
     const success = url.searchParams.get("success");
     return { success };
 }
 
-/** @type {import('./$types').Actions} */
 export const actions = {
     // This is the 'default' action for the form
     default: async ({ cookies, request, fetch }) => {
@@ -75,7 +73,6 @@ export const actions = {
                             secure: true,
                             sameSite: "none", // Changed from "lax" to "none" to allow cross-domain
                             maxAge: 15 * 60, // 15 minutes
-                            domain: "api.yangkarbhoeche.com", // Specific to the API domain
                         });
                     } else {
                         cookies.set("access_token", userData.accessToken, {
@@ -98,7 +95,6 @@ export const actions = {
                             secure: true,
                             sameSite: "none", // Changed to allow cross-domain
                             maxAge: 7 * 24 * 60 * 60, // 7 days
-                            domain: "api.yangkarbhoeche.com", // Specific to API domain
                         });
                     } else {
                         cookies.set("refresh_token", userData.refreshToken, {
