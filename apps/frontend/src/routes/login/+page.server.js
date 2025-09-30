@@ -1,7 +1,36 @@
 import { fail } from "@sveltejs/kit";
 const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
-console.log(PUBLIC_BACKEND_URL);
+// Environment detection helper
+function isProduction(request) {
+    // IMPORTANT: For authentication cookies, default to production mode
+    // when environment cannot be determined - safer than development mode
+
+    // Multiple ways to detect production:
+    // 1. Environment variable - standard way
+    // 2. Request host - domain based detection
+    // 3. PUBLIC_BACKEND_URL - if it contains production URLs
+    // 4. Default to TRUE when PUBLIC_BACKEND_URL uses https (safer default)
+
+    // If no NODE_ENV and we're using https in backend URL, assume production
+    const isProductionUrl = PUBLIC_BACKEND_URL?.startsWith("https://");
+
+    return (
+        process.env.NODE_ENV === "production" ||
+        (request && request.headers.get("host") && request.headers.get("host").includes("yangkarbhoeche.com")) ||
+        PUBLIC_BACKEND_URL?.includes("yangkarbhoeche.com") ||
+        PUBLIC_BACKEND_URL?.includes("api.yangkarbhoeche") ||
+        isProductionUrl || // Default to production mode if using HTTPS
+        false
+    );
+}
+
+// Log our environment information
+console.log(`Server environment check:`, {
+    NODE_ENV: process.env.NODE_ENV,
+    PUBLIC_BACKEND_URL,
+    isProduction: isProduction(),
+});
 
 export function load({ url }) {
     const success = url.searchParams.get("success");
@@ -77,19 +106,20 @@ export const actions = {
                 }
 
                 // Store tokens as cookies
-                // Detect hostname from request
-                const host = request.headers.get("host") || "";
-                const isProduction = process.env.NODE_ENV === "production" || host.includes("yangkarbhoeche.com");
+                // Use our isProduction helper for consistent environment detection
+                const productionMode = isProduction(request);
 
-                console.log(`Auth environment: ${isProduction ? "PRODUCTION" : "DEVELOPMENT"}`, {
-                    host,
+                console.log(`Auth environment: ${productionMode ? "PRODUCTION" : "DEVELOPMENT"}`, {
+                    host: request.headers.get("host") || "unknown",
                     NODE_ENV: process.env.NODE_ENV,
+                    BACKEND_URL: PUBLIC_BACKEND_URL,
                 });
 
                 // Set cookies based on whether we're in production
                 if (userData.accessToken) {
                     // In production, ALWAYS use SameSite=None
-                    if (isProduction) {
+                    if (productionMode) {
+                        // FORCE SameSite=None for cross-domain requests
                         setSecureCookie("access_token", userData.accessToken, 15 * 60); // 15 minutes
                     } else {
                         // Development mode
@@ -104,7 +134,8 @@ export const actions = {
                 }
 
                 if (userData.refreshToken) {
-                    if (isProduction) {
+                    if (productionMode) {
+                        // FORCE SameSite=None for cross-domain requests
                         setSecureCookie("refresh_token", userData.refreshToken, 7 * 24 * 60 * 60); // 7 days
                     } else {
                         // Development mode
