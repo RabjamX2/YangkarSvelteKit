@@ -1,13 +1,7 @@
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-p                logger.info(
-                    {
-                        event: "no_origin_request_allowed",
-                        path: "unknown-path",
-                        method: "unknown-method"
-                    },
-                    "Allowed request with no origin header"
-                );mport helmet from "helmet";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import logger from "./logger.js";
 
