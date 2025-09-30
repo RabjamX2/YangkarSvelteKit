@@ -32,13 +32,29 @@ const authLimiter = rateLimit({
 // Cookie settings based on environment
 const getCookieOptions = (maxAge) => {
     const isProduction = process.env.NODE_ENV === "production";
-    return {
+
+    // Base cookie options
+    const options = {
         httpOnly: true, // Cannot be accessed by client-side JS
-        secure: isProduction, // HTTPS only in production
-        sameSite: isProduction ? "none" : "lax", // Cross-site cookie policy
-        domain: isProduction ? "yangkarbhoeche.com" : undefined,
+        secure: true, // Always use HTTPS for auth cookies
         maxAge: maxAge, // Time in milliseconds
+        path: "/", // Make sure cookies are available on all paths
     };
+
+    // Add production-specific settings
+    if (isProduction) {
+        // Setting the domain to '.yangkarbhoeche.com' (with leading dot)
+        // makes the cookie available on all subdomains
+        options.domain = ".yangkarbhoeche.com";
+
+        // Use 'lax' instead of 'none' if frontend and API are on the same domain
+        // or subdomains of the same domain
+        options.sameSite = "lax";
+    } else {
+        options.sameSite = "lax";
+    }
+
+    return options;
 };
 
 // Verify password - handles both raw and pre-hashed passwords

@@ -60,23 +60,49 @@ export const handle = async ({ event, resolve }) => {
 
                     // Get tokens directly from response body, not parsing cookies
                     if (data.accessToken) {
-                        event.cookies.set("access_token", data.accessToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "lax",
-                            maxAge: 15 * 60, // 15 minutes
-                        });
+                        const isProd = process.env.NODE_ENV === "production";
+
+                        if (isProd) {
+                            event.cookies.set("access_token", data.accessToken, {
+                                path: "/",
+                                httpOnly: true,
+                                secure: true,
+                                sameSite: "lax",
+                                maxAge: 15 * 60, // 15 minutes
+                                domain: ".yangkarbhoeche.com",
+                            });
+                        } else {
+                            event.cookies.set("access_token", data.accessToken, {
+                                path: "/",
+                                httpOnly: true,
+                                secure: true,
+                                sameSite: "lax",
+                                maxAge: 15 * 60, // 15 minutes
+                            });
+                        }
                     }
 
                     if (data.refreshToken) {
-                        event.cookies.set("refresh_token", data.refreshToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "lax",
-                            maxAge: 7 * 24 * 60 * 60, // 7 days
-                        });
+                        const isProd = process.env.NODE_ENV === "production";
+
+                        if (isProd) {
+                            event.cookies.set("refresh_token", data.refreshToken, {
+                                path: "/",
+                                httpOnly: true,
+                                secure: true,
+                                sameSite: "lax",
+                                maxAge: 7 * 24 * 60 * 60, // 7 days
+                                domain: ".yangkarbhoeche.com",
+                            });
+                        } else {
+                            event.cookies.set("refresh_token", data.refreshToken, {
+                                path: "/",
+                                httpOnly: true,
+                                secure: true,
+                                sameSite: "lax",
+                                maxAge: 7 * 24 * 60 * 60, // 7 days
+                            });
+                        }
                     }
 
                     // Set user and CSRF token in locals

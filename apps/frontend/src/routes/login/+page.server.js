@@ -63,23 +63,49 @@ export const actions = {
 
                 // Store tokens as cookies
                 if (userData.accessToken) {
-                    cookies.set("access_token", userData.accessToken, {
-                        path: "/",
-                        httpOnly: true,
-                        secure: true,
-                        sameSite: "lax",
-                        maxAge: 15 * 60, // 15 minutes
-                    });
+                    const isProd = process.env.NODE_ENV === "production";
+
+                    if (isProd) {
+                        cookies.set("access_token", userData.accessToken, {
+                            path: "/",
+                            httpOnly: true,
+                            secure: true,
+                            sameSite: "lax",
+                            maxAge: 15 * 60, // 15 minutes
+                            domain: ".yangkarbhoeche.com",
+                        });
+                    } else {
+                        cookies.set("access_token", userData.accessToken, {
+                            path: "/",
+                            httpOnly: true,
+                            secure: true,
+                            sameSite: "lax",
+                            maxAge: 15 * 60, // 15 minutes
+                        });
+                    }
                 }
 
                 if (userData.refreshToken) {
-                    cookies.set("refresh_token", userData.refreshToken, {
-                        path: "/",
-                        httpOnly: true,
-                        secure: true,
-                        sameSite: "lax",
-                        maxAge: 7 * 24 * 60 * 60, // 7 days
-                    });
+                    const isProd = process.env.NODE_ENV === "production";
+
+                    if (isProd) {
+                        cookies.set("refresh_token", userData.refreshToken, {
+                            path: "/",
+                            httpOnly: true,
+                            secure: true,
+                            sameSite: "lax",
+                            maxAge: 7 * 24 * 60 * 60, // 7 days
+                            domain: ".yangkarbhoeche.com",
+                        });
+                    } else {
+                        cookies.set("refresh_token", userData.refreshToken, {
+                            path: "/",
+                            httpOnly: true,
+                            secure: true,
+                            sameSite: "lax",
+                            maxAge: 7 * 24 * 60 * 60, // 7 days
+                        });
+                    }
                 }
 
                 // Return data needed for client-side navigation
