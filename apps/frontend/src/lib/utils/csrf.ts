@@ -37,6 +37,15 @@ export function createAuthFetch(csrfToken: string | null = null) {
             headers: createApiHeaders(csrfToken, (options.headers as Record<string, string>) || {}),
         };
 
+        // Log information about the request in production
+        if (process.env.NODE_ENV === "production") {
+            console.log(`Auth fetch to ${url}`, { 
+                hasCsrfToken: !!csrfToken,
+                credentials: fetchOptions.credentials,
+                method: options.method || 'GET'
+            });
+        }
+
         return fetch(url, fetchOptions);
     };
 }

@@ -67,9 +67,9 @@ export const handle = async ({ event, resolve }) => {
                                 path: "/",
                                 httpOnly: true,
                                 secure: true,
-                                sameSite: "lax",
+                                sameSite: "none", // Changed to allow cross-domain
                                 maxAge: 15 * 60, // 15 minutes
-                                domain: ".yangkarbhoeche.com",
+                                domain: "api.yangkarbhoeche.com", // Specific to API domain
                             });
                         } else {
                             event.cookies.set("access_token", data.accessToken, {
@@ -90,9 +90,9 @@ export const handle = async ({ event, resolve }) => {
                                 path: "/",
                                 httpOnly: true,
                                 secure: true,
-                                sameSite: "lax",
+                                sameSite: "none", // Changed to allow cross-domain
                                 maxAge: 7 * 24 * 60 * 60, // 7 days
-                                domain: ".yangkarbhoeche.com",
+                                domain: "api.yangkarbhoeche.com", // Specific to API domain
                             });
                         } else {
                             event.cookies.set("refresh_token", data.refreshToken, {

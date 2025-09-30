@@ -73,9 +73,9 @@ export const actions = {
                             path: "/",
                             httpOnly: true,
                             secure: true,
-                            sameSite: "lax",
+                            sameSite: "none", // Changed from "lax" to "none" to allow cross-domain
                             maxAge: 15 * 60, // 15 minutes
-                            domain: ".yangkarbhoeche.com",
+                            domain: "api.yangkarbhoeche.com", // Specific to the API domain
                         });
                     } else {
                         cookies.set("access_token", userData.accessToken, {
@@ -96,9 +96,9 @@ export const actions = {
                             path: "/",
                             httpOnly: true,
                             secure: true,
-                            sameSite: "lax",
+                            sameSite: "none", // Changed to allow cross-domain
                             maxAge: 7 * 24 * 60 * 60, // 7 days
-                            domain: ".yangkarbhoeche.com",
+                            domain: "api.yangkarbhoeche.com", // Specific to API domain
                         });
                     } else {
                         cookies.set("refresh_token", userData.refreshToken, {

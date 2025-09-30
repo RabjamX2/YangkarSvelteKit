@@ -10,8 +10,20 @@ const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "change-me-access-sec
 const authenticateToken = async (req, res, next) => {
     // Check for access token
     const accessToken = req.cookies.access_token;
+    
+    // Log detailed information about the request in production
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd) {
+        console.log(`Auth check for ${req.method} ${req.path}`, {
+            hasAccessToken: !!accessToken,
+            cookies: req.cookies,
+            origin: req.headers.origin,
+            referer: req.headers.referer
+        });
+    }
+    
     if (!accessToken) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({ message: "Authentication required", debug: isProd ? "No access_token cookie" : undefined });
     }
 
     try {
@@ -41,11 +53,28 @@ const authenticateToken = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
+        // Provide more detailed error information
+        const isProd = process.env.NODE_ENV === 'production';
+        if (isProd) {
+            console.error('Token verification error:', {
+                errorName: error.name,
+                errorMessage: error.message,
+                tokenFirstChars: accessToken ? `${accessToken.substring(0, 10)}...` : 'null'
+            });
+        }
+        
         if (error instanceof jwt.TokenExpiredError) {
-            return res.status(401).json({ message: "Token expired", code: "TOKEN_EXPIRED" });
+            return res.status(401).json({ 
+                message: "Token expired", 
+                code: "TOKEN_EXPIRED",
+                debug: isProd ? "JWT token has expired" : undefined
+            });
         }
 
-        return res.status(401).json({ message: "Invalid token" });
+        return res.status(401).json({ 
+            message: "Invalid token",
+            debug: isProd ? `JWT verification failed: ${error.message}` : undefined
+        });
     }
 };
 
