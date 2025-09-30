@@ -65,7 +65,7 @@ jobs:
                       pnpm --filter backend exec prisma generate
 
                       # Restart backend with NODE_ENV set to production
-                      NODE_ENV=production pm2 restart backend
+                      pm2 restart backend --update-env
 
     deploy-frontend:
         name: Deploy Frontend App
@@ -113,17 +113,8 @@ jobs:
                       # Install all dependencies including dev dependencies
                       pnpm install --no-frozen-lockfile
 
-                      # Ensure PostCSS plugins are installed
-                      cd apps/frontend
-                      npm install -D autoprefixer postcss postcss-load-config
-
-                      # Create .env file with backend URL and NODE_ENV
-                      echo "VITE_PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com" > .env
-                      echo "NODE_ENV=production" >> .env
-                      cd ../..
-
                       # Build the frontend app directly on the server
                       pnpm --filter frontend build
 
                       # Restart the service with NODE_ENV set to production
-                      NODE_ENV=production pm2 restart frontend
+                      pm2 restart frontend --update-env

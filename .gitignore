@@ -18,3 +18,4 @@
 .env.*
 !/.env.example
 /generated/prisma
+ecosystem.config.js
