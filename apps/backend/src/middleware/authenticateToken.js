@@ -12,12 +12,14 @@ const authenticateToken = async (req, res, next) => {
     // 1. First check cookies (primary source)
     // 2. Then check Authorization header as fallback
     let accessToken = req.cookies.access_token;
+    let authMethod = "cookie"; // Track which auth method was used
 
     // If no cookie, check Authorization header (Bearer token)
     if (!accessToken && req.headers.authorization) {
         const authHeader = req.headers.authorization;
         if (authHeader.startsWith("Bearer ")) {
             accessToken = authHeader.substring(7); // Remove "Bearer " prefix
+            authMethod = "bearer"; // Mark that we're using the Authorization header
         }
     }
 
@@ -28,10 +30,14 @@ const authenticateToken = async (req, res, next) => {
     const cookieHeader = req.headers.cookie || "no-cookie-header";
     const cookieParts = cookieHeader.split(";").map((c) => c.trim());
     const accessTokenCookie = cookieParts.find((c) => c.startsWith("access_token="));
+    const hasAuthHeader = !!req.headers.authorization;
 
+    // Log detailed authentication information
     console.log(`*** AUTH DEBUG *** ${req.method} ${req.path}`, {
         hasAccessToken: !!accessToken,
+        authMethodUsed: authMethod,
         accessTokenFromCookies: !!req.cookies.access_token,
+        accessTokenFromHeader: hasAuthHeader,
         rawCookieHeader: cookieHeader.substring(0, 100) + (cookieHeader.length > 100 ? "..." : ""),
         accessTokenInHeader: accessTokenCookie ? `${accessTokenCookie.substring(0, 20)}...` : "not-found",
         cookieKeys: Object.keys(req.cookies),
@@ -69,6 +75,15 @@ const authenticateToken = async (req, res, next) => {
         if (!user) {
             return res.status(401).json({ message: "User not found" });
         }
+
+        // Log successful authentication
+        console.log(`*** AUTH SUCCESS *** ${req.method} ${req.path}`, {
+            userId: user.id,
+            username: user.username,
+            role: user.role,
+            authMethod: authMethod,
+            timestamp: new Date().toISOString(),
+        });
 
         // Add user to request object
         req.user = user;

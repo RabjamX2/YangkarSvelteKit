@@ -111,10 +111,16 @@ export const actions = {
                     }
                 }
 
-                // Return data needed for client-side navigation
+                // Return data needed for client-side navigation including tokens for localStorage
                 return {
                     success: true,
+                    // Include tokens in the response so the client can store them
+                    accessToken: userData.accessToken,
+                    refreshToken: userData.refreshToken,
+                    csrfToken: userData.csrfToken,
+                    // Include user data
                     user: {
+                        id: userData.userId || userData.id,
                         username: userData.username || username,
                         role: userData.role || "USER",
                     },

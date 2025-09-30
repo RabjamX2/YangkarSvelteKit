@@ -4,6 +4,7 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { hashPassword, isWebCryptoAvailable } from "$lib/utils/password.js";
+    import { auth } from "$lib/stores/auth.store.js";
 
     /** @type {import('./$types').ActionData} */
     export let form;
@@ -21,6 +22,12 @@
             setTimeout(() => {
                 window.location.href = "/";
             }, 100);
+        }
+
+        // Check if we're coming from successful signup
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("signup") === "success") {
+            data.signupSuccess = true;
         }
     });
 
@@ -57,6 +64,24 @@
                 console.log("Form result:", result);
 
                 if (result?.type === "success") {
+                    // Store the tokens and user data in our auth store
+                    if (result.data) {
+                        // Save auth tokens in the store which will persist them in localStorage
+                        auth.setAuth({
+                            accessToken: result.data.accessToken,
+                            refreshToken: result.data.refreshToken,
+                            csrfToken: result.data.csrfToken,
+                            user: result.data.user,
+                        });
+
+                        console.log("Auth data saved to store:", {
+                            username: result.data.user?.username,
+                            role: result.data.user?.role,
+                            hasToken: !!result.data.accessToken,
+                            hasCsrf: !!result.data.csrfToken,
+                        });
+                    }
+
                     // Force a full page reload instead of client-side navigation
                     // This ensures that the root layout gets the latest user data
                     setTimeout(() => {
@@ -115,6 +140,10 @@
 
         {#if data.success}
             <p class="success">{data.success}</p>
+        {/if}
+
+        {#if data.signupSuccess}
+            <p class="success">Account created successfully! Please log in with your new credentials.</p>
         {/if}
 
         <div class="form-group">

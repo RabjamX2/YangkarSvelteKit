@@ -18,7 +18,7 @@
             // Auto-redirect to login after a short delay
             setTimeout(() => {
                 console.log("Redirecting to login now...");
-                goto("/login");
+                goto("/login?signup=success");
             }, 2000); // 2 second delay to show the success message before redirect
         }
     });

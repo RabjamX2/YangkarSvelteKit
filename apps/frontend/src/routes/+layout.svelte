@@ -34,11 +34,14 @@
         });
     }
 
+    // Import auth store
+    import { auth } from "$lib/stores/auth.store.js";
+
     function handleLogout(event) {
         event.preventDefault();
 
-        // Use our authenticated fetch utility
-        const fetchAuth = createAuthFetch(data.csrfToken);
+        // Use our authenticated fetch utility with token from auth store
+        const fetchAuth = createAuthFetch();
 
         fetchAuth(`${PUBLIC_BACKEND_URL}/api/logout`, {
             method: "POST",
@@ -46,9 +49,14 @@
                 "Content-Type": "application/json",
             },
         }).then(() => {
-            // Clear cookies on client side as well
+            // Clear auth store which will remove tokens from localStorage
+            auth.clearAuth();
+
+            // Clear cookies on client side as well (for backward compatibility)
             document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+            // Force reload to update the UI
             location.reload();
         });
     }
@@ -87,7 +95,7 @@
         </figure>
         <div class="main-header-right">
             <div class="user-dropdown" class:open={dropdownOpen}>
-                {#if data.user}
+                {#if data.user || $auth.user}
                     <button
                         class="user-badge"
                         aria-haspopup="true"
@@ -120,8 +128,8 @@
                         >
                     </button>
                     <div class="user-dropdown-menu">
-                        <span class="dropdown-item username">{data.user.username}</span>
-                        {#if data.user.role === "ADMIN"}
+                        <span class="dropdown-item username">{(data.user || $auth.user)?.username}</span>
+                        {#if (data.user || $auth.user)?.role === "ADMIN"}
                             <a href="/admin">Admin Panel</a>
                             <div class="dropdown-divider"></div>
                         {/if}

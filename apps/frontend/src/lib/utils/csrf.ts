@@ -2,8 +2,11 @@
  * Utility functions for CSRF protection in API requests
  */
 
+import { get } from "svelte/store";
+import { auth } from "$lib/stores/auth.store";
+
 /**
- * Creates headers for an API request, including the CSRF token if needed
+ * Creates headers for an API request, including the CSRF token and Authorization if available
  * @param {string|null} csrfToken - The CSRF token obtained from the server
  * @param {Record<string, string>} [additionalHeaders] - Any additional headers to include
  * @returns {Record<string, string>} - Headers object ready for fetch API
@@ -17,8 +20,19 @@ export function createApiHeaders(
         ...additionalHeaders,
     };
 
-    if (csrfToken) {
-        headers["X-CSRF-Token"] = csrfToken;
+    // Try to get token from the provided token or from the store
+    const authStore = get(auth);
+    const actualCsrfToken = csrfToken || authStore.csrfToken;
+    const accessToken = authStore.accessToken;
+
+    // Add CSRF token if available
+    if (actualCsrfToken) {
+        headers["X-CSRF-Token"] = actualCsrfToken;
+    }
+
+    // Add Authorization header with Bearer token if available
+    if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
     }
 
     return headers;
@@ -34,6 +48,7 @@ export function createAuthFetch(csrfToken: string | null = null) {
         // Always explicitly include credentials
         const fetchOptions: RequestInit = {
             ...options,
+            // Still include credentials for compatibility, but we'll primarily use Authorization header
             credentials: "include",
             headers: createApiHeaders(csrfToken, (options.headers as Record<string, string>) || {}),
         };
