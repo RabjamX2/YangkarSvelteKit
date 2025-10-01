@@ -6,9 +6,7 @@
     import { hashPassword, isWebCryptoAvailable } from "$lib/utils/password.js";
     import { auth } from "$lib/stores/auth.store.js";
 
-    /** @type {import('./$types').ActionData} */
     export let form;
-    /** @type {import('./$types').PageData} */
     export let data;
 
     // Track login progress
@@ -31,71 +29,67 @@
         }
     });
 
-    // Enhanced form handler with client-side password hashing
-    function handlePasswordHash() {
-        return async ({ formData }) => {
-            isSubmitting = true;
+    // Client-side login handler
+    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+    let username = "";
+    let password = "";
+    let errorMsg = "";
 
+    async function handleLogin(event) {
+        event.preventDefault();
+        isSubmitting = true;
+        errorMsg = "";
+
+        let finalPassword = password;
+        let passwordHashMethod = undefined;
+        if (password && isWebCryptoAvailable()) {
             try {
-                // Check if Web Crypto API is available
-                const password = formData.get("password");
-                if (password && isWebCryptoAvailable()) {
-                    try {
-                        // Hash the password with SHA-256 before sending
-                        const hashedPassword = await hashPassword(password.toString());
-                        formData.set("password", hashedPassword);
-                        formData.set("passwordHashMethod", "sha256-client");
-                    } catch (cryptoError) {
-                        console.warn("Client-side hashing failed:", cryptoError);
-                        // Continue with unhashed password - server will handle it
-                    }
-                } else if (!isWebCryptoAvailable()) {
-                    console.warn("Web Crypto API not available - using server-side hashing only");
-                }
-            } catch (error) {
-                console.error("Form enhancement error:", error);
+                finalPassword = await hashPassword(password.toString());
+                passwordHashMethod = "sha256-client";
+            } catch (cryptoError) {
+                console.warn("Client-side hashing failed:", cryptoError);
+            }
+        }
+
+        try {
+            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username,
+                    password: finalPassword,
+                    passwordHashMethod,
+                }),
+                credentials: "include",
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                errorMsg = data.error || "Login failed.";
+                isSubmitting = false;
+                return;
             }
 
-            // Return a callback for post-submission handling
-            return ({ update, result }) => {
-                isSubmitting = false;
+            // Get user data from response - only parse the body once
+            const userData = await response.json();
 
-                // Debug the result to understand its structure
-                console.log("Form result:", result);
+            if (userData.user) {
+                // Update auth store directly instead of full page reload
+                auth.setAuth({
+                    user: userData.user,
+                    csrfToken: userData.csrfToken,
+                });
 
-                if (result?.type === "success") {
-                    // Store the tokens and user data in our auth store
-                    if (result.data) {
-                        // Save auth tokens in the store which will persist them in localStorage
-                        auth.setAuth({
-                            accessToken: result.data.accessToken,
-                            refreshToken: result.data.refreshToken,
-                            csrfToken: result.data.csrfToken,
-                            user: result.data.user,
-                        });
-
-                        console.log("Auth data saved to store:", {
-                            username: result.data.user?.username,
-                            role: result.data.user?.role,
-                            hasToken: !!result.data.accessToken,
-                            hasCsrf: !!result.data.csrfToken,
-                        });
-                    }
-
-                    // Force a full page reload instead of client-side navigation
-                    // This ensures that the root layout gets the latest user data
-                    setTimeout(() => {
-                        window.location.href = "/";
-                    }, 100);
-                } else if (result?.type === "failure") {
-                    // If there's a data field in the result that might contain an error message
-                    console.log("Form failure data:", result.data);
-
-                    // Let Svelte update the DOM with error information
-                    update();
-                }
-            };
-        };
+                // Use SvelteKit navigation for better performance
+                goto("/");
+            } else {
+                // Fallback to old behavior if response structure is unexpected
+                window.location.href = "/";
+            }
+        } catch (err) {
+            errorMsg = "Network error. Please try again.";
+        }
+        isSubmitting = false;
     }
 </script>
 
@@ -105,7 +99,7 @@
 
 <div class="auth-container">
     <h2>Login to Your Account</h2>
-    <form method="POST" use:enhance={handlePasswordHash()}>
+    <form on:submit={handleLogin}>
         {#if form?.error}
             <p class="error">
                 {Array.isArray(form.error)
@@ -148,12 +142,12 @@
 
         <div class="form-group">
             <label for="username">Username</label>
-            <input id="username" type="text" name="username" value={form?.username ?? ""} required />
+            <input id="username" type="text" name="username" bind:value={username} required />
         </div>
 
         <div class="form-group">
             <label for="password">Password</label>
-            <input id="password" type="password" name="password" required />
+            <input id="password" type="password" name="password" bind:value={password} required />
         </div>
 
         <div class="form-actions">
@@ -163,6 +157,9 @@
             </button>
         </div>
     </form>
+    {#if errorMsg}
+        <p class="error">{errorMsg}</p>
+    {/if}
     <p class="auth-switch">
         Don't have an account? <a href="/signup">Sign up</a>
     </p>

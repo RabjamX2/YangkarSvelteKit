@@ -3,7 +3,8 @@ const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 /** @type {import('./$types').Actions} */
 export const actions = {
-    default: async ({ cookies, request, fetch }) => {
+    default: async ({ request, fetch }) => {
+        // Note: 'cookies' parameter removed as we no longer need to manually set cookies
         let username, email, password, passwordHashMethod;
 
         // Process the form data - whether it's enhanced or not
@@ -53,6 +54,7 @@ export const actions = {
                     password,
                     passwordHashMethod, // Pass this to backend if it exists
                 }),
+                credentials: "include", // Important to receive and store HttpOnly cookies
             });
 
             if (!response.ok) {
@@ -87,39 +89,23 @@ export const actions = {
                         password,
                         passwordHashMethod,
                     }),
+                    credentials: "include", // Important to receive and store HttpOnly cookies
                 });
 
                 if (loginResponse.ok) {
                     const loginData = await loginResponse.json();
 
-                    // Set cookies for auth (same as in login page)
-                    if (loginData.accessToken) {
-                        cookies.set("access_token", loginData.accessToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "lax", // Keep it simple for now
-                            maxAge: 15 * 60, // 15 minutes
-                        });
-                    }
+                    console.log("Auto-login successful: Backend has set HttpOnly cookies directly");
 
-                    if (loginData.refreshToken) {
-                        cookies.set("refresh_token", loginData.refreshToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "lax",
-                            maxAge: 7 * 24 * 60 * 60, // 7 days
-                        });
-                    }
+                    // Note: We no longer need to set cookies manually since the backend
+                    // sets HttpOnly cookies directly in the response headers.
+                    // The fetch() automatically handles and stores those cookies.
 
-                    // Return success with tokens for client-side use
+                    // Return success with minimal data for client-side use (tokens are in cookies)
                     return {
                         success: true,
                         message: "Account created and logged in successfully!",
-                        // Include tokens and user data for client-side storage
-                        accessToken: loginData.accessToken,
-                        refreshToken: loginData.refreshToken,
+                        // Include only CSRF token and user data for client-side storage
                         csrfToken: loginData.csrfToken,
                         user: loginData.user || {
                             username,

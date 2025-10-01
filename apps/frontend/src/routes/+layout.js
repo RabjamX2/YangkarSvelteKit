@@ -1,55 +1,55 @@
 import { browser } from "$app/environment";
 import { auth } from "$lib/stores/auth.store.js";
-import { get } from "svelte/store";
 
-// Client-side initialization to check localStorage for auth tokens
+// Client-side initialization to check for auth session using cookies
 export const load = async ({ data, fetch }) => {
     // This runs in the browser after SSR
-    // We need to check if we have auth tokens in localStorage
-    if (browser) {
-        const authData = get(auth);
 
-        // If we have auth data in localStorage but not from SSR, we might be authenticated
-        if (authData.accessToken && !data.user) {
-            console.log("Found tokens in localStorage");
+    // If we already have user data from SSR, use that directly
+    if (browser && data.user) {
+        // Update the auth store with SSR data
+        auth.setAuth({
+            user: data.user,
+            csrfToken: data.csrfToken,
+        });
+        return data;
+    }
 
-            try {
-                // Validate token against backend
-                const response = await fetch(`${import.meta.env.VITE_PUBLIC_BACKEND_URL}/api/me`, {
-                    headers: {
-                        Authorization: `Bearer ${authData.accessToken}`,
-                    },
-                });
+    // Only check with API if we don't have user data and we're in the browser
+    if (browser && !data.user) {
+        try {
+            // Attempt to validate the session using httpOnly cookies
+            // The cookies are automatically included with 'credentials: include'
+            const response = await fetch(`${import.meta.env.VITE_PUBLIC_BACKEND_URL}/api/me`, {
+                credentials: "include",
+            });
 
-                if (response.ok) {
-                    const userData = await response.json();
+            if (response.ok) {
+                const userData = await response.json();
 
-                    if (userData.user) {
-                        console.log("Successfully validated token from localStorage");
+                if (userData.user) {
+                    console.log("Successfully validated cookie-based session");
 
-                        // Update store with the fresh data
-                        auth.setAuth({
-                            accessToken: authData.accessToken,
-                            refreshToken: authData.refreshToken,
-                            csrfToken: userData.csrfToken,
-                            user: userData.user,
-                        });
+                    // Update store with user data and CSRF token
+                    auth.setAuth({
+                        csrfToken: userData.csrfToken,
+                        user: userData.user,
+                    });
 
-                        // Merge with server data
-                        return {
-                            ...data,
-                            user: userData.user,
-                            csrfToken: userData.csrfToken,
-                        };
-                    }
-                } else {
-                    // Token invalid, clear it
-                    console.log("Token from localStorage is invalid, clearing");
-                    auth.clearAuth();
+                    // Merge with server data
+                    return {
+                        ...data,
+                        user: userData.user,
+                        csrfToken: userData.csrfToken,
+                    };
                 }
-            } catch (error) {
-                console.error("Error validating token from localStorage:", error);
+            } else {
+                // No valid session, clear the auth store
+                console.log("No valid cookie-based session found");
+                auth.clearAuth();
             }
+        } catch (error) {
+            console.error("Error validating cookie-based session:", error);
         }
     }
 

@@ -29,6 +29,7 @@ export const handle = async ({ event, resolve }) => {
                     headers: {
                         cookie: `access_token=${accessToken}`,
                     },
+                    credentials: "include",
                 });
 
                 if (response.ok) {
@@ -53,59 +54,14 @@ export const handle = async ({ event, resolve }) => {
                     headers: {
                         cookie: `refresh_token=${refreshToken}`,
                     },
+                    credentials: "include",
                 });
 
                 if (response.ok) {
                     const data = await response.json();
 
-                    // Get tokens directly from response body, not parsing cookies
-                    if (data.accessToken) {
-                        const isProd = process.env.NODE_ENV === "production";
-
-                        if (isProd) {
-                            event.cookies.set("access_token", data.accessToken, {
-                                path: "/",
-                                httpOnly: true,
-                                secure: true,
-                                sameSite: "none", // Changed to allow cross-domain
-                                maxAge: 15 * 60, // 15 minutes
-                                domain: "api.yangkarbhoeche.com", // Specific to API domain
-                            });
-                        } else {
-                            event.cookies.set("access_token", data.accessToken, {
-                                path: "/",
-                                httpOnly: true,
-                                secure: true,
-                                sameSite: "lax",
-                                maxAge: 15 * 60, // 15 minutes
-                            });
-                        }
-                    }
-
-                    if (data.refreshToken) {
-                        const isProd = process.env.NODE_ENV === "production";
-
-                        if (isProd) {
-                            event.cookies.set("refresh_token", data.refreshToken, {
-                                path: "/",
-                                httpOnly: true,
-                                secure: true,
-                                sameSite: "none", // Changed to allow cross-domain
-                                maxAge: 7 * 24 * 60 * 60, // 7 days
-                                domain: "api.yangkarbhoeche.com", // Specific to API domain
-                            });
-                        } else {
-                            event.cookies.set("refresh_token", data.refreshToken, {
-                                path: "/",
-                                httpOnly: true,
-                                secure: true,
-                                sameSite: "lax",
-                                maxAge: 7 * 24 * 60 * 60, // 7 days
-                            });
-                        }
-                    }
-
-                    // Set user and CSRF token in locals
+                    // We don't need to set cookies here anymore since the backend handles it
+                    // Just get the user and CSRF token from the response
                     event.locals.user = data.user;
                     event.locals.csrfToken = data.csrfToken;
                 } else {

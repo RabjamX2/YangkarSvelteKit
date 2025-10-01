@@ -8,26 +8,11 @@ const prisma = new PrismaClient();
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "change-me-access-secret";
 
 const authenticateToken = async (req, res, next) => {
-    // Try to get access token from multiple sources
-    // 1. First check Authorization header (primary source)
-    // 2. Then fall back to cookies if header isn't present
-    let accessToken = null;
-    let authMethod = "none"; // Track which auth method was used
+    // Get access token only from cookies
+    let accessToken = req.cookies.access_token;
+    let authMethod = "cookie"; // Only using cookies now
 
-    // First check Authorization header (Bearer token) - PRIORITY METHOD
-    if (req.headers.authorization) {
-        const authHeader = req.headers.authorization;
-        if (authHeader.startsWith("Bearer ")) {
-            accessToken = authHeader.substring(7); // Remove "Bearer " prefix
-            authMethod = "bearer"; // Mark that we're using the Authorization header
-        }
-    }
-
-    // If no Authorization header, fall back to cookies
-    if (!accessToken && req.cookies.access_token) {
-        accessToken = req.cookies.access_token;
-        authMethod = "cookie"; // Mark that we're using cookies
-    }
+    // No longer supporting Authorization header (Bearer token)
 
     // ***CRITICAL DEBUGGING*** - Always log authentication requests regardless of environment
     const isProd = process.env.NODE_ENV === "production";
@@ -36,14 +21,11 @@ const authenticateToken = async (req, res, next) => {
     const cookieHeader = req.headers.cookie || "no-cookie-header";
     const cookieParts = cookieHeader.split(";").map((c) => c.trim());
     const accessTokenCookie = cookieParts.find((c) => c.startsWith("access_token="));
-    const hasAuthHeader = !!req.headers.authorization;
 
     // Log detailed authentication information
     console.log(`*** AUTH DEBUG *** ${req.method} ${req.path}`, {
         hasAccessToken: !!accessToken,
-        authMethodUsed: authMethod,
-        accessTokenFromCookies: !!req.cookies.access_token,
-        accessTokenFromHeader: hasAuthHeader,
+        authMethodUsed: "cookie", // Only using cookies now
         rawCookieHeader: cookieHeader.substring(0, 100) + (cookieHeader.length > 100 ? "..." : ""),
         accessTokenInHeader: accessTokenCookie ? `${accessTokenCookie.substring(0, 20)}...` : "not-found",
         cookieKeys: Object.keys(req.cookies),
@@ -61,7 +43,7 @@ const authenticateToken = async (req, res, next) => {
 
     try {
         // Debug the token we're about to verify
-        console.log(`Verifying token using ${authMethod} authentication`, {
+        console.log(`Verifying token using cookie authentication`, {
             tokenLength: accessToken.length,
             tokenFirstChars: accessToken.substring(0, 10) + "...",
             tokenLastChars: "..." + accessToken.substring(accessToken.length - 10),

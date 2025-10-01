@@ -39,7 +39,8 @@ export function load({ url }) {
 
 export const actions = {
     // This is the 'default' action for the form
-    default: async ({ cookies, request, fetch }) => {
+    default: async ({ request, fetch }) => {
+        // Note: 'cookies' parameter removed as we no longer need to manually set cookies
         let username, password, passwordHashMethod;
 
         // Check if the request is JSON (from our client-side enhance handler)
@@ -67,7 +68,7 @@ export const actions = {
         }
 
         try {
-            // Direct fetch to backend
+            // Direct fetch to backend with credentials to receive cookies
             const response = await fetch(`${PUBLIC_BACKEND_URL}/api/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -76,6 +77,7 @@ export const actions = {
                     password,
                     passwordHashMethod, // Pass this to backend if it exists
                 }),
+                credentials: "include", // Important to receive and store HttpOnly cookies
             });
 
             // Handle authentication failures
@@ -90,83 +92,26 @@ export const actions = {
             try {
                 const userData = await response.json();
 
-                // Utility function to set cookies with proper cross-domain attributes
-                function setSecureCookie(name, value, maxAge) {
-                    // Always use secure cross-domain settings in production
-                    // This ensures SameSite=None for cross-domain requests
-                    cookies.set(name, value, {
-                        path: "/",
-                        httpOnly: true,
-                        secure: true,
-                        sameSite: "none", // CRITICAL: Must be "none" for cross-domain
-                        maxAge: maxAge,
-                    });
+                // Debug information about cookies in response
+                console.log("Login successful: Checking cookies in response");
+                const cookieHeader = response.headers.get("set-cookie");
+                console.log("Set-Cookie header:", cookieHeader || "No cookies set");
 
-                    console.log(`Set cookie ${name} with SameSite=None and Secure=true`);
-                }
-
-                // Store tokens as cookies
-                // Use our isProduction helper for consistent environment detection
-                const productionMode = isProduction(request);
-
-                console.log(`Auth environment: ${productionMode ? "PRODUCTION" : "DEVELOPMENT"}`, {
-                    host: request.headers.get("host") || "unknown",
-                    NODE_ENV: process.env.NODE_ENV,
-                    BACKEND_URL: PUBLIC_BACKEND_URL,
+                // Get all headers for debugging
+                const allHeaders = {};
+                response.headers.forEach((value, key) => {
+                    allHeaders[key] = value;
                 });
+                console.log("Response headers:", allHeaders);
 
-                // Set cookies based on whether we're in production
-                if (userData.accessToken) {
-                    // In production, ALWAYS use SameSite=None
-                    if (productionMode) {
-                        // FORCE SameSite=None for cross-domain requests
-                        setSecureCookie("access_token", userData.accessToken, 15 * 60); // 15 minutes
-                    } else {
-                        // Development mode
-                        cookies.set("access_token", userData.accessToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "lax", // Lax is fine for development
-                            maxAge: 15 * 60, // 15 minutes
-                        });
-                    }
-                }
-
-                if (userData.refreshToken) {
-                    if (productionMode) {
-                        // FORCE SameSite=None for cross-domain requests
-                        setSecureCookie("refresh_token", userData.refreshToken, 7 * 24 * 60 * 60); // 7 days
-                    } else {
-                        // Development mode
-                        cookies.set("refresh_token", userData.refreshToken, {
-                            path: "/",
-                            httpOnly: true,
-                            secure: true,
-                            sameSite: "lax",
-                            maxAge: 7 * 24 * 60 * 60, // 7 days
-                        });
-                    }
-                }
-
-                // Debug cookie headers to verify they are set correctly
-                try {
-                    const setCookieHeaders = cookies.getAll().map((c) => `${c.name}=${c.value}`);
-                    console.log("Cookies being set:", setCookieHeaders);
-                } catch (e) {
-                    console.error("Error inspecting cookies:", e);
-                }
-
-                // Return data needed for client-side navigation including tokens for localStorage
+                // Return minimal data needed for client-side navigation
                 return {
                     success: true,
-                    // Include tokens in the response so the client can store them
-                    accessToken: userData.accessToken,
-                    refreshToken: userData.refreshToken,
+                    // Include only CSRF token in the response
                     csrfToken: userData.csrfToken,
                     // Include user data
                     user: {
-                        id: userData.userId || userData.id,
+                        id: userData.id,
                         username: userData.username || username,
                         role: userData.role || "USER",
                     },

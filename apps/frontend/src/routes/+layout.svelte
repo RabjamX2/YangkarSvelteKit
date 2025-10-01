@@ -5,6 +5,7 @@
     import CartSidebar from "$lib/components/CartSidebar.svelte";
     import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";
     import { createAuthFetch } from "$lib/utils/csrf";
+    import { goto } from "$app/navigation";
     import "./layout.css";
 
     export let data;
@@ -40,40 +41,32 @@
     function handleLogout(event) {
         event.preventDefault();
 
-        // Get tokens from auth store
+        // Get user info from auth store for logging
         const authData = $auth;
-        const hasTokens = !!authData.accessToken || !!authData.refreshToken;
 
-        // Use our authenticated fetch utility with token from auth store
-        const fetchAuth = createAuthFetch();
+        // Immediately update UI first for perceived performance
+        auth.clearAuth();
 
         console.log("Logging out user:", {
             username: authData.user?.username,
-            hasAccessToken: !!authData.accessToken,
-            hasRefreshToken: !!authData.refreshToken,
         });
 
+        // Use our authenticated fetch utility with credentials:include for cookies
+        const fetchAuth = createAuthFetch();
+
+        // Then send logout request in background
         fetchAuth(`${PUBLIC_BACKEND_URL}/api/logout`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            // Include refresh token in request body to invalidate token-based sessions
-            body: JSON.stringify({
-                refreshToken: authData.refreshToken || null,
-            }),
+            // The server will clear the httpOnly cookies
+            credentials: "include",
         }).then(() => {
-            // Clear auth store which will remove tokens from localStorage
-            auth.clearAuth();
+            console.log("Logout successful, session cleared");
 
-            // Clear cookies on client side as well (for backward compatibility)
-            document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-            document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-
-            console.log("Logout successful, tokens cleared");
-
-            // Force reload to update the UI
-            location.reload();
+            // Navigate to home instead of full reload
+            goto("/", { replaceState: true });
         });
     }
 

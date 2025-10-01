@@ -17,15 +17,13 @@
         if (form?.success) {
             console.log("Signup successful! Will redirect in 2 seconds...");
 
-            // Check if we have authentication data directly
-            if (form.accessToken && form.user) {
-                console.log("Authentication data received with signup, storing and redirecting to dashboard...");
+            // Check if we have user data directly
+            if (form.user) {
+                console.log("User data received with signup, storing and redirecting to dashboard...");
 
-                // Store auth data from signup response
+                // Store user data from signup response
                 try {
                     auth.setAuth({
-                        accessToken: form.accessToken,
-                        refreshToken: form.refreshToken,
                         csrfToken: form.csrfToken,
                         user: form.user,
                     });
@@ -37,7 +35,7 @@
 
                     return;
                 } catch (e) {
-                    console.error("Failed to store auth data:", e);
+                    console.error("Failed to store user data:", e);
                 }
             }
 
@@ -89,16 +87,14 @@
                 if (result.type === "success") {
                     console.log("Form submitted successfully", result);
 
-                    // Check if we have auth tokens in the response
-                    if (result.data?.accessToken && result.data?.user) {
-                        console.log("Auth data received with signup! Storing and will redirect...");
+                    // Check if we have user data in the response
+                    if (result.data?.user) {
+                        console.log("User data received with signup! Storing and will redirect...");
 
                         // Import auth store at the top of the file
                         import("$lib/stores/auth.store.js").then(({ auth }) => {
-                            // Store auth data
+                            // Store user data
                             auth.setAuth({
-                                accessToken: result.data.accessToken,
-                                refreshToken: result.data.refreshToken,
                                 csrfToken: result.data.csrfToken,
                                 user: result.data.user,
                             });

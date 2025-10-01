@@ -50,23 +50,18 @@ const getCookieOptions = (maxAge) => {
     // Base cookie options
     const options = {
         httpOnly: true, // Cannot be accessed by client-side JS
-        secure: true, // Always use HTTPS for auth cookies
         maxAge: maxAge, // Time in milliseconds
         path: "/", // Make sure cookies are available on all paths
     };
 
     // Add production-specific settings
     if (isProduction) {
-        // *IMPORTANT* For cross-domain cookies, DON'T set a domain at all
-        // Let the browser handle the domain based on the request
-        // This is more likely to work with cross-domain requests
-        // options.domain = "api.yangkarbhoeche.com";  // Commented out as this might be causing issues
-
-        // Use 'none' for cross-domain cookies, required for cross-domain auth
+        options.secure = true; // Use HTTPS only in production
+        options.domain = ".yangkarbhoeche.com";
         options.sameSite = "none";
-
         console.log(`Using production cookie settings:`, options);
     } else {
+        options.secure = false;
         options.sameSite = "lax";
         console.log(`Using development cookie settings:`, options);
     }
@@ -217,13 +212,11 @@ const signup = asyncHandler(async (req, res) => {
     res.cookie("access_token", accessToken, getCookieOptions(accessMaxAge));
     res.cookie("refresh_token", refreshToken, getCookieOptions(refreshMaxAge));
 
-    // Return user data, tokens, and CSRF token
+    // Return user data and CSRF token (tokens are in httpOnly cookies)
     res.status(201).json({
         id: user.id,
         username: user.username,
         role: user.role,
-        accessToken,
-        refreshToken,
         csrfToken,
     });
 });
@@ -294,13 +287,11 @@ const login = asyncHandler(async (req, res) => {
 
     req.log.info({ event: "user_login", userId: user.id, username: user.username }, "User logged in. BACKEND V4");
 
-    // Return user data, tokens, and CSRF token
+    // Return user data and CSRF token (tokens are in httpOnly cookies)
     res.status(200).json({
         id: user.id,
         username: user.username,
         role: user.role,
-        accessToken,
-        refreshToken,
         csrfToken,
     });
 });
@@ -377,7 +368,7 @@ const refreshToken = asyncHandler(async (req, res) => {
             "set-cookie": res.getHeader("set-cookie")?.map((c) => c.split(";")[0] + ";[rest-hidden]"),
         });
 
-        // Return user data, tokens, and CSRF token
+        // Return user data and CSRF token (tokens are in httpOnly cookies)
         res.status(200).json({
             user: {
                 id: session.user.id,
@@ -386,8 +377,6 @@ const refreshToken = asyncHandler(async (req, res) => {
                 email: session.user.email,
                 name: session.user.name,
             },
-            accessToken,
-            refreshToken: newRefreshToken,
             csrfToken,
         });
     } catch (error) {
@@ -399,15 +388,8 @@ const refreshToken = asyncHandler(async (req, res) => {
 });
 
 const logout = asyncHandler(async (req, res) => {
-    // Try to get refresh token from both cookie and request body
-    let refreshToken = req.cookies.refresh_token;
-    let logoutSource = "cookie";
-
-    // If no cookie, check request body (used when token is stored in localStorage)
-    if (!refreshToken && req.body.refreshToken) {
-        refreshToken = req.body.refreshToken;
-        logoutSource = "body";
-    }
+    // Get refresh token only from cookie
+    const refreshToken = req.cookies.refresh_token;
 
     // Get user ID if authenticated
     const userId = req.user?.id;
@@ -415,7 +397,7 @@ const logout = asyncHandler(async (req, res) => {
     // Log logout attempt
     console.log("Logout attempt", {
         hasRefreshToken: !!refreshToken,
-        tokenSource: logoutSource,
+        tokenSource: "cookie", // Only supporting cookies now
         authenticatedUser: userId || "none",
     });
 
@@ -617,5 +599,20 @@ router.post("/logout", optionalAuthenticate, logout); // Try to authenticate but
 router.get("/me", authenticateToken, getCurrentUser);
 router.post("/forgot-password", authLimiter, forgotPassword); // Apply rate limiting
 router.post("/reset-password", resetPassword);
+
+// Debug route to return all response headers after setting a test cookie
+router.get("/debug-set-cookie", (req, res) => {
+    res.cookie("debug_test", "test_value", {
+        httpOnly: true,
+        secure: false,
+        sameSite: "none",
+        path: "/",
+    });
+    // Get all response headers
+    const headers = res.getHeaders();
+    res.json({
+        responseHeaders: headers,
+    });
+});
 
 export default router;

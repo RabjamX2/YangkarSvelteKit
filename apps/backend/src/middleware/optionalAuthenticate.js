@@ -13,31 +13,16 @@ const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "change-me-access-sec
  * This is useful for routes like logout that should work regardless of authentication state.
  */
 const optionalAuthenticate = async (req, res, next) => {
-    // Try to get access token from multiple sources
-    // 1. First check Authorization header (primary source)
-    // 2. Then fall back to cookies if header isn't present
-    let accessToken = null;
-    let authMethod = "none"; // Track which auth method was used
+    // Get access token only from cookies
+    let accessToken = req.cookies.access_token;
+    let authMethod = "cookie"; // Only using cookies now
 
-    // First check Authorization header (Bearer token) - PRIORITY METHOD
-    if (req.headers.authorization) {
-        const authHeader = req.headers.authorization;
-        if (authHeader.startsWith("Bearer ")) {
-            accessToken = authHeader.substring(7); // Remove "Bearer " prefix
-            authMethod = "bearer"; // Mark that we're using the Authorization header
-        }
-    }
-
-    // If no Authorization header, fall back to cookies
-    if (!accessToken && req.cookies.access_token) {
-        accessToken = req.cookies.access_token;
-        authMethod = "cookie"; // Mark that we're using cookies
-    }
+    // No longer supporting Authorization header (Bearer token)
 
     // Log authentication attempt (with less detail than the required authenticator)
     console.log(`*** OPTIONAL AUTH *** ${req.method} ${req.path}`, {
         hasAccessToken: !!accessToken,
-        authMethod: authMethod,
+        authMethod: "cookie", // Only using cookies now
     });
 
     // If no token provided, just continue without authentication

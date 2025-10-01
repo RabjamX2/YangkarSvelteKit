@@ -1357,15 +1357,9 @@
             const customFetchAuth = async (url, options) => {
                 // Get authentication data from page
                 const authStore = $page.data.auth;
-                const token = authStore?.accessToken;
 
                 // Create headers without Content-Type - browser will set it for FormData
                 const headers = {};
-
-                // Add authorization if available
-                if (token) {
-                    headers["Authorization"] = `Bearer ${token}`;
-                }
 
                 // Add CSRF token if available
                 if (authStore?.csrfToken) {
@@ -1396,6 +1390,7 @@
             const res = await customFetchAuth(`${PUBLIC_BACKEND_URL}/api/upload-image`, {
                 method: "POST",
                 body: formData,
+                credentials: "include",
             });
 
             if (!res.ok) {
