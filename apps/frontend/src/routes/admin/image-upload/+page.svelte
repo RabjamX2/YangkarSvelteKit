@@ -1342,15 +1342,58 @@
                 console.log(`New size: ${(reducedBlob.size / (1024 * 1024)).toFixed(2)} MB`);
 
                 // Use the reduced quality blob
-                formData.append("image", reducedBlob, "product-image.jpg");
+                // Ensure the correct field name "image" is used for the file
+                const file = new File([reducedBlob], "product-image.jpg", { type: "image/jpeg" });
+                formData.append("image", file);
             } else {
                 // Use the original blob
-                formData.append("image", blob, "product-image.jpg");
+                // Ensure the correct field name "image" is used for the file
+                const file = new File([blob], "product-image.jpg", { type: "image/jpeg" });
+                formData.append("image", file);
             }
 
             // Upload to backend with CSRF protection
-            const fetchAuth = createAuthFetch($page);
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/upload-image`, {
+            // Create a custom fetch that doesn't set Content-Type for FormData
+            const customFetchAuth = async (url, options) => {
+                // Get authentication data from page
+                const authStore = $page.data.auth;
+                const token = authStore?.accessToken;
+
+                // Create headers without Content-Type - browser will set it for FormData
+                const headers = {};
+
+                // Add authorization if available
+                if (token) {
+                    headers["Authorization"] = `Bearer ${token}`;
+                }
+
+                // Add CSRF token if available
+                if (authStore?.csrfToken) {
+                    headers["X-CSRF-Token"] = authStore.csrfToken;
+                }
+
+                // Debug the formData
+                console.log("FormData entries:");
+                for (let pair of formData.entries()) {
+                    console.log(
+                        pair[0] +
+                            ": " +
+                            (pair[1] instanceof File ? `File: ${pair[1].name}, size: ${pair[1].size} bytes` : pair[1])
+                    );
+                }
+
+                return fetch(url, {
+                    ...options,
+                    headers: {
+                        ...headers,
+                        ...options.headers,
+                    },
+                    credentials: "include",
+                });
+            };
+
+            // Use our custom fetch that doesn't set Content-Type
+            const res = await customFetchAuth(`${PUBLIC_BACKEND_URL}/api/upload-image`, {
                 method: "POST",
                 body: formData,
             });
@@ -1359,9 +1402,22 @@
                 let errorDetails = `Status: ${res.status} ${res.statusText}`;
                 try {
                     const errorResponse = await res.text();
-                    errorDetails += ` - ${errorResponse}`;
+                    console.error("Error response:", errorResponse);
+                    try {
+                        // Try to parse as JSON
+                        const jsonError = JSON.parse(errorResponse);
+                        if (jsonError.message) {
+                            errorDetails += ` - ${jsonError.message}`;
+                        } else {
+                            errorDetails += ` - ${errorResponse}`;
+                        }
+                    } catch (jsonErr) {
+                        // Not JSON, use as text
+                        errorDetails += ` - ${errorResponse}`;
+                    }
                 } catch (e) {
                     errorDetails += " (No additional error details available)";
+                    console.error("Error parsing error response:", e);
                 }
                 throw new Error(`Upload failed: ${errorDetails}`);
             }

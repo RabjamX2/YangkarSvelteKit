@@ -10,7 +10,12 @@ const router = express.Router();
 
 // Configure Multer for in-memory storage
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit for image uploads
+    },
+});
 
 // Configure S3 client for Cloudflare R2
 const s3 = new S3Client({
