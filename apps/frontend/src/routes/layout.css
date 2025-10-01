@@ -166,10 +166,10 @@ html {
     background: var(--color-nav-bg);
     border-bottom: 1px solid var(--color-border);
     box-shadow: var(--color-shadow);
-    font-family: "Inter", Arial, sans-serif;
+    font-family: var(--font-nav);
     font-size: var(--font-size-medium);
-    letter-spacing: var(--custom-letter-spacing);
-    font-weight: 500;
+    letter-spacing: var(--letter-spacing);
+    font-weight: var(--font-weight-medium);
 }
 
 .main-header {
@@ -198,6 +198,7 @@ html {
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10; /* Ensure logo is above other elements */
 }
 
 .header-logo .logo {
@@ -207,8 +208,18 @@ html {
     display: block;
 }
 
+.header-logo .logo-desktop {
+    display: block;
+}
+
+.header-logo .logo-mobile {
+    display: none;
+}
+
 .main-header-right {
     display: flex;
+    position: absolute;
+    right: 0;
     align-items: center;
     gap: 0.75rem;
     padding-right: 1rem;
@@ -381,10 +392,41 @@ html {
     .main-header {
         gap: 0.5rem;
     }
-    /* .header-logo .logo {
-        max-width: 180px;
-    } */
     .nav-list {
         gap: 0.5rem;
+    }
+}
+
+/* Switch logos at 768px (tablet breakpoint) */
+@media (max-width: 768px) {
+    .header-logo .logo-desktop {
+        display: none;
+    }
+
+    .header-logo .logo-mobile {
+        display: block;
+        max-width: 80px; /* Adjust as needed for your shorter logo */
+    }
+
+    .main-header {
+        padding-top: 45px; /* Increase top padding to prevent cut-off */
+        padding-bottom: 35px; /* Add bottom padding for spacing */
+        min-height: 50px; /* Ensure enough height */
+    }
+}
+
+/* Further adjustments for mobile phones */
+@media (max-width: 570px) {
+    .header-logo .logo-mobile {
+        max-width: 50px; /* Smaller size for phone screens */
+    }
+
+    .main-header-right {
+        gap: 0.5rem; /* Reduce spacing between header elements */
+    }
+
+    .main-header {
+        padding-top: 20px; /* Even more top padding on smaller screens */
+        padding-bottom: 15px; /* More bottom padding for spacing */
     }
 }

@@ -149,20 +149,20 @@
     }
 
     .product-price {
-        font-size: 1.75rem;
-        font-weight: 300;
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-normal);
         color: var(--color-link-hover);
-        margin-bottom: 2rem;
+        margin-bottom: var(--space-8);
     }
 
     .variant-selector {
-        margin-bottom: 1.5rem;
+        margin-bottom: var(--space-6);
     }
 
     .selector-label {
-        font-size: 1rem;
-        font-weight: 500;
-        margin-bottom: 0.75rem;
+        font-size: var(--font-size-medium);
+        font-weight: var(--font-weight-medium);
+        margin-bottom: var(--space-3);
     }
 
     .selected-value {
@@ -229,15 +229,15 @@
 
     .stock-info {
         text-align: center;
-        margin-top: 0.5rem;
-        color: #e53e3e;
-        font-weight: 500;
+        margin-top: var(--space-2);
+        color: var(--color-danger);
+        font-weight: var(--font-weight-medium);
     }
 
     .product-description h3 {
-        font-size: 1.25rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
+        font-size: var(--font-size-large);
+        font-weight: var(--font-weight-bold);
+        margin-bottom: var(--space-2);
         border-bottom: 1px solid #eee;
         padding-bottom: 0.5rem;
     }

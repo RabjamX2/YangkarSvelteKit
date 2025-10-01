@@ -70,9 +70,9 @@
         border: 1px solid #000000;
         border-right: 0;
         font-family: var(--font-primary);
-        font-size: 14px;
-        letter-spacing: var(--custom-letter-spacing);
-        line-height: 1.58333;
+        font-size: var(--font-size-small);
+        letter-spacing: var(--letter-spacing);
+        line-height: var(--line-height-normal);
     }
     .product-card {
         flex: 1 0 50%; /* 2 columns by default */

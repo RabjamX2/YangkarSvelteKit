@@ -1,0 +1,45 @@
+/* 
+ * Yangkar Font Configuration
+ * This file defines all font-face declarations for locally-hosted fonts
+ */
+
+/* Inter Variable Font */
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 100 900; /* Variable font supports all weights */
+    font-display: swap;
+    src: url("/fonts/Inter/Inter-VariableFont_opsz,wght.ttf") format("truetype-variations");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: italic;
+    font-weight: 100 900; /* Variable font supports all weights */
+    font-display: swap;
+    src: url("/fonts/Inter/Inter-Italic-VariableFont_opsz,wght.ttf") format("truetype-variations");
+}
+
+/* Roboto Variable Font */
+@font-face {
+    font-family: "Roboto";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/Roboto/Roboto-VariableFont_wdth,wght.ttf") format("truetype-variations");
+}
+
+@font-face {
+    font-family: "Roboto";
+    font-style: italic;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/Roboto/Roboto-Italic-VariableFont_wdth,wght.ttf") format("truetype-variations");
+}
+
+/* 
+ * Note: We're using variable fonts which contain all weights in a single file.
+ * This improves performance by reducing the number of font files to download.
+ * The 'font-weight: 100 900' notation tells the browser that this font file
+ * contains all weights from 100 to 900.
+ */

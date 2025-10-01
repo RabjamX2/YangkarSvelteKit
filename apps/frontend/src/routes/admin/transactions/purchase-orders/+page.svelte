@@ -476,8 +476,8 @@
     }
     .transaction-table th {
         background: var(--color-nav-bg);
-        font-weight: 600;
-        letter-spacing: 0.5px;
+        font-weight: var(--font-weight-medium);
+        letter-spacing: var(--letter-spacing);
     }
     .main-row {
         cursor: pointer;
@@ -549,9 +549,9 @@
         display: inline-block;
         padding: 4px 12px;
         border-radius: 12px;
-        font-weight: bold;
-        font-size: 0.85em;
-        letter-spacing: 0.5px;
+        font-weight: var(--font-weight-bold);
+        font-size: var(--font-size-xs);
+        letter-spacing: var(--letter-spacing);
         min-width: 80px;
         text-align: center;
     }
