@@ -3,6 +3,7 @@ import multer from "multer";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import asyncHandler from "../middleware/asyncHandler.js";
 import authenticateToken from "../middleware/authenticateToken.js";
+import requireAdmin from "../middleware/requireAdmin.js";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 
@@ -61,6 +62,6 @@ const uploadImage = asyncHandler(async (req, res) => {
     }
 });
 
-router.post("/upload-image", authenticateToken, upload.single("image"), uploadImage);
+router.post("/upload-image", authenticateToken, requireAdmin, upload.single("image"), uploadImage);
 
 export default router;
