@@ -1,5 +1,8 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
+import { apiFetch } from "$lib/utils/api.js";
+
+// Get backend URL from environment variable
 const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 /**
@@ -80,7 +83,7 @@ async function validateCart() {
     }));
 
     try {
-        const response = await fetch(`${PUBLIC_BACKEND_URL}/api/cart/validate`, {
+        const response = await apiFetch("/api/cart/validate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ items: itemsToValidate }),

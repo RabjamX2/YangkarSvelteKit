@@ -1,5 +1,6 @@
 import { browser } from "$app/environment";
 import { auth } from "$lib/stores/auth.store.js";
+import { apiFetch } from "$lib/utils/api.js";
 
 // Client-side initialization to check for auth session using cookies
 export const load = async ({ data, fetch }) => {
@@ -19,10 +20,8 @@ export const load = async ({ data, fetch }) => {
     if (browser && !data.user) {
         try {
             // Attempt to validate the session using httpOnly cookies
-            // The cookies are automatically included with 'credentials: include'
-            const response = await fetch(`${import.meta.env.VITE_PUBLIC_BACKEND_URL}/api/me`, {
-                credentials: "include",
-            });
+            // Use our custom apiFetch utility that handles token refreshing
+            const response = await apiFetch("/api/me");
 
             if (response.ok) {
                 const userData = await response.json();

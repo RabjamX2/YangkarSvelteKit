@@ -4,17 +4,15 @@
 
 import { get } from "svelte/store";
 import { auth } from "$lib/stores/auth.store";
+import { apiFetch } from "./api.js";
 
 /**
  * Creates headers for an API request, including the CSRF token
  * @param {string|null} csrfToken - The CSRF token obtained from the server
- * @param {Record<string, string>} [additionalHeaders] - Any additional headers to include
- * @returns {Record<string, string>} - Headers object ready for fetch API
+ * @param {Object} additionalHeaders - Any additional headers to include
+ * @returns {Object} - Headers object ready for fetch API
  */
-export function createApiHeaders(
-    csrfToken: string | null = null,
-    additionalHeaders: Record<string, string> = {}
-): Record<string, string> {
+export function createApiHeaders(csrfToken = null, additionalHeaders = {}) {
     const headers = {
         "Content-Type": "application/json",
         ...additionalHeaders,
@@ -34,29 +32,26 @@ export function createApiHeaders(
 
 /**
  * Creates a fetch function that automatically includes credentials and CSRF token
+ * Uses apiFetch internally to handle token refresh
  * @param {string|null} csrfToken - The CSRF token obtained from the server
- * @returns {Function} - Enhanced fetch function
+ * @returns {Function} - Enhanced fetch function with token refresh
  */
-export function createAuthFetch(csrfToken: string | null = null) {
-    return async function authFetch(url: string, options: RequestInit = {}) {
-        const authStore = get(auth);
-
-        // Always explicitly include credentials for cookies
-        const fetchOptions: RequestInit = {
-            ...options,
-            // Include credentials to send httpOnly cookies with the request
-            credentials: "include",
-            headers: createApiHeaders(csrfToken, (options.headers as Record<string, string>) || {}),
-        };
+export function createAuthFetch(csrfToken = null) {
+    return async function authFetch(url, options = {}) {
+        // Set up headers with CSRF token
+        const headers = createApiHeaders(csrfToken, options.headers || {});
 
         // Enhanced debugging - always log these regardless of environment
         console.log(`AUTH FETCH DEBUG to ${url}`, {
             hasCsrfToken: !!csrfToken,
-            credentials: fetchOptions.credentials,
             method: options.method || "GET",
-            headers: Object.keys(fetchOptions.headers || {}).join(", "),
+            headers: Object.keys(headers || {}).join(", "),
         });
 
-        return fetch(url, fetchOptions);
+        // Use apiFetch which handles token refresh automatically
+        return apiFetch(url, {
+            ...options,
+            headers,
+        });
     };
 }

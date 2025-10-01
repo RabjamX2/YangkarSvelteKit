@@ -3,7 +3,7 @@
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf";
+    import { createAuthFetch } from "$lib/utils/csrf.js";
     import { page } from "$app/stores";
     import "../transactionTable.css";
 

@@ -1,7 +1,7 @@
 <script>
     // @ts-nocheck
     // Import createAuthFetch utility for making authenticated requests
-    import { createAuthFetch } from "$lib/utils/csrf";
+    import { createAuthFetch } from "$lib/utils/csrf.js";
     import { onMount } from "svelte";
 
     // State variables

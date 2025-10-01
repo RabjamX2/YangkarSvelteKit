@@ -5,7 +5,7 @@
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf";
+    import { createAuthFetch } from "$lib/utils/csrf.js";
     import { page } from "$app/stores";
 
     const products = writable([]);

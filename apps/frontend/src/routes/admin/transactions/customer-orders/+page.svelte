@@ -5,7 +5,7 @@
     import { page } from "$app/stores";
     import "../transactionTable.css";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf";
+    import { createAuthFetch } from "$lib/utils/csrf.js";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     const customerOrders = writable([]);

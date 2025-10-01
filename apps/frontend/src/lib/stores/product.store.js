@@ -1,5 +1,6 @@
 import { writable, derived, get } from "svelte/store";
 import { goto } from "$app/navigation";
+import { apiFetch } from "$lib/utils/api.js";
 const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 /**
@@ -83,8 +84,8 @@ function createProductStore() {
         }
 
         try {
-            // We fetch from the backend API directly here
-            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/products?${params.toString()}`);
+            // Use the apiFetch utility to handle token refresh
+            const response = await apiFetch(`/api/products?${params.toString()}`);
             if (!response.ok) throw new Error("Failed to fetch more products");
 
             const newData = await response.json();

@@ -30,7 +30,7 @@
     });
 
     // Client-side login handler
-    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+    import { apiFetch } from "$lib/utils/api.js";
     let username = "";
     let password = "";
     let errorMsg = "";
@@ -52,7 +52,7 @@
         }
 
         try {
-            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/login`, {
+            const response = await apiFetch("/api/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -60,7 +60,6 @@
                     password: finalPassword,
                     passwordHashMethod,
                 }),
-                credentials: "include",
             });
 
             if (!response.ok) {

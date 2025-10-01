@@ -4,7 +4,7 @@
     import CartIcon from "$lib/components/CartIcon.svelte";
     import CartSidebar from "$lib/components/CartSidebar.svelte";
     import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";
-    import { createAuthFetch } from "$lib/utils/csrf";
+    import { createAuthFetch } from "$lib/utils/csrf.js";
     import { goto } from "$app/navigation";
     import "./layout.css";
 
@@ -37,36 +37,29 @@
 
     // Import auth store
     import { auth } from "$lib/stores/auth.store.js";
+    import { logout } from "$lib/utils/api.js";
 
     function handleLogout(event) {
         event.preventDefault();
 
         // Get user info from auth store for logging
         const authData = $auth;
-
-        // Immediately update UI first for perceived performance
-        auth.clearAuth();
-
         console.log("Logging out user:", {
             username: authData.user?.username,
         });
 
-        // Use our authenticated fetch utility with credentials:include for cookies
-        const fetchAuth = createAuthFetch();
+        // Use the centralized logout function with a navigation callback
+        // This ensures we have consistent logout behavior throughout the app
+        logout(() => {
+            console.log("Performing post-logout navigation");
 
-        // Then send logout request in background
-        fetchAuth(`${PUBLIC_BACKEND_URL}/api/logout`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            // The server will clear the httpOnly cookies
-            credentials: "include",
-        }).then(() => {
-            console.log("Logout successful, session cleared");
-
-            // Navigate to home instead of full reload
-            goto("/", { replaceState: true });
+            // Force a full page reload to ensure all state is reset properly
+            // This is more reliable than goto() for ensuring the auth state is completely reset
+            window.location.href = "/";
+        }).then((success) => {
+            if (!success) {
+                console.warn("Logout had errors but navigation was still triggered");
+            }
         });
     }
 
