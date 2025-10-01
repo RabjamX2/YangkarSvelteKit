@@ -6,6 +6,9 @@
     import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";
     import { createAuthFetch } from "$lib/utils/csrf.js";
     import { goto } from "$app/navigation";
+    import { onMount } from "svelte";
+    import { setupTokenRefresh } from "$lib/utils/refreshInterceptor.js";
+    import { refreshAccessToken } from "$lib/utils/api.js";
     import "./layout.css";
 
     export let data;
@@ -13,7 +16,8 @@
     let dropdownOpen = false;
 
     // On mount, check cookie for dark mode preference and set up event handlers
-    if (typeof window !== "undefined") {
+    onMount(() => {
+        // Check for dark mode preference
         const match = document.cookie.match(/(^|;)\s*darkMode=([^;]*)/);
         if (match && match[2] === "true") {
             darkMode = true;
@@ -33,7 +37,10 @@
                 dropdownOpen = false;
             }
         });
-    }
+
+        // Set up token refresh interceptor to keep session alive
+        setupTokenRefresh(refreshAccessToken);
+    });
 
     // Import auth store
     import { auth } from "$lib/stores/auth.store.js";
@@ -85,14 +92,9 @@
         </figure>
     </div> -->
     <div class="main-header">
-        <div class="main-header-left">
-            <!-- TODO: Maybe add language selection here -->
-            <!-- <a class="nav-link" href="/">
-                <span class="nav-link-text">Home</span>
-            </a> -->
-        </div>
         <figure class="header-logo">
-            <img class="logo" src="/Logo/Logo Text - English Long.png" alt="Logo" />
+            <img class="logo logo-desktop" src="/Logo/Logo Text - English Long.png" alt="Yangkar Logo" />
+            <img class="logo logo-mobile" src="/Logo/Circle Logo - Only Logo.png" alt="Yangkar Logo" />
         </figure>
         <div class="main-header-right">
             <div class="user-dropdown" class:open={dropdownOpen}>

@@ -40,26 +40,24 @@ export async function apiFetch(url, options = {}) {
         // Attempt the original request
         const response = await fetch(fullUrl, fetchOptions);
 
-        // If unauthorized and token expired error, try refreshing
-        if (response.status === 401) {
-            // Only try to parse JSON if there's a body
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                const data = await response.json();
+        // If unauthorized (401), try refreshing the token regardless of specific error code
+        if (response.status === 401 && browser) {
+            console.log("Authentication required (401), attempting to refresh token...");
 
-                // Check for token expired code
-                if (data.code === "TOKEN_EXPIRED" && browser) {
-                    console.log("Access token expired, attempting to refresh...");
+            // Clone the response before we consume it with json()
+            const clonedResponse = response.clone();
 
-                    // Get a fresh token and retry the request
-                    const newToken = await refreshAccessToken();
+            // Try to get a fresh token
+            const refreshSuccess = await refreshAccessToken();
 
-                    // If we got a new token, retry the original request
-                    if (newToken) {
-                        return apiFetch(url, options); // Retry with same options (CSRF token will be updated)
-                    }
-                }
+            // If we got a new token, retry the original request
+            if (refreshSuccess) {
+                console.log("Token refreshed successfully, retrying original request");
+                return apiFetch(url, options); // Retry with same options (CSRF token will be updated)
             }
+
+            // If refresh failed, return the original response
+            return clonedResponse;
         }
 
         return response;
@@ -73,9 +71,10 @@ export async function apiFetch(url, options = {}) {
  * Refreshes the access token using the refresh token stored in cookies
  * @returns {Promise<boolean>} True if refresh was successful
  */
-async function refreshAccessToken() {
+export async function refreshAccessToken() {
     // Don't refresh if we're already in the process
     if (isRefreshing) {
+        console.log("Token refresh already in progress, waiting for result...");
         return refreshPromise;
     }
 
@@ -89,6 +88,11 @@ async function refreshAccessToken() {
             const response = await fetch(`${PUBLIC_BACKEND_URL}/api/refresh`, {
                 method: "POST",
                 credentials: "include",
+                // Add cache control to prevent cached responses
+                headers: {
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    Pragma: "no-cache",
+                },
             });
 
             if (response.ok) {
@@ -104,6 +108,17 @@ async function refreshAccessToken() {
                     console.log("Access token refreshed successfully");
                     resolve(true);
                     return true;
+                } else {
+                    console.warn("Refresh response OK but missing user or csrfToken:", data);
+                }
+            } else {
+                // Log more details about the failed refresh
+                console.error("Token refresh failed with status:", response.status);
+                try {
+                    const errorData = await response.json();
+                    console.error("Error response:", errorData);
+                } catch (e) {
+                    console.error("Could not parse error response as JSON");
                 }
             }
 
