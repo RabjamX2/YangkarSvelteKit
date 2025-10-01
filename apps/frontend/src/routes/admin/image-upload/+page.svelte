@@ -6,6 +6,7 @@
     import { createAuthFetch } from "$lib/utils/csrf";
     import { page } from "$app/stores";
     import { browser } from "$app/environment";
+    import { auth } from "$lib/stores/auth.store.js";
     import "./image-upload.css";
     import "./layout.css";
     import "./preview-styles.css";
@@ -58,6 +59,12 @@
 
             if (userData && userData.user) {
                 currentUser.set(userData.user);
+
+                // Ensure we have CSRF token in auth store
+                if (userData.csrfToken && (!$auth.csrfToken || $auth.csrfToken !== userData.csrfToken)) {
+                    console.log("Updating CSRF token in auth store");
+                    auth.setCsrfToken(userData.csrfToken);
+                }
             } else {
                 error.set("Please log in to upload images");
             }
@@ -1355,15 +1362,20 @@
             // Upload to backend with CSRF protection
             // Create a custom fetch that doesn't set Content-Type for FormData
             const customFetchAuth = async (url, options) => {
-                // Get authentication data from page
-                const authStore = $page.data.auth;
+                // Get authentication data from auth store
+                const authData = $auth;
 
                 // Create headers without Content-Type - browser will set it for FormData
                 const headers = {};
 
                 // Add CSRF token if available
-                if (authStore?.csrfToken) {
-                    headers["X-CSRF-Token"] = authStore.csrfToken;
+                if (authData?.csrfToken) {
+                    headers["X-CSRF-Token"] = authData.csrfToken;
+                }
+
+                // Fallback to page data if store doesn't have token
+                if (!headers["X-CSRF-Token"] && $page.data?.csrfToken) {
+                    headers["X-CSRF-Token"] = $page.data.csrfToken;
                 }
 
                 // Debug the formData
@@ -1386,10 +1398,20 @@
                 });
             };
 
+            // Ensure we have the CSRF token in the formData as well (as a backup approach)
+            if ($auth.csrfToken) {
+                formData.append("_csrf", $auth.csrfToken);
+            } else if ($page.data?.csrfToken) {
+                formData.append("_csrf", $page.data.csrfToken);
+            }
+
             // Use our custom fetch that doesn't set Content-Type
             const res = await customFetchAuth(`${PUBLIC_BACKEND_URL}/api/upload-image`, {
                 method: "POST",
                 body: formData,
+                headers: {
+                    // Don't set Content-Type here - browser will set it with boundary for FormData
+                },
                 credentials: "include",
             });
 
@@ -1419,11 +1441,15 @@
 
             const uploadResult = await res.json();
 
+            // Create authenticated fetch with CSRF token for the variant update
+            const fetchAuth = createAuthFetch($page);
+
             // Update product variant with new image URL
             const updateRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${$selectedVariant.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
+                    "X-CSRF-Token": $auth.csrfToken || $page.data?.csrfToken,
                 },
                 body: JSON.stringify({
                     imgUrl: uploadResult.location,
