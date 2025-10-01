@@ -134,14 +134,16 @@ async function refreshAccessToken() {
  */
 export async function logout(navigationCallback) {
     try {
-        await apiFetch("/api/logout", {
+        // Fire and forget - don't await the API call
+        // This makes logout appear instant to the user
+        apiFetch("/api/logout", {
             method: "POST",
+        }).catch((error) => {
+            console.error("Background logout API call failed:", error);
         });
 
-        // Clear the auth store first
-        auth.clearAuth();
-
-        // Execute navigation callback if provided
+        // Navigation should be handled by the caller now
+        // But still support the legacy callback pattern for backward compatibility
         if (typeof navigationCallback === "function") {
             navigationCallback();
         }

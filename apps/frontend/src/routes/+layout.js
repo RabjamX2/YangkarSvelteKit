@@ -19,9 +19,11 @@ export const load = async ({ data, fetch }) => {
     // Only check with API if we don't have user data and we're in the browser
     if (browser && !data.user) {
         try {
-            // Attempt to validate the session using httpOnly cookies
-            // Use our custom apiFetch utility that handles token refreshing
-            const response = await apiFetch("/api/me");
+            // Use the SvelteKit-provided fetch instead of window.fetch
+            const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/me`, {
+                credentials: "include", // Make sure to include credentials for cookies
+            });
 
             if (response.ok) {
                 const userData = await response.json();

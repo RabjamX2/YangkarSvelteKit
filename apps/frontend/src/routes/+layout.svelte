@@ -48,15 +48,14 @@
             username: authData.user?.username,
         });
 
-        // Use the centralized logout function with a navigation callback
-        // This ensures we have consistent logout behavior throughout the app
-        logout(() => {
-            console.log("Performing post-logout navigation");
+        // Clear auth store immediately for better perceived performance
+        auth.clearAuth();
 
-            // Force a full page reload to ensure all state is reset properly
-            // This is more reliable than goto() for ensuring the auth state is completely reset
-            window.location.href = "/";
-        }).then((success) => {
+        // Immediately navigate to improve perceived performance
+        window.location.href = "/";
+
+        // Then clean up on the backend (non-blocking)
+        logout().then((success) => {
             if (!success) {
                 console.warn("Logout had errors but navigation was still triggered");
             }

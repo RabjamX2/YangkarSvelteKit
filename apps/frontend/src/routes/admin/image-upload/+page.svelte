@@ -45,6 +45,9 @@
     const maxWidth = 1000; // Maximum width for the uploaded image
     let Cropper;
 
+    // Get data passed from the page load function
+    export let data;
+
     // Initialize data and Cropper library
     onMount(async () => {
         if (!browser) {
@@ -52,10 +55,8 @@
         }
 
         try {
-            // Check authentication
-            const fetchAuth = createAuthFetch($page);
-            const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/me`);
-            const userData = await response.json();
+            // Use the pre-fetched user data from the load function
+            const userData = data.userData;
 
             if (userData && userData.user) {
                 currentUser.set(userData.user);
