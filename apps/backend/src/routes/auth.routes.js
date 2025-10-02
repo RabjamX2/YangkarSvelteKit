@@ -9,6 +9,19 @@ import optionalAuthenticate from "../middleware/optionalAuthenticate.js";
 import rateLimit from "express-rate-limit";
 import { forceCleanupExpiredSessions } from "../services/sessionCleanup.js";
 
+// Import normalizeIP from index.js if available, otherwise redefine it
+const normalizeIP = (ip) => {
+    if (!ip) return "unknown";
+
+    // For IPv6, only use the first 4 segments to group users by subnet
+    if (ip.includes(":")) {
+        const segments = ip.split(":");
+        return segments.slice(0, 4).join(":");
+    }
+
+    return ip;
+};
+
 const { PrismaClient } = prismaPkg;
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -25,23 +38,26 @@ const RESET_TOKEN_EXPIRY = "10m"; // 10 minutes
 
 // Rate limiting for authentication attempts
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // 10 requests per windowMs per IP
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 20, // Increased from 10 to 20 requests per window per IP
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many login attempts, please try again later" },
     // Properly handle proxied requests in production
     keyGenerator: (req) => {
         // Use the leftmost IP in X-Forwarded-For as it's the client IP
-        const clientIP =
+        const rawIP =
             req.ip ||
             (req.headers["x-forwarded-for"]
                 ? req.headers["x-forwarded-for"].split(",")[0].trim()
                 : req.socket.remoteAddress);
 
+        // Normalize the IP address for better handling of IPv6
+        const normalizedIP = normalizeIP(rawIP);
+
         // For auth requests, add username if available to prevent username enumeration
         const username = req.body?.username || "unknown";
-        return `${clientIP}:${username}`;
+        return `${normalizedIP}:${username}`;
     },
 });
 

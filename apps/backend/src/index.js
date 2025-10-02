@@ -49,10 +49,26 @@ app.use(
     })
 );
 
+// Helper to normalize IP addresses (handle IPv6 subnet isolation)
+const normalizeIP = (ip) => {
+    if (!ip) return "unknown";
+
+    // For IPv6, only use the first 4 segments to group users by subnet
+    // This prevents treating each user in the same IPv6 network as a separate entity
+    if (ip.includes(":")) {
+        const segments = ip.split(":");
+        // Take just the first few segments (subnet)
+        return segments.slice(0, 4).join(":");
+    }
+
+    // For IPv4, return as is
+    return ip;
+};
+
 // Rate limiting
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 300, // Increased from 100 to 300 to be more accommodating
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     message: { error: "Too many requests, please try again later" },
@@ -63,18 +79,69 @@ const apiLimiter = rateLimit({
         // Use the leftmost IP in X-Forwarded-For as it's the client IP
         // This works correctly when the app is behind a reverse proxy like Nginx or Cloudflare
         // But only if 'trust proxy' is enabled
-        const clientIP =
+        const rawIP =
             req.ip ||
             (req.headers["x-forwarded-for"]
                 ? req.headers["x-forwarded-for"].split(",")[0].trim()
                 : req.socket.remoteAddress);
 
-        console.log(`Rate limit check for IP: ${clientIP} (from ${req.path})`);
-        return clientIP;
+        // Normalize the IP address (particularly important for IPv6)
+        const normalizedIP = normalizeIP(rawIP);
+
+        // Only log occasional checks to reduce log noise
+        if (Math.random() < 0.05) {
+            // Log only 5% of rate limit checks
+            console.log(`Rate limit check for IP: ${normalizedIP} (original: ${rawIP}) (path: ${req.path})`);
+        }
+
+        return normalizedIP;
     },
 });
 
-// Apply rate limiting to all routes
+// Create a more lenient rate limiter for public endpoints
+const publicApiLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes window instead of 15
+    max: 500, // Much higher limit for public endpoints
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later" },
+    skip: () => process.env.NODE_ENV !== "production",
+    keyGenerator: (req) => {
+        const rawIP =
+            req.ip ||
+            (req.headers["x-forwarded-for"]
+                ? req.headers["x-forwarded-for"].split(",")[0].trim()
+                : req.socket.remoteAddress);
+
+        return normalizeIP(rawIP); // No logging for public endpoints to reduce noise
+    },
+});
+
+// Create a specialized limiter for auth-related endpoints that need to be called frequently
+const authEndpointsLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute window (much shorter)
+    max: 30, // Higher limit per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many auth requests, please try again later" },
+    skip: () => process.env.NODE_ENV !== "production",
+    keyGenerator: (req) =>
+        normalizeIP(
+            req.ip ||
+                (req.headers["x-forwarded-for"]
+                    ? req.headers["x-forwarded-for"].split(",")[0].trim()
+                    : req.socket.remoteAddress)
+        ),
+});
+
+// Apply different rate limiters based on route patterns
+// 1. Auth endpoints that get called frequently (/api/me and /api/refresh)
+app.use(["/api/me", "/api/refresh"], authEndpointsLimiter);
+
+// 2. Public endpoints get the more lenient limiter
+app.use(["/api/products", "/api/categories"], publicApiLimiter);
+
+// 3. Apply the standard rate limiter to all other routes
 app.use(apiLimiter);
 
 // --- Middleware Setup ---

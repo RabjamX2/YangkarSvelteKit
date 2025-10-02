@@ -65,9 +65,6 @@ jobs:
                       # Using the new --no-engine flag as recommended for production
                       pnpm --filter backend exec prisma generate --no-engine
 
-                      # Set NODE_ENV for the PM2 process
-                      export NODE_ENV=production
-
                       # Restart backend with updated environment
                       pm2 restart backend --update-env
 
@@ -119,9 +116,6 @@ jobs:
 
                       # Build the frontend app directly on the server
                       NODE_ENV=production pnpm --filter frontend build
-
-                      # Set NODE_ENV for the PM2 process
-                      export NODE_ENV=production
 
                       # Restart the service with updated environment
                       pm2 restart frontend --update-env
