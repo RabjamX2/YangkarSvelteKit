@@ -40,12 +40,23 @@ export async function apiFetch(url, options = {}) {
         // Attempt the original request
         const response = await fetch(fullUrl, fetchOptions);
 
-        // If unauthorized (401), try refreshing the token regardless of specific error code
+        // If unauthorized (401), try refreshing the token once
         if (response.status === 401 && browser) {
             console.log("Authentication required (401), attempting to refresh token...");
 
             // Clone the response before we consume it with json()
             const clonedResponse = response.clone();
+
+            try {
+                // Try to extract error details for better debugging
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorData = await response.json();
+                    console.log("401 Error details:", errorData);
+                }
+            } catch (e) {
+                // Ignore JSON parsing errors
+            }
 
             // Try to get a fresh token
             const refreshSuccess = await refreshAccessToken();
@@ -54,6 +65,8 @@ export async function apiFetch(url, options = {}) {
             if (refreshSuccess) {
                 console.log("Token refreshed successfully, retrying original request");
                 return apiFetch(url, options); // Retry with same options (CSRF token will be updated)
+            } else {
+                console.log("Token refresh failed, user needs to login again");
             }
 
             // If refresh failed, return the original response
@@ -69,6 +82,7 @@ export async function apiFetch(url, options = {}) {
 
 /**
  * Refreshes the access token using the refresh token stored in cookies
+ * This is an on-demand function that's only called when a request fails with a 401
  * @returns {Promise<boolean>} True if refresh was successful
  */
 export async function refreshAccessToken() {
@@ -84,14 +98,17 @@ export async function refreshAccessToken() {
         try {
             console.log("Attempting to refresh access token...");
 
+            // Note: We can't check for HttpOnly cookies via document.cookie
+            // The refresh_token is HttpOnly for security and won't appear in document.cookie
+            // We'll attempt the refresh regardless and let the server check for the cookie
+
             // Call the refresh endpoint - cookies are automatically included
             const response = await fetch(`${PUBLIC_BACKEND_URL}/api/refresh`, {
                 method: "POST",
                 credentials: "include",
-                // Add cache control to prevent cached responses
+                // Only include basic headers to avoid CORS issues
                 headers: {
-                    "Cache-Control": "no-cache, no-store, must-revalidate",
-                    Pragma: "no-cache",
+                    "Content-Type": "application/json",
                 },
             });
 
@@ -104,6 +121,10 @@ export async function refreshAccessToken() {
                         user: data.user,
                         csrfToken: data.csrfToken,
                     });
+
+                    // Add a small delay to ensure cookies are fully processed by the browser
+                    // This helps with race conditions between setting cookies and using them
+                    await new Promise((r) => setTimeout(r, 100));
 
                     console.log("Access token refreshed successfully");
                     resolve(true);
@@ -122,13 +143,41 @@ export async function refreshAccessToken() {
                 }
             }
 
-            // If refresh failed, clear the auth data
+            // If refresh failed, clear the auth data and provide more debug info
             console.error("Failed to refresh access token, logging out");
+            console.log("Token refresh process:", {
+                backendUrl: PUBLIC_BACKEND_URL,
+                responseStatus: response?.status,
+                responseHeaders: response ? Object.fromEntries([...response.headers.entries()]) : null,
+            });
+
+            // Special case handling for development - in some browsers,
+            // cookies might still be present but not working correctly
+            if (response.status === 500 || response.status === 401) {
+                console.log("Critical auth error - clearing cookies manually");
+
+                // Force a redirect to the login page to completely reset auth state
+                // This works better than just clearing the auth store
+                if (window.location.pathname !== "/login") {
+                    window.location.href = "/login";
+                }
+            }
+
             auth.clearAuth();
             resolve(false);
             return false;
         } catch (error) {
             console.error("Error refreshing token:", error);
+
+            // Provide more helpful diagnostics for CORS errors
+            const errorMessage = String(error);
+            if (errorMessage.includes("NetworkError") || errorMessage.includes("Failed to fetch")) {
+                console.warn(
+                    "Possible CORS issue detected. Check that backend CORS settings allow all necessary headers."
+                );
+                console.info("Backend URL:", PUBLIC_BACKEND_URL);
+            }
+
             auth.clearAuth();
             resolve(false);
             return false;
@@ -149,13 +198,22 @@ export async function refreshAccessToken() {
  */
 export async function logout(navigationCallback) {
     try {
-        // Fire and forget - don't await the API call
-        // This makes logout appear instant to the user
-        apiFetch("/api/logout", {
+        // Check cookies before logout
+        console.log("Cookies before logout:", document.cookie);
+
+        // Actually wait for the logout response to ensure cookies are properly cleared
+        const response = await apiFetch("/api/logout", {
             method: "POST",
         }).catch((error) => {
-            console.error("Background logout API call failed:", error);
+            console.error("Logout API call failed:", error);
+            return null;
         });
+
+        // Check cookies after server has cleared them
+        console.log("Cookies after logout response:", document.cookie);
+
+        // Clear auth store
+        auth.clearAuth();
 
         // Navigation should be handled by the caller now
         // But still support the legacy callback pattern for backward compatibility

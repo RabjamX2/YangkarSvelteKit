@@ -73,11 +73,18 @@
             const userData = await response.json();
 
             if (userData.user) {
+                console.log("Login successful, cookies:", document.cookie);
+
                 // Update auth store directly instead of full page reload
                 auth.setAuth({
                     user: userData.user,
                     csrfToken: userData.csrfToken,
                 });
+
+                // Check if cookies were set properly
+                const hasAccessToken = document.cookie.includes("access_token");
+                const hasRefreshToken = document.cookie.includes("refresh_token");
+                console.log("Cookie status - Access token:", hasAccessToken, "Refresh token:", hasRefreshToken);
 
                 // Use SvelteKit navigation for better performance
                 goto("/");

@@ -7,8 +7,6 @@
     import { createAuthFetch } from "$lib/utils/csrf.js";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
-    import { setupTokenRefresh } from "$lib/utils/refreshInterceptor.js";
-    import { refreshAccessToken } from "$lib/utils/api.js";
     import "./layout.css";
 
     export let data;
@@ -37,16 +35,13 @@
                 dropdownOpen = false;
             }
         });
-
-        // Set up token refresh interceptor to keep session alive
-        setupTokenRefresh(refreshAccessToken);
     });
 
     // Import auth store
     import { auth } from "$lib/stores/auth.store.js";
     import { logout } from "$lib/utils/api.js";
 
-    function handleLogout(event) {
+    async function handleLogout(event) {
         event.preventDefault();
 
         // Get user info from auth store for logging
@@ -55,18 +50,24 @@
             username: authData.user?.username,
         });
 
-        // Clear auth store immediately for better perceived performance
+        console.log("Cookies before logout initiated:", document.cookie);
+
+        // Wait for logout to complete to ensure cookies are cleared properly
+        try {
+            await logout();
+            console.log("Logout completed successfully");
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
+
+        // Clear auth store after backend logout completes
         auth.clearAuth();
 
-        // Immediately navigate to improve perceived performance
-        window.location.href = "/";
+        // Check cookies again to verify they're gone
+        console.log("Cookies after logout completed:", document.cookie);
 
-        // Then clean up on the backend (non-blocking)
-        logout().then((success) => {
-            if (!success) {
-                console.warn("Logout had errors but navigation was still triggered");
-            }
-        });
+        // Navigate after logout completes
+        window.location.href = "/";
     }
 
     function toggleDarkMode() {

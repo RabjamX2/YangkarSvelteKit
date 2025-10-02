@@ -7,6 +7,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import authenticateToken from "../middleware/authenticateToken.js";
 import optionalAuthenticate from "../middleware/optionalAuthenticate.js";
 import rateLimit from "express-rate-limit";
+import { forceCleanupExpiredSessions } from "../services/sessionCleanup.js";
 
 const { PrismaClient } = prismaPkg;
 const router = express.Router();
@@ -18,7 +19,7 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "change-me-refresh-
 const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET || "change-me-reset-secret";
 
 // Token durations
-const ACCESS_TOKEN_EXPIRY = "15m"; // 15 minutes
+const ACCESS_TOKEN_EXPIRY = "1m"; // set to 1m for debugging
 const REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
 const RESET_TOKEN_EXPIRY = "10m"; // 10 minutes
 
@@ -61,9 +62,23 @@ const getCookieOptions = (maxAge) => {
         options.sameSite = "none";
         console.log(`Using production cookie settings:`, options);
     } else {
-        options.secure = false;
-        options.sameSite = "lax";
-        console.log(`Using development cookie settings:`, options);
+        // For local development
+        // For cross-origin requests between different localhost ports,
+        // we need to set SameSite=None AND Secure=true,
+        // even though we're on http: in development
+        options.secure = true; // Required when SameSite is None, even on localhost
+        options.sameSite = "none"; // Required for cross-site requests (different ports)
+
+        // Special handling for localhost in Chrome
+        // See: https://web.dev/when-to-use-local-https/#testing-secure-cookies-with-chrome
+
+        // Add an explicit domain for local development
+        if (process.env.NODE_ENV === "development") {
+            // This helps with cookie handling consistency in Chrome
+            options.domain = "localhost";
+        }
+
+        console.log(`Using development cookie settings with SameSite=None and Secure=true:`, options);
     }
     return options;
 };
@@ -297,7 +312,15 @@ const login = asyncHandler(async (req, res) => {
 });
 
 const refreshToken = asyncHandler(async (req, res) => {
+    // Get refresh token from cookies only
     const refreshToken = req.cookies.refresh_token;
+
+    // Debug incoming request for refresh token
+    console.log("Refresh token request received:", {
+        hasCookieToken: !!refreshToken,
+        cookieNames: Object.keys(req.cookies || {}),
+        origin: req.headers.origin || "none",
+    });
 
     if (!refreshToken) {
         res.status(401);
@@ -305,11 +328,27 @@ const refreshToken = asyncHandler(async (req, res) => {
     }
 
     try {
-        // Verify refresh token
-        const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        console.log(
+            `DEBUG: Refresh token received: ${refreshToken.substring(0, 10)}... (length: ${refreshToken.length})`
+        );
+
+        try {
+            // Verify refresh token
+            const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+            console.log(`DEBUG: Token verified successfully, payload:`, {
+                userId: decoded.id,
+                exp: decoded.exp,
+                expDate: new Date(decoded.exp * 1000).toISOString(),
+            });
+        } catch (tokenError) {
+            console.error(`DEBUG: Token verification failed:`, tokenError.message);
+            res.status(401);
+            throw new Error(`Invalid token: ${tokenError.message}`);
+        }
 
         // Get refresh token hash
         const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+        console.log(`DEBUG: Token hash: ${refreshTokenHash.substring(0, 10)}...`);
 
         // Check if token exists in database and hasn't expired
         const session = await prisma.session.findUnique({
@@ -317,9 +356,18 @@ const refreshToken = asyncHandler(async (req, res) => {
             include: { user: true },
         });
 
-        if (!session || !session.user || session.expiresAt < new Date()) {
+        if (!session) {
+            console.error(`DEBUG: No session found for token hash`);
             res.status(401);
-            throw new Error("Invalid or expired refresh token");
+            throw new Error("Session not found for this token");
+        } else if (!session.user) {
+            console.error(`DEBUG: Session found but no user attached`);
+            res.status(401);
+            throw new Error("No user associated with this session");
+        } else if (session.expiresAt < new Date()) {
+            console.error(`DEBUG: Session expired at ${session.expiresAt.toISOString()}`);
+            res.status(401);
+            throw new Error("Session expired in database");
         }
 
         // Generate new tokens
@@ -328,19 +376,67 @@ const refreshToken = asyncHandler(async (req, res) => {
         // Update session in database with new refresh token
         const newRefreshTokenHash = crypto.createHash("sha256").update(newRefreshToken).digest("hex");
 
-        // Delete old session
-        await prisma.session.delete({
-            where: { id: refreshTokenHash },
-        });
+        try {
+            // IMPORTANT: Instead of deleting the old session right away,
+            // mark it as replaced and set a short expiry time
+            // This gives the browser time to start using the new token before
+            // the old one becomes invalid
 
-        // Create new session
-        await prisma.session.create({
-            data: {
-                id: newRefreshTokenHash,
-                userId: session.user.id,
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            },
-        });
+            // First, create the new session
+            console.log(`DEBUG: Creating new session: ${newRefreshTokenHash.substring(0, 10)}...`);
+            await prisma.session.create({
+                data: {
+                    id: newRefreshTokenHash,
+                    userId: session.user.id,
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+                },
+            });
+            console.log(`DEBUG: New session created successfully`);
+
+            // Update the old session to expire in 5 minutes instead of deleting it right away
+            // This gives the browser time to switch to the new token
+            console.log(`DEBUG: Setting old session to expire soon: ${refreshTokenHash.substring(0, 10)}...`);
+            await prisma.session.update({
+                where: { id: refreshTokenHash },
+                data: {
+                    // Short grace period for the browser to start using the new token
+                    expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+                },
+            });
+            console.log(`DEBUG: Old session updated with short expiry`);
+        } catch (dbError) {
+            console.error(`DEBUG: Database operation failed:`, dbError);
+            res.status(500);
+            throw new Error(`Database error during session refresh: ${dbError.message}`);
+        }
+
+        // Clean up expired sessions for this user during token refresh
+        // Do this asynchronously to not block the response
+        (async () => {
+            try {
+                // First clean up just this user's expired sessions
+                const now = new Date();
+                const result = await prisma.session.deleteMany({
+                    where: {
+                        userId: session.user.id,
+                        expiresAt: {
+                            lt: now,
+                        },
+                    },
+                });
+
+                if (result.count > 0) {
+                    console.log(`DEBUG: Cleaned up ${result.count} expired sessions for user ${session.user.id}`);
+                }
+
+                // Occasionally run a cleanup of all expired sessions (5% chance)
+                if (Math.random() < 0.05) {
+                    forceCleanupExpiredSessions().catch((err) => console.error("Failed global session cleanup:", err));
+                }
+            } catch (cleanupError) {
+                console.error("Failed to clean up expired sessions:", cleanupError);
+            }
+        })();
 
         // Set new cookies
         const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
@@ -380,10 +476,15 @@ const refreshToken = asyncHandler(async (req, res) => {
             csrfToken,
         });
     } catch (error) {
-        res.clearCookie("access_token");
-        res.clearCookie("refresh_token");
+        console.error("Refresh token error:", error.message || error);
+
+        // Clear cookies with same options they were set with
+        const cookieOptions = getCookieOptions(0);
+        res.clearCookie("access_token", cookieOptions);
+        res.clearCookie("refresh_token", cookieOptions);
+
         res.status(401);
-        throw new Error("Invalid refresh token");
+        throw new Error(`Invalid refresh token: ${error.message || "Unknown error"}`);
     }
 });
 
@@ -443,9 +544,25 @@ const logout = asyncHandler(async (req, res) => {
     }
 
     // Clear cookies with appropriate settings based on environment
+    // We need to use the same cookie options as when setting, but with maxAge=0
     const cookieOptions = getCookieOptions(0);
+
+    // Add debug info for cookie clearing
+    console.log("Clearing auth cookies with options:", cookieOptions);
+
+    // Clear both in all common formats to ensure they're removed
     res.clearCookie("access_token", cookieOptions);
     res.clearCookie("refresh_token", cookieOptions);
+
+    // Also try clearing with path explicitly set
+    res.clearCookie("access_token", { ...cookieOptions, path: "/" });
+    res.clearCookie("refresh_token", { ...cookieOptions, path: "/" });
+
+    // For development environments, also try without secure flag
+    if (process.env.NODE_ENV !== "production") {
+        res.clearCookie("access_token", { ...cookieOptions, secure: false });
+        res.clearCookie("refresh_token", { ...cookieOptions, secure: false });
+    }
 
     // Return success regardless of token invalidation success
     res.status(200).json({ message: "Logged out successfully" });

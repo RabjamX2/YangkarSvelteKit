@@ -12,6 +12,9 @@ import cartRoutes from "./routes/cart.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js"; // Import transaction routes
 import imageRoutes from "./routes/image.routes.js"; // Import image routes
 
+// Import services
+import { maybeCleanupExpiredSessions, scheduleSessionCleanup } from "./services/sessionCleanup.js";
+
 // Import middleware
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -118,7 +121,16 @@ app.use(
         },
         credentials: true, // Allow cookies to be sent and received
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "Cookie", "Origin", "Accept"],
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+            "X-CSRF-Token",
+            "Cookie",
+            "Origin",
+            "Accept",
+            "Cache-Control",
+            "Pragma",
+        ],
     })
 );
 
@@ -127,9 +139,26 @@ app.use(express.json({ limit: "1mb" }));
 // Parse cookies
 app.use(cookieParser());
 
+// Schedule regular cleanup of expired sessions (runs on server start and every hour)
+scheduleSessionCleanup();
+
+// Add low-probability cleanup middleware to auth routes
+// This gives a small chance of cleaning up expired sessions on any auth request
+app.use(
+    "/api",
+    async (req, res, next) => {
+        // Only run on auth-related endpoints with 1% probability
+        if (req.path.includes("/auth") || req.path.includes("/login") || req.path.includes("/refresh")) {
+            maybeCleanupExpiredSessions(0.01).catch((err) => {
+                console.error("Background cleanup error:", err);
+            });
+        }
+        next(); // Always continue processing the request
+    },
+    authRoutes
+);
+
 // --- API Routes ---
-// All authentication routes
-app.use("/api", authRoutes);
 // All product-related routes
 app.use("/api", productRoutes);
 // All cart-related routes
