@@ -23,6 +23,11 @@ const PORT = process.env.PORT;
 
 const app = express();
 
+// Configure Express to trust proxies - needed when behind Nginx, Cloudflare, etc.
+// This tells Express to trust the X-Forwarded-For header for IP identification
+// Important for rate limiting to work correctly in production
+app.set("trust proxy", true);
+
 // Add request logger
 app.use((req, res, next) => {
     req.log = logger;
@@ -53,6 +58,20 @@ const apiLimiter = rateLimit({
     message: { error: "Too many requests, please try again later" },
     // Skip rate limiting in development
     skip: () => process.env.NODE_ENV !== "production",
+    // Properly handle proxied requests in production
+    keyGenerator: (req) => {
+        // Use the leftmost IP in X-Forwarded-For as it's the client IP
+        // This works correctly when the app is behind a reverse proxy like Nginx or Cloudflare
+        // But only if 'trust proxy' is enabled
+        const clientIP =
+            req.ip ||
+            (req.headers["x-forwarded-for"]
+                ? req.headers["x-forwarded-for"].split(",")[0].trim()
+                : req.socket.remoteAddress);
+
+        console.log(`Rate limit check for IP: ${clientIP} (from ${req.path})`);
+        return clientIP;
+    },
 });
 
 // Apply rate limiting to all routes

@@ -30,6 +30,19 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many login attempts, please try again later" },
+    // Properly handle proxied requests in production
+    keyGenerator: (req) => {
+        // Use the leftmost IP in X-Forwarded-For as it's the client IP
+        const clientIP =
+            req.ip ||
+            (req.headers["x-forwarded-for"]
+                ? req.headers["x-forwarded-for"].split(",")[0].trim()
+                : req.socket.remoteAddress);
+
+        // For auth requests, add username if available to prevent username enumeration
+        const username = req.body?.username || "unknown";
+        return `${clientIP}:${username}`;
+    },
 });
 
 // Cookie settings based on environment

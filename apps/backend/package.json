@@ -10,7 +10,9 @@
         "start": "node src/index.js",
         "prisma:studio": "prisma studio",
         "prisma:migrate:dev": "prisma migrate dev",
-        "prisma:generate": "prisma generate"
+        "prisma:generate": "prisma generate",
+        "prisma:generate:prod": "prisma generate --no-engine",
+        "prepare:prod": "npm run prisma:generate:prod && echo 'Production dependencies prepared'"
     },
     "keywords": [],
     "author": "",

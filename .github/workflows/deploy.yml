@@ -61,10 +61,14 @@ jobs:
                       # Run migrations with the latest schema
                       pnpm --filter backend exec prisma migrate deploy
 
-                      # Now generate Prisma client with the updated schema
-                      pnpm --filter backend exec prisma generate
+                      # Now generate Prisma client with the updated schema for production
+                      # Using the new --no-engine flag as recommended for production
+                      pnpm --filter backend exec prisma generate --no-engine
 
-                      # Restart backend with NODE_ENV set to production
+                      # Set NODE_ENV for the PM2 process
+                      export NODE_ENV=production
+
+                      # Restart backend with updated environment
                       pm2 restart backend --update-env
 
     deploy-frontend:
@@ -114,7 +118,10 @@ jobs:
                       pnpm install --no-frozen-lockfile
 
                       # Build the frontend app directly on the server
-                      pnpm --filter frontend build
+                      NODE_ENV=production pnpm --filter frontend build
 
-                      # Restart the service with NODE_ENV set to production
+                      # Set NODE_ENV for the PM2 process
+                      export NODE_ENV=production
+
+                      # Restart the service with updated environment
                       pm2 restart frontend --update-env
