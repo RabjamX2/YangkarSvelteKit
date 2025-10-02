@@ -332,9 +332,13 @@ const refreshToken = asyncHandler(async (req, res) => {
             `DEBUG: Refresh token received: ${refreshToken.substring(0, 10)}... (length: ${refreshToken.length})`
         );
 
+        // For tracking retry attempts if needed
+        const isRetry = req.headers["x-retry-refresh"] === "true";
+        let decoded;
+
         try {
             // Verify refresh token
-            const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+            decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
             console.log(`DEBUG: Token verified successfully, payload:`, {
                 userId: decoded.id,
                 exp: decoded.exp,
@@ -382,28 +386,41 @@ const refreshToken = asyncHandler(async (req, res) => {
             // This gives the browser time to start using the new token before
             // the old one becomes invalid
 
-            // First, create the new session
-            console.log(`DEBUG: Creating new session: ${newRefreshTokenHash.substring(0, 10)}...`);
-            await prisma.session.create({
-                data: {
+            // Create or update the new session - using upsert to handle potential race conditions
+            console.log(`DEBUG: Creating/updating session: ${newRefreshTokenHash.substring(0, 10)}...`);
+            await prisma.session.upsert({
+                where: {
+                    id: newRefreshTokenHash,
+                },
+                update: {
+                    // If it exists already, just update the expiry time
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+                },
+                create: {
                     id: newRefreshTokenHash,
                     userId: session.user.id,
                     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
                 },
             });
-            console.log(`DEBUG: New session created successfully`);
+            console.log(`DEBUG: Session created or updated successfully`);
 
             // Update the old session to expire in 5 minutes instead of deleting it right away
             // This gives the browser time to switch to the new token
-            console.log(`DEBUG: Setting old session to expire soon: ${refreshTokenHash.substring(0, 10)}...`);
-            await prisma.session.update({
-                where: { id: refreshTokenHash },
-                data: {
-                    // Short grace period for the browser to start using the new token
-                    expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-                },
-            });
-            console.log(`DEBUG: Old session updated with short expiry`);
+            try {
+                console.log(`DEBUG: Setting old session to expire soon: ${refreshTokenHash.substring(0, 10)}...`);
+                await prisma.session.updateMany({
+                    // Using updateMany instead of update to avoid errors if the session doesn't exist
+                    where: { id: refreshTokenHash },
+                    data: {
+                        // Short grace period for the browser to start using the new token
+                        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+                    },
+                });
+                console.log(`DEBUG: Old session updated with short expiry`);
+            } catch (updateError) {
+                // If the update fails, it's not critical - the new session is already created
+                console.warn(`DEBUG: Could not update old session, it may have been deleted: ${updateError.message}`);
+            }
         } catch (dbError) {
             console.error(`DEBUG: Database operation failed:`, dbError);
             res.status(500);

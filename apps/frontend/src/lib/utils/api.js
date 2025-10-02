@@ -103,14 +103,60 @@ export async function refreshAccessToken() {
             // We'll attempt the refresh regardless and let the server check for the cookie
 
             // Call the refresh endpoint - cookies are automatically included
-            const response = await fetch(`${PUBLIC_BACKEND_URL}/api/refresh`, {
-                method: "POST",
-                credentials: "include",
-                // Only include basic headers to avoid CORS issues
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
+            // Add retry attempt tracking
+            const maxRetries = 2;
+            let retryCount = 0;
+            let response = null;
+
+            // Try the refresh with automatic retry for certain errors
+            while (retryCount <= maxRetries) {
+                try {
+                    response = await fetch(`${PUBLIC_BACKEND_URL}/api/refresh`, {
+                        method: "POST",
+                        credentials: "include",
+                        // Only include basic headers to avoid CORS issues
+                        headers: {
+                            "Content-Type": "application/json",
+                            // Add retry header for server logging if this isn't the first attempt
+                            ...(retryCount > 0 ? { "X-Retry-Refresh": "true" } : {}),
+                        },
+                    });
+
+                    // Break the retry loop if we get a success or a non-retriable error
+                    // We only want to retry on database errors, not auth errors
+                    if (response.ok || response.status === 401) {
+                        break;
+                    }
+
+                    // For 500 errors that could be database conflicts, add a small backoff delay
+                    if (response.status === 500) {
+                        const backoffMs = 200 * Math.pow(2, retryCount);
+                        console.log(
+                            `Refresh failed, retrying in ${backoffMs}ms (attempt ${retryCount + 1}/${maxRetries + 1})`
+                        );
+                        await new Promise((r) => setTimeout(r, backoffMs));
+                        retryCount++;
+                    } else {
+                        // Don't retry for other status codes
+                        break;
+                    }
+                } catch (networkError) {
+                    console.error("Network error during token refresh:", networkError);
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        await new Promise((r) => setTimeout(r, 500));
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // Handle the case where we couldn't connect at all
+            if (!response) {
+                console.error("Failed to connect to refresh endpoint after retries");
+                resolve(false);
+                return false;
+            }
 
             if (response.ok) {
                 const data = await response.json();
@@ -134,10 +180,12 @@ export async function refreshAccessToken() {
                 }
             } else {
                 // Log more details about the failed refresh
-                console.error("Token refresh failed with status:", response.status);
+                console.error("Token refresh failed with status:", response ? response.status : "unknown");
                 try {
-                    const errorData = await response.json();
-                    console.error("Error response:", errorData);
+                    if (response) {
+                        const errorData = await response.json();
+                        console.error("Error response:", errorData);
+                    }
                 } catch (e) {
                     console.error("Could not parse error response as JSON");
                 }
@@ -149,11 +197,12 @@ export async function refreshAccessToken() {
                 backendUrl: PUBLIC_BACKEND_URL,
                 responseStatus: response?.status,
                 responseHeaders: response ? Object.fromEntries([...response.headers.entries()]) : null,
+                retryAttempts: retryCount,
             });
 
             // Special case handling for development - in some browsers,
             // cookies might still be present but not working correctly
-            if (response.status === 500 || response.status === 401) {
+            if (response && (response.status === 500 || response.status === 401)) {
                 console.log("Critical auth error - clearing cookies manually");
 
                 // Force a redirect to the login page to completely reset auth state
