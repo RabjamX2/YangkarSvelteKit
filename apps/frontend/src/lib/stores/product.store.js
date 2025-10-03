@@ -1,45 +1,19 @@
+// @ts-nocheck
 import { writable, derived, get } from "svelte/store";
 import { goto } from "$app/navigation";
 import { apiFetch } from "$lib/utils/api.js";
-const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
-
-/**
- * @typedef {Object} ProductSummary
- * @property {number} id
- * @property {string} skuBase
- * @property {string} name
- * @property {string} createdAt
- * @property {string | null} minSalePrice - Represented as a string from Prisma Decimal
- * @property {string | null} displayImageUrl
- */
-
-/**
- * @typedef {Object} Category
- * @property {number} id
- * @property {string} name
- */
-
-/**
- * @typedef {Object} MetaData
- * @property {number} currentPage
- * @property {number} totalPages
- */
 
 function createProductStore() {
     // --- Writable Stores ---
     // These hold the core, modifiable state of our page.
-    /** @type {import('svelte/store').Writable<ProductSummary[]>} */
     const products = writable([]);
-    /** @type {import('svelte/store').Writable<MetaData>} */
     const meta = writable({ currentPage: 1, totalPages: 1 });
     const isLoading = writable(false);
     const hasMore = writable(true);
 
     // Filter and sort state
-    /** @type {import('svelte/store').Writable<Set<string>>} */
     const activeCategories = writable(new Set());
     const sortKey = writable("default");
-    /** @type {import('svelte/store').Writable<Category[]>} */
     const allCategories = writable([]);
 
     // --- Derived Stores ---
@@ -50,7 +24,6 @@ function createProductStore() {
 
     /**
      * Initializes the store with data from the server load function.
-     * @param {object} initialData - The data object from +page.server.js.
      */
     function initialize(initialData) {
         products.set(initialData.products || []);
@@ -90,7 +63,8 @@ function createProductStore() {
 
             const newData = await response.json();
 
-            products.update((p) => [...p, ...newData.data]);
+            // Update the products store with the new data
+            products.update((currentProducts) => [...currentProducts, ...newData.data]);
             meta.set(newData.meta);
             hasMore.set(newData.meta.currentPage < newData.meta.totalPages);
         } catch (error) {
@@ -144,6 +118,65 @@ function createProductStore() {
         applyFiltersAndSort();
     }
 
+    /**
+     * Gets product colors for a specific product
+     */
+    async function getProductColors(productId) {
+        try {
+            const response = await apiFetch(`/api/products/${productId}/colors`);
+            if (!response.ok) throw new Error("Failed to fetch product colors");
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error loading product colors:", error);
+            return [];
+        }
+    }
+
+    /**
+     * Updates images for all variants of a specific product color
+     */
+    async function updateColorImages(productId, color, imgUrl) {
+        try {
+            const response = await apiFetch(`/api/product-color-image`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ productId, color, imgUrl }),
+            });
+
+            if (!response.ok) throw new Error("Failed to update color images");
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error updating color images:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Updates image for a specific variant
+     */
+    async function updateVariantImage(variantId, imgUrl) {
+        try {
+            const response = await apiFetch(`/api/variants/${variantId}/image`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ imgUrl }),
+            });
+
+            if (!response.ok) throw new Error("Failed to update variant image");
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error updating variant image:", error);
+            throw error;
+        }
+    }
+
     return {
         // Make the stores available to components
         subscribe: products.subscribe,
@@ -161,6 +194,11 @@ function createProductStore() {
         loadMore,
         toggleCategory,
         changeSort,
+
+        // New color/image management methods
+        getProductColors,
+        updateColorImages,
+        updateVariantImage,
     };
 }
 

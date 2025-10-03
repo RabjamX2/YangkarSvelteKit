@@ -54,6 +54,7 @@ const getProducts = asyncHandler(async (req, res) => {
     }
     const where = whereClauses.length > 0 ? Prisma.sql`WHERE ${Prisma.join(whereClauses, " AND ")}` : Prisma.empty;
 
+    // First get the basic product data
     const products = await prisma.$queryRaw`
       SELECT
         p.id, p."skuBase", p."displayName", p."createdAt",
@@ -64,6 +65,47 @@ const getProducts = asyncHandler(async (req, res) => {
       ORDER BY ${orderBy}
       LIMIT ${limit} OFFSET ${offset}
     `;
+
+    // Get the product IDs to fetch variants
+    const productIds = products.map((p) => p.id);
+
+    // If we have products, fetch their variants
+    if (productIds.length > 0) {
+        // Fetch up to 4 variants per product for the grid view
+        const variants = await prisma.productVariant.findMany({
+            where: {
+                productId: {
+                    in: productIds,
+                },
+                visable: true,
+            },
+            select: {
+                id: true,
+                productId: true,
+                color: true,
+                displayColor: true,
+                colorHex: true,
+                imgUrl: true,
+                salePrice: true,
+                size: true,
+            },
+            orderBy: [{ color: "asc" }, { size: "asc" }],
+        });
+
+        // Group variants by product ID
+        const variantsByProduct = {};
+        variants.forEach((variant) => {
+            if (!variantsByProduct[variant.productId]) {
+                variantsByProduct[variant.productId] = [];
+            }
+            variantsByProduct[variant.productId].push(variant);
+        });
+
+        // Add variants to each product
+        products.forEach((product) => {
+            product.variants = variantsByProduct[product.id] || [];
+        });
+    }
 
     const whereFilter = categoryIds.length > 0 ? { categoryId: { in: categoryIds } } : {};
     const totalProductsResult = await prisma.product.count({ where: whereFilter });

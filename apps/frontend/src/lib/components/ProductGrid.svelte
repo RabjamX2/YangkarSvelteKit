@@ -3,6 +3,20 @@
 
     const { products, isLoading, hasMore, loadMore } = productStore;
 
+    // Track selected variant for each product
+    let selectedVariants = {};
+
+    // Function to select a different variant color
+    function selectVariantColor(productId, color) {
+        const product = $products.find((p) => p.id === productId);
+        if (product && product.variants) {
+            const variant = product.variants.find((v) => v.color === color);
+            if (variant) {
+                selectedVariants[productId] = variant;
+            }
+        }
+    }
+
     // --- Intersection Observer for infinite scroll ---
     function observe(node) {
         const observer = new IntersectionObserver(
@@ -20,6 +34,17 @@
             },
         };
     }
+
+    // Initialize the selected variants with the first variant for each product
+    $: {
+        if ($products) {
+            $products.forEach((product) => {
+                if (product.variants && product.variants.length > 0 && !selectedVariants[product.id]) {
+                    selectedVariants[product.id] = product.variants[0];
+                }
+            });
+        }
+    }
 </script>
 
 <div class="product-grid">
@@ -29,22 +54,39 @@
                 <a href="/products/{product.skuBase}" class="product-card-img-link">
                     <figure class="product-card-img-holder">
                         <img
-                            src={product.displayImageUrl || "https://placehold.co/400x500/eee/ccc?text=Product"}
-                            alt={product.name}
+                            src={selectedVariants[product.id]?.imgUrl || product.displayImageUrl}
+                            alt={product.displayName}
                         />
                     </figure>
                 </a>
             </div>
             <div class="product-card-info">
-                <a href="/products/{product.skuBase}" class="product-card-info-title">{product.name}</a>
+                <a href="/products/{product.skuBase}" class="product-card-info-title">{product.displayName}</a>
                 <div class="product-card-meta">
-                    <p class="product-card-sku">{product.skuBase}</p>
-                    {#if product.minSalePrice}
+                    {#if selectedVariants[product.id]?.salePrice}
+                        <span class="product-card-price">${selectedVariants[product.id].salePrice}</span>
+                    {:else if product.minSalePrice}
                         <span class="product-card-price">${product.minSalePrice}</span>
                     {:else}
                         <span class="product-card-price">Coming Soon</span>
                     {/if}
                 </div>
+                {#if product.variants && product.variants.length > 1}
+                    <div class="product-card-variants">
+                        {#each [...new Set(product.variants.map((v) => v.color))].slice(0, 4) as color}
+                            <button
+                                class="color-swatch"
+                                class:active={selectedVariants[product.id]?.color === color}
+                                style="background-color: {color.toLowerCase()};"
+                                aria-label="Select {color}"
+                                on:click|stopPropagation|preventDefault={() => selectVariantColor(product.id, color)}
+                            ></button>
+                        {/each}
+                        {#if [...new Set(product.variants.map((v) => v.color))].length > 4}
+                            <span class="more-variants">+</span>
+                        {/if}
+                    </div>
+                {/if}
             </div>
         </div>
     {/each}
@@ -126,13 +168,45 @@
         display: block;
         font-size: 14px;
     }
-    .product-card-sku {
-        font-size: 14px;
-        color: #666;
+    .product-card-meta {
+        margin-top: 8px;
     }
     .product-card-price {
-        font-weight: bold;
         font-size: 14px;
+    }
+    .product-card-variants {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    .color-swatch {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid #ddd;
+        padding: 0;
+        cursor: pointer;
+        transition:
+            transform 0.2s,
+            border-color 0.2s;
+    }
+    .color-swatch:hover {
+        transform: scale(1.1);
+    }
+    .color-swatch.active {
+        border: 2px solid #000;
+    }
+    .more-variants {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #eee;
+        color: #666;
+        font-size: 12px;
+        line-height: 1;
     }
     .loading-indicator,
     .sentinel {
