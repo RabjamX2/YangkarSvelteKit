@@ -34,6 +34,11 @@
     const currentUser = writable(null);
     const estimatedSize = writable(null);
 
+    // New stores for color management
+    const productColors = writable([]);
+    const selectedColor = writable(null);
+    const applyToAllSizes = writable(true); // Default to applying to all sizes of a color
+
     // Search filters
     const productSearch = writable("");
     const variantSearch = writable("");
@@ -162,8 +167,8 @@
         filterVariants(term);
     }
 
-    // When a product is selected, update the variants list
-    function handleProductChange(event) {
+    // When a product is selected, update the variants list and fetch product colors
+    async function handleProductChange(event) {
         const productId = parseInt(event.target.value);
         if (productId) {
             const product = $products.find((p) => p.id === productId);
@@ -174,11 +179,37 @@
             selectedVariant.set(null);
             // Reset variant search when product changes
             variantSearch.set("");
+
+            // Fetch unique colors for this product
+            await fetchProductColors(productId);
         } else {
             selectedProduct.set(null);
             variants.set([]);
             filteredVariants.set([]);
             selectedVariant.set(null);
+            productColors.set([]);
+            selectedColor.set(null);
+        }
+    }
+
+    // Fetch unique colors for a product
+    async function fetchProductColors(productId) {
+        try {
+            const fetchAuth = createAuthFetch($page);
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products/${productId}/colors`);
+
+            if (!res.ok) {
+                throw new Error(`Error fetching product colors: ${res.statusText}`);
+            }
+
+            const colors = await res.json();
+            productColors.set(colors);
+
+            // Reset selected color
+            selectedColor.set(null);
+        } catch (err) {
+            console.error("Failed to load product colors:", err);
+            error.set(`Failed to load product colors: ${err.message}`);
         }
     }
 
@@ -188,8 +219,30 @@
         if (variantId) {
             const variant = $variants.find((v) => v.id === variantId);
             selectedVariant.set(variant);
+
+            // If this variant has a color, select that color
+            if (variant.color) {
+                const matchingColor = $productColors.find((c) => c.color === variant.color);
+                if (matchingColor) {
+                    selectedColor.set(matchingColor);
+                }
+            }
         } else {
             selectedVariant.set(null);
+        }
+    }
+
+    // When a color is selected
+    function handleColorSelect(color) {
+        selectedColor.set(color);
+
+        // Filter variants to show only those with this color
+        const colorVariants = $variants.filter((v) => v.color === color.color);
+        filteredVariants.set(colorVariants);
+
+        // If there are variants of this color, select the first one
+        if (colorVariants.length > 0) {
+            selectedVariant.set(colorVariants[0]);
         }
     }
 
@@ -1445,26 +1498,53 @@
             // Create authenticated fetch with CSRF token for the variant update
             const fetchAuth = createAuthFetch($page);
 
-            // Update product variant with new image URL
-            const updateRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${$selectedVariant.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-Token": $auth.csrfToken || $page.data?.csrfToken,
-                },
-                body: JSON.stringify({
-                    imgUrl: uploadResult.location,
-                }),
-            });
+            // Update image URL based on whether to apply to all sizes or just one variant
+            let updateRes;
+            let updatedCount = 1;
+
+            if ($applyToAllSizes && $selectedColor) {
+                // Apply to all variants of this color
+                updateRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/product-color-image`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": $auth.csrfToken || $page.data?.csrfToken,
+                    },
+                    body: JSON.stringify({
+                        productId: $selectedProduct.id,
+                        color: $selectedColor.color,
+                        imgUrl: uploadResult.location,
+                    }),
+                });
+
+                // Get the count of updated variants
+                if (updateRes.ok) {
+                    const result = await updateRes.json();
+                    updatedCount = result.updatedCount || 1;
+                }
+            } else {
+                // Apply to just the selected variant
+                updateRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${$selectedVariant.id}/image`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": $auth.csrfToken || $page.data?.csrfToken,
+                    },
+                    body: JSON.stringify({
+                        imgUrl: uploadResult.location,
+                    }),
+                });
+            }
 
             if (!updateRes.ok) {
                 let errorDetails = `Status: ${updateRes.status} ${updateRes.statusText}`;
                 throw new Error(`Failed to update variant: ${errorDetails}`);
             }
 
-            // Update success message and local state
+            // Update success message based on how many variants were updated
+            const sizesText = updatedCount > 1 ? `all sizes (${updatedCount} variants)` : "this size";
             success.set(
-                `Image uploaded and assigned to ${$selectedProduct.displayName || $selectedProduct.style} - ${$selectedVariant.color || ""} ${$selectedVariant.size || ""}`
+                `Image uploaded and assigned to ${$selectedProduct.displayName || $selectedProduct.style} - ${$selectedVariant.color || ""} ${$applyToAllSizes ? `(${sizesText})` : ""}`
             );
 
             // Update local state to reflect the change
@@ -1659,8 +1739,52 @@
                     </p>
                 </div>
 
+                {#if $productColors.length > 0 && $selectedProduct}
+                    <div class="form-group">
+                        <p class="form-label" id="color-selection-label">Product Colors</p>
+                        <div class="color-chips-container" role="radiogroup" aria-labelledby="color-selection-label">
+                            {#each $productColors as color}
+                                <button
+                                    type="button"
+                                    class="color-chip {$selectedColor?.color === color.color ? 'active' : ''}"
+                                    on:click={() => handleColorSelect(color)}
+                                    on:keydown={(e) => e.key === "Enter" && handleColorSelect(color)}
+                                    title={color.displayColor || color.color}
+                                    role="radio"
+                                    aria-checked={$selectedColor?.color === color.color}
+                                >
+                                    <div
+                                        class="color-swatch"
+                                        style="background-color: {color.colorHex || '#ccc'};"
+                                    ></div>
+                                    <span>{color.displayColor || color.color}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+
                 <!-- Selected variant preview -->
                 {#if $selectedVariant}
+                    {#if $selectedVariant.color}
+                        <div class="apply-to-all-sizes">
+                            <label class="form-check">
+                                <input type="checkbox" class="form-check-input" bind:checked={$applyToAllSizes} />
+                                <span
+                                    >Apply this image to all sizes of the {$selectedVariant.displayColor ||
+                                        $selectedVariant.color} color</span
+                                >
+                            </label>
+                            <div class="form-text">
+                                {#if $applyToAllSizes}
+                                    This will update images for all size variants of this color.
+                                {:else}
+                                    This will only update the image for the selected size variant.
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
+
                     <div class="variant-preview">
                         <h3 class="preview-title">
                             <svg

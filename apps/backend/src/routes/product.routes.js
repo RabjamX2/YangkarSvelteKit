@@ -1,6 +1,12 @@
 import express from "express";
 import prismaPkg from "@prisma/client";
 import asyncHandler from "../middleware/asyncHandler.js";
+import {
+    updateImagesForColorVariants,
+    updateImageForSpecificVariant,
+    getVariantsByProductColor,
+    getProductColors,
+} from "../services/product.service.js";
 
 const { PrismaClient, Prisma } = prismaPkg;
 const router = express.Router();
@@ -189,12 +195,68 @@ const getProductsWithVariants = asyncHandler(async (req, res) => {
 
 // --- Route Definitions ---
 
+// Image management routes
+const updateColorImages = asyncHandler(async (req, res) => {
+    const { productId, color, imgUrl } = req.body;
+
+    if (!productId || !color || !imgUrl) {
+        res.status(400);
+        throw new Error("Product ID, color, and image URL are required");
+    }
+
+    const updatedCount = await updateImagesForColorVariants(parseInt(productId, 10), color, imgUrl);
+
+    res.json({ success: true, updatedCount });
+});
+
+const updateSingleVariantImage = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { imgUrl } = req.body;
+
+    if (!imgUrl) {
+        res.status(400);
+        throw new Error("Image URL is required");
+    }
+
+    const updatedVariant = await updateImageForSpecificVariant(parseInt(id, 10), imgUrl);
+    res.json(updatedVariant);
+});
+
+const getProductColorVariants = asyncHandler(async (req, res) => {
+    const { productId, color } = req.query;
+
+    if (!productId || !color) {
+        res.status(400);
+        throw new Error("Product ID and color are required");
+    }
+
+    const variants = await getVariantsByProductColor(parseInt(productId, 10), color);
+    res.json(variants);
+});
+
+const getUniqueProductColors = asyncHandler(async (req, res) => {
+    const { productId } = req.params;
+
+    if (!productId) {
+        res.status(400);
+        throw new Error("Product ID is required");
+    }
+
+    const colors = await getProductColors(parseInt(productId, 10));
+    res.json(colors);
+});
+
 router.get("/products", getProducts);
 router.get("/products-with-variants", getProductsWithVariants);
 router.get("/products/:skuBase", getProductBySku); // New route for single product
 router.get("/categories", getCategories);
 router.put("/variants/:id", updateProductVariant);
 router.put("/products/:id", updateProduct);
-// You would add POST, PUT, DELETE product routes here later
+
+// Image management routes
+router.put("/product-color-image", updateColorImages);
+router.put("/variants/:id/image", updateSingleVariantImage);
+router.get("/product-color-variants", getProductColorVariants);
+router.get("/products/:productId/colors", getUniqueProductColors);
 
 export default router;
