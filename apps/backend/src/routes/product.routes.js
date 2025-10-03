@@ -101,21 +101,29 @@ const getProducts = asyncHandler(async (req, res) => {
             variantsByProduct[variant.productId].push(variant);
         });
 
-        // Add variants to each product
+        // Add variants to each product and filter out products with no visible variants
         products.forEach((product) => {
             product.variants = variantsByProduct[product.id] || [];
         });
     }
 
+    // Filter out products that have no visible variants
+    const filteredProducts = products.filter((product) => {
+        return product.variants.length > 0;
+    });
+
     const whereFilter = categoryIds.length > 0 ? { categoryId: { in: categoryIds } } : {};
     const totalProductsResult = await prisma.product.count({ where: whereFilter });
 
+    // Get the count of products with at least one visible variant
+    const totalVisibleProducts = filteredProducts.length;
+
     res.json({
-        data: products,
+        data: filteredProducts,
         meta: {
-            totalProducts: totalProductsResult,
+            totalProducts: totalVisibleProducts,
             currentPage: page,
-            totalPages: Math.ceil(totalProductsResult / limit),
+            totalPages: Math.ceil(totalVisibleProducts / limit),
         },
     });
 });
@@ -126,6 +134,9 @@ const getProductBySku = asyncHandler(async (req, res) => {
         where: { skuBase },
         include: {
             variants: {
+                where: {
+                    visable: true,
+                },
                 orderBy: [{ color: "asc" }, { size: "asc" }],
             },
         },
@@ -134,6 +145,12 @@ const getProductBySku = asyncHandler(async (req, res) => {
     if (!product) {
         res.status(404);
         throw new Error("Product not found");
+    }
+
+    // Check if the product has any visible variants
+    if (product.variants.length === 0) {
+        res.status(404);
+        throw new Error("Product not available");
     }
 
     res.json(product);

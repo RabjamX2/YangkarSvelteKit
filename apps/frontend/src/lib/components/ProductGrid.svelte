@@ -10,7 +10,8 @@
     function selectVariantColor(productId, color) {
         const product = $products.find((p) => p.id === productId);
         if (product && product.variants) {
-            const variant = product.variants.find((v) => v.color === color);
+            // Only consider visible variants
+            const variant = product.variants.find((v) => v.color === color && v.visable !== false);
             if (variant) {
                 selectedVariants[productId] = variant;
             }
@@ -35,12 +36,15 @@
         };
     }
 
-    // Initialize the selected variants with the first variant for each product
+    // Initialize the selected variants with the first visible variant for each product
     $: {
         if ($products) {
             $products.forEach((product) => {
-                if (product.variants && product.variants.length > 0 && !selectedVariants[product.id]) {
-                    selectedVariants[product.id] = product.variants[0];
+                // Check if product has visible variants
+                const visibleVariants = product.variants?.filter((v) => v.visable !== false) || [];
+
+                if (visibleVariants.length > 0 && !selectedVariants[product.id]) {
+                    selectedVariants[product.id] = visibleVariants[0];
                 }
             });
         }
@@ -49,46 +53,53 @@
 
 <div class="product-grid">
     {#each $products as product (product.id)}
-        <div class="product-card">
-            <div class="product-card-media">
-                <a href="/products/{product.skuBase}" class="product-card-img-link">
-                    <figure class="product-card-img-holder">
-                        <img
-                            src={selectedVariants[product.id]?.imgUrl || product.displayImageUrl}
-                            alt={product.displayName}
-                        />
-                    </figure>
-                </a>
-            </div>
-            <div class="product-card-info">
-                <a href="/products/{product.skuBase}" class="product-card-info-title">{product.displayName}</a>
-                <div class="product-card-meta">
-                    {#if selectedVariants[product.id]?.salePrice}
-                        <span class="product-card-price">${selectedVariants[product.id].salePrice}</span>
-                    {:else if product.minSalePrice}
-                        <span class="product-card-price">${product.minSalePrice}</span>
-                    {:else}
-                        <span class="product-card-price">Coming Soon</span>
-                    {/if}
+        {#if product.variants && product.variants.filter((v) => v.visable !== false).length > 0}
+            <div class="product-card">
+                <div class="product-card-media">
+                    <a href="/products/{product.skuBase}" class="product-card-img-link">
+                        <figure class="product-card-img-holder">
+                            <img
+                                src={selectedVariants[product.id]?.imgUrl || product.displayImageUrl}
+                                alt={product.displayName}
+                            />
+                        </figure>
+                    </a>
                 </div>
-                {#if product.variants && product.variants.length > 1}
-                    <div class="product-card-variants">
-                        {#each [...new Set(product.variants.map((v) => v.color))].slice(0, 4) as color}
-                            <button
-                                class="color-swatch"
-                                class:active={selectedVariants[product.id]?.color === color}
-                                style="background-color: {color.toLowerCase()};"
-                                aria-label="Select {color}"
-                                on:click|stopPropagation|preventDefault={() => selectVariantColor(product.id, color)}
-                            ></button>
-                        {/each}
-                        {#if [...new Set(product.variants.map((v) => v.color))].length > 4}
-                            <span class="more-variants">+</span>
+                <div class="product-card-info">
+                    <a href="/products/{product.skuBase}" class="product-card-info-title">{product.displayName}</a>
+                    <div class="product-card-meta">
+                        {#if selectedVariants[product.id]?.salePrice}
+                            <span class="product-card-price">${selectedVariants[product.id].salePrice}</span>
+                        {:else if product.minSalePrice}
+                            <span class="product-card-price">${product.minSalePrice}</span>
+                        {:else}
+                            <span class="product-card-price">Coming Soon</span>
                         {/if}
                     </div>
-                {/if}
+                    {#if product.variants && product.variants.filter((v) => v.visable !== false).length > 1}
+                        <div class="product-card-variants">
+                            {#each [...new Set(product.variants
+                                        .filter((v) => v.visable !== false)
+                                        .map((v) => v.color))].slice(0, 4) as color}
+                                <button
+                                    class="color-swatch"
+                                    class:active={selectedVariants[product.id]?.color === color}
+                                    style="background-color: {color.toLowerCase()};"
+                                    aria-label="Select {color}"
+                                    on:click|stopPropagation|preventDefault={() =>
+                                        selectVariantColor(product.id, color)}
+                                ></button>
+                            {/each}
+                            {#if [...new Set(product.variants
+                                        .filter((v) => v.visable !== false)
+                                        .map((v) => v.color))].length > 4}
+                                <span class="more-variants">+</span>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
             </div>
-        </div>
+        {/if}
     {/each}
 </div>
 
