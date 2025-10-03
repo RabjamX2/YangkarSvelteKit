@@ -32,16 +32,6 @@
                         <span class="nav-link-text">Checkout</span>
                     </a>
                 </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="/admin/image-upload">
-                        <span class="nav-link-text">Image Upload</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="/admin/sync-images">
-                        <span class="nav-link-text">Sync Images</span>
-                    </a>
-                </div>
             </div>
         </nav>
     </div>
