@@ -181,6 +181,13 @@ model PurchaseOrder {
     shippingCostCny Decimal?
     shippingCostUsd Decimal?
 
+    usdToCnyRate Decimal? // 1 Usd = X Cny decided at time of order
+
+    extraFeesCny       Decimal?
+    extraFeesUsd       Decimal?
+    totalPaidUsd       Decimal?
+    calculatedTotalUsd Decimal? // Sum of (item cost * quantity)
+
     shipDate    DateTime?
     arrivalDate DateTime?
     hasArrived  Boolean   @default(false)
