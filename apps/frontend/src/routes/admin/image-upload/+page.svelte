@@ -2,11 +2,11 @@
     // @ts-nocheck
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
-    import AdminHeader from "../AdminHeader.svelte";
     import { createAuthFetch } from "$lib/utils/csrf.js";
     import { page } from "$app/stores";
     import { browser } from "$app/environment";
     import { auth } from "$lib/stores/auth.store.js";
+    import AdminHeader from "$lib/components/AdminHeader.svelte";
     import "./image-upload.css";
     import "./layout.css";
     import "./preview-styles.css";

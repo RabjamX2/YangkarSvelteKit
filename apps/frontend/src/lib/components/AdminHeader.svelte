@@ -14,7 +14,7 @@
                 </div>
                 <div class="nav-item">
                     <a class="nav-link" href="/admin/transactions/customer-orders">
-                        <span class="nav-link-text">Transaction History</span>
+                        <span class="nav-link-text">Customer Orders</span>
                     </a>
                 </div>
                 <div class="nav-item">
