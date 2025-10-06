@@ -1,0 +1,475 @@
+/* Container Layout */
+.transaction-container {
+    padding: 2rem;
+    background: var(--color-bg);
+    color: var(--color-link);
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+h1 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: var(--color-heading);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Controls and Filters */
+.controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.search-filters {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.search-box input {
+    width: 300px;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--color-link);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+}
+
+.filter-group select {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--color-nav-bg);
+    color: var(--color-link);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+    background-color: var(--color-link-bg-hover);
+}
+
+.refresh-btn .icon {
+    font-size: 1.1rem;
+}
+
+/* Loading, Error and Empty States */
+.loading-container,
+.error-container,
+.empty-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    background-color: var(--color-link-bg-hover);
+    border-radius: 8px;
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top: 3px solid var(--color-signup-bg, #007bff);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 0.5rem;
+}
+
+.spinner.large {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.error {
+    color: var(--color-error, #dc3545);
+    font-weight: 500;
+}
+
+.hint {
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+}
+
+.retry-btn,
+.clear-filters-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1.5rem;
+    background-color: var(--color-signup-bg);
+    color: var(--color-signup);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.retry-btn:hover,
+.clear-filters-btn:hover {
+    background-color: var(--color-signup-bg-hover);
+}
+
+/* Table Styling */
+.table-container {
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    box-shadow: var(--color-shadow);
+}
+
+.transaction-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-bg);
+}
+
+.transaction-table th,
+.transaction-table td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.95rem;
+}
+
+.transaction-table th {
+    background: var(--color-nav-bg);
+    font-weight: var(--font-weight-medium);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 1.5rem;
+}
+
+.sortable:hover {
+    background-color: var(--color-link-bg-hover);
+}
+
+.sort-indicator {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.main-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.main-row:hover {
+    background-color: var(--color-link-bg-hover);
+}
+
+.main-row.expanded {
+    background-color: var(--color-link-bg-hover);
+    border-bottom: none;
+}
+
+.expand-btn {
+    background: none;
+    border: none;
+    font-size: 1.1em;
+    cursor: pointer;
+    color: var(--color-link);
+    padding: 0;
+    transition: transform 0.2s;
+}
+
+.expanded .expand-btn {
+    transform: rotate(90deg);
+}
+
+/* Nested Table */
+.details-row > td {
+    padding: 0;
+    background-color: var(--color-link-bg-hover);
+}
+
+.item-details-container {
+    padding: 1rem 2rem 1.5rem;
+}
+
+.item-details-container h4 {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    color: var(--color-heading);
+}
+
+.nested-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+}
+
+.nested-table th,
+.nested-table td {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.9rem;
+}
+
+.nested-table th {
+    background-color: var(--color-nav-bg);
+    font-weight: 500;
+}
+
+.nested-table tfoot td {
+    background-color: var(--color-link-bg-hover);
+    font-size: 0.9rem;
+}
+
+.text-right {
+    text-align: right;
+}
+
+tr.editing {
+    background-color: var(--color-link-bg-hover);
+}
+
+/* Form Controls */
+.nested-table input[type="text"],
+.nested-table input[type="number"] {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+/* Status Badges */
+.status {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: 500;
+    font-size: 0.8rem;
+    text-align: center;
+    min-width: 85px;
+}
+
+.status-pending {
+    background-color: var(--status-pending-bg, #fff3cd);
+    color: var(--status-pending-color, #856404);
+}
+
+.status-received {
+    background-color: var(--status-received-bg, #d4edda);
+    color: var(--status-received-color, #155724);
+}
+
+/* Buttons */
+.action-placeholder {
+    color: var(--status-received-color, #155724);
+    font-weight: 500;
+}
+
+.receive-btn {
+    background-color: var(--color-signup-bg);
+    color: var(--color-signup);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+.receive-btn:hover:not(:disabled) {
+    background-color: var(--color-signup-bg-hover);
+}
+
+.receive-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.edit-btn,
+.save-btn,
+.cancel-btn {
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: none;
+}
+
+.edit-btn {
+    background-color: var(--color-nav-bg);
+    color: var(--color-link);
+}
+
+.edit-btn:hover {
+    background-color: var(--color-link-bg-hover);
+}
+
+.save-btn {
+    background-color: var(--color-signup-bg);
+    color: var(--color-signup);
+}
+
+.save-btn:hover {
+    background-color: var(--color-signup-bg-hover);
+}
+
+.cancel-btn {
+    background-color: var(--color-link-bg-hover);
+    color: var(--color-text);
+    margin-left: 0.5rem;
+}
+
+.cancel-btn:hover {
+    background-color: var(--color-nav-bg);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--color-bg);
+    color: var(--color-link);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background-color: var(--color-link-bg-hover);
+}
+
+.pagination-btn:disabled {
+    background-color: var(--color-bg);
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.page-info {
+    padding: 0 1rem;
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.results-summary {
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .transaction-container {
+        padding: 1rem;
+    }
+
+    .search-box input {
+        width: 100%;
+    }
+
+    .controls-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        justify-content: space-between;
+    }
+
+    .pagination {
+        flex-wrap: wrap;
+    }
+}
