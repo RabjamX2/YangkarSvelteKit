@@ -7,16 +7,99 @@
     import AdminHeader from "$lib/components/AdminHeader.svelte";
     import { createAuthFetch } from "$lib/utils/csrf.js";
     import "../transactionTable.css";
+    import "./customerOrders.css";
     import { browser } from "$app/environment";
+    import AutoComplete from "$lib/components/AutoComplete.svelte";
+    import { productVariants, fetchProductVariants } from "$lib/stores/productVariants.js";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     const customerOrders = writable([]);
-    const filteredOrders = writable([]);
+    // Filters
+    const searchQuery = writable("");
+    const statusFilter = writable("ALL");
+    const dateSort = writable("newest");
+    const startDate = writable("");
+    const endDate = writable("");
+    // Filtering logic as a derived store
+    const filteredOrders = derived(
+        [customerOrders, searchQuery, statusFilter, dateSort, startDate, endDate],
+        ([$customerOrders, $searchQuery, $statusFilter, $dateSort, $startDate, $endDate]) => {
+            let result = [...$customerOrders];
+            // Filter by search query
+            if ($searchQuery) {
+                const query = $searchQuery.toLowerCase();
+                result = result.filter(
+                    (order) =>
+                        (order.customerName || "").toLowerCase().includes(query) ||
+                        (order.customer?.name || "").toLowerCase().includes(query) ||
+                        (order.customer?.phone || "").toLowerCase().includes(query) ||
+                        (order.customerPhone || "").toLowerCase().includes(query) ||
+                        order.id.toString().includes(query) ||
+                        (order.moneyHolder || "").toLowerCase().includes(query)
+                );
+            }
+            // Filter by status
+            if ($statusFilter !== "ALL") {
+                result = result.filter((order) => order.fulfillmentStatus === $statusFilter);
+            }
+            // Filter by date range
+            if ($startDate) {
+                const start = new Date($startDate).getTime();
+                result = result.filter((order) => {
+                    const orderDate = new Date(order.orderDate || order.createdAt).getTime();
+                    return orderDate >= start;
+                });
+            }
+            if ($endDate) {
+                // Make end date inclusive by adding 1 day (milliseconds)
+                const end = new Date($endDate).getTime() + 24 * 60 * 60 * 1000;
+                result = result.filter((order) => {
+                    const orderDate = new Date(order.orderDate || order.createdAt).getTime();
+                    return orderDate < end;
+                });
+            }
+            // Sort by date
+            result.sort((a, b) => {
+                const dateA = new Date(a.orderDate || a.createdAt).getTime();
+                const dateB = new Date(b.orderDate || b.createdAt).getTime();
+                return $dateSort === "newest" ? dateB - dateA : dateA - dateB;
+            });
+            return result;
+        }
+    );
     const loadingTransactions = writable(false);
     const errorTransactions = writable(null);
     const expandedOrder = writable(null);
     const editingOrder = writable(null); // order id being edited
     const editForm = writable({}); // temp form state
+    const showAddOrderModal = writable(false);
+    const showAddShippingOrderModal = writable(false);
+    const showAddBulkOrderModal = writable(false);
+
+    const newOrderForm = writable({
+        customerName: "",
+        customerPhone: "",
+        moneyHolder: "",
+        paymentMethod: "",
+        orderDate: "",
+        items: [{ sku: "", quantity: 1, salePrice: 0 }],
+    });
+    const newShippingOrderForm = writable({
+        customerName: "",
+        customerPhone: "",
+        moneyHolder: "",
+        paymentMethod: "",
+        orderDate: "",
+        items: [{ sku: "", quantity: 1, salePrice: 0 }],
+        shippingAddress: "",
+        shippingCost: 0,
+        freeShipping: false,
+        shippingMethod: "",
+    });
+    const newBulkOrderForm = writable({
+        orderDate: "",
+        items: [{ sku: "", quantity: 1, salePrice: 0, paymentMethod: "CASH", moneyHolder: "" }],
+    });
 
     // Pagination
     const itemsPerPage = writable(10);
@@ -24,11 +107,6 @@
     const totalPages = derived([filteredOrders, itemsPerPage], ([$filteredOrders, $itemsPerPage]) =>
         Math.ceil($filteredOrders.length / $itemsPerPage)
     );
-
-    // Filters
-    const searchQuery = writable("");
-    const statusFilter = writable("ALL");
-    const dateSort = writable("newest");
 
     // Calculated paged results
     const pagedOrders = derived(
@@ -89,59 +167,14 @@
         }).format(date);
     }
 
-    // Apply filters to orders
-    function applyFilters() {
-        let $searchQuery, $statusFilter, $dateSort, $customerOrders;
-        searchQuery.subscribe((v) => ($searchQuery = v))();
-        statusFilter.subscribe((v) => ($statusFilter = v))();
-        dateSort.subscribe((v) => ($dateSort = v))();
-        customerOrders.subscribe((v) => ($customerOrders = v))();
-
-        let result = [...$customerOrders];
-
-        // Filter by search query
-        if ($searchQuery) {
-            const query = $searchQuery.toLowerCase();
-            result = result.filter(
-                (order) =>
-                    (order.customerName || "").toLowerCase().includes(query) ||
-                    (order.customer?.name || "").toLowerCase().includes(query) ||
-                    (order.customer?.phone || "").toLowerCase().includes(query) ||
-                    (order.customerPhone || "").toLowerCase().includes(query) ||
-                    order.id.toString().includes(query) ||
-                    (order.moneyHolder || "").toLowerCase().includes(query)
-            );
-        }
-
-        // Filter by status
-        if ($statusFilter !== "ALL") {
-            result = result.filter((order) => order.fulfillmentStatus === $statusFilter);
-        }
-
-        // Sort by date
-        result.sort((a, b) => {
-            const dateA = new Date(a.orderDate || a.createdAt).getTime();
-            const dateB = new Date(b.orderDate || b.createdAt).getTime();
-            return $dateSort === "newest" ? dateB - dateA : dateA - dateB;
-        });
-
-        filteredOrders.set(result);
-        currentPage.set(1); // Reset to first page when filters change
-    }
-
-    // Watch for filter changes
-    $: {
-        if (browser && $customerOrders.length) {
-            applyFilters();
-        }
-    }
-
     // Reset filters
     function resetFilters() {
         searchQuery.set("");
         statusFilter.set("ALL");
         dateSort.set("newest");
-        applyFilters();
+        startDate.set("");
+        endDate.set("");
+        currentPage.set(1);
     }
 
     // Pagination navigation
@@ -221,7 +254,6 @@
             if (!custRes.ok) throw new Error("Failed to fetch customer orders");
             const custData = await custRes.json();
             customerOrders.set(custData.data || []);
-            applyFilters(); // Re-apply filters to update filtered list
             return true;
         } catch (e) {
             errorTransactions.set(e instanceof Error ? e.message : String(e));
@@ -317,7 +349,12 @@
 
     // Calculate summary data
     const orderSummary = derived(filteredOrders, ($filteredOrders) => {
-        const total = $filteredOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+        const total = $filteredOrders.reduce(
+            (sum, order) =>
+                sum +
+                (order.items ? order.items.reduce((itemSum, item) => itemSum + item.salePrice * item.quantity, 0) : 0),
+            0
+        );
 
         const countByStatus = {};
         statusOptions.forEach((status) => {
@@ -326,20 +363,26 @@
             ).length;
         });
 
-        const moneyUncollected = $filteredOrders
-            .filter((order) => !order.moneyCollected && order.moneyHolder && order.fulfillmentStatus !== "CANCELLED")
-            .reduce((sum, order) => sum + Number(order.total || 0), 0);
+        const profit = $filteredOrders.reduce(
+            (sum, order) =>
+                sum +
+                (order.items
+                    ? order.items.reduce((itemSum, item) => itemSum + (item.salePrice - item.cogs) * item.quantity, 0)
+                    : 0),
+            0
+        );
 
         return {
             total,
             countByStatus,
             totalOrders: $filteredOrders.length,
-            moneyUncollected,
+            profit,
         };
     });
 
     onMount(async () => {
         loadingTransactions.set(true);
+        await fetchProductVariants(PUBLIC_BACKEND_URL, fetchAuth);
         try {
             await refreshOrders();
         } catch (e) {
@@ -348,6 +391,195 @@
             loadingTransactions.set(false);
         }
     });
+
+    function openAddOrderModal() {
+        showAddOrderModal.set(true);
+    }
+
+    function closeAddOrderModal() {
+        showAddOrderModal.set(false);
+    }
+
+    function openAddShippingOrderModal() {
+        showAddShippingOrderModal.set(true);
+    }
+
+    function closeAddShippingOrderModal() {
+        showAddShippingOrderModal.set(false);
+    }
+
+    function openAddBulkOrderModal() {
+        showAddBulkOrderModal.set(true);
+    }
+
+    function closeAddBulkOrderModal() {
+        showAddBulkOrderModal.set(false);
+    }
+
+    function addOrderItem() {
+        let $newOrderForm;
+        newOrderForm.subscribe((v) => ($newOrderForm = v))();
+        newOrderForm.set({
+            ...$newOrderForm,
+            items: [...$newOrderForm.items, { sku: "", quantity: 1, salePrice: 0 }],
+        });
+    }
+
+    function removeOrderItem(index) {
+        let $newOrderForm;
+        newOrderForm.subscribe((v) => ($newOrderForm = v))();
+        newOrderForm.set({
+            ...$newOrderForm,
+            items: $newOrderForm.items.filter((_, idx) => idx !== index),
+        });
+    }
+
+    async function submitNewOrder() {
+        let $newOrderForm;
+        newOrderForm.subscribe((v) => ($newOrderForm = v))();
+        try {
+            // Validate items
+            for (const item of $newOrderForm.items) {
+                if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
+                    throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
+                }
+            }
+
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customerName: $newOrderForm.customerName,
+                    customerPhone: $newOrderForm.customerPhone,
+                    moneyHolder: $newOrderForm.moneyHolder,
+                    paymentMethod: $newOrderForm.paymentMethod,
+                    items: $newOrderForm.items,
+                    orderDate: $newOrderForm.orderDate,
+                }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to create order");
+            }
+
+            showToast("Order created successfully", "success");
+            closeAddOrderModal();
+            await refreshOrders();
+        } catch (e) {
+            showToast(e instanceof Error ? e.message : String(e), "error");
+        }
+    }
+
+    async function submitNewShippingOrder() {
+        let $newShippingOrderForm;
+        newShippingOrderForm.subscribe((v) => ($newShippingOrderForm = v))();
+        try {
+            // Validate items
+            for (const item of $newShippingOrderForm.items) {
+                if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
+                    throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
+                }
+            }
+
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customerName: $newShippingOrderForm.customerName,
+                    customerPhone: $newShippingOrderForm.customerPhone,
+                    moneyHolder: $newShippingOrderForm.moneyHolder,
+                    paymentMethod: $newShippingOrderForm.paymentMethod,
+                    items: $newShippingOrderForm.items,
+                    orderDate: $newShippingOrderForm.orderDate,
+                    shippingAddress: $newShippingOrderForm.shippingAddress,
+                    shippingCost: $newShippingOrderForm.shippingCost,
+                    freeShipping: $newShippingOrderForm.freeShipping,
+                    shippingMethod: $newShippingOrderForm.shippingMethod,
+                }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to create shipping order");
+            }
+
+            showToast("Shipping order created successfully", "success");
+            closeAddShippingOrderModal();
+            await refreshOrders();
+        } catch (e) {
+            showToast(e instanceof Error ? e.message : String(e), "error");
+        }
+    }
+
+    async function submitNewBulkOrder() {
+        let $newBulkOrderForm;
+        newBulkOrderForm.subscribe((v) => ($newBulkOrderForm = v))();
+        try {
+            // Validate items
+            for (const item of $newBulkOrderForm.items) {
+                if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
+                    throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
+                }
+            }
+
+            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders/bulk`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    items: $newBulkOrderForm.items,
+                    orderDate: $newBulkOrderForm.orderDate,
+                }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to create bulk orders");
+            }
+
+            showToast("Bulk orders created successfully", "success");
+            closeAddBulkOrderModal();
+            await refreshOrders();
+        } catch (e) {
+            showToast(e instanceof Error ? e.message : String(e), "error");
+        }
+    }
+
+    function handleVariantSelect(idx, event) {
+        let $newOrderForm;
+        newOrderForm.subscribe((v) => ($newOrderForm = v))();
+        const selected = event.detail.item;
+        const items = [...$newOrderForm.items];
+        items[idx].sku = selected.sku;
+        items[idx].displayName = selected.displayName;
+        items[idx].color = selected.color;
+        items[idx].size = selected.size;
+        items[idx].salePrice = selected.salePrice || items[idx].salePrice;
+        newOrderForm.set({ ...$newOrderForm, items });
+    }
+
+    function handleShippingVariantSelect(idx, event) {
+        let $newShippingOrderForm;
+        newShippingOrderForm.subscribe((v) => ($newShippingOrderForm = v))();
+        const selected = event.detail.item;
+        const items = [...$newShippingOrderForm.items];
+        items[idx].sku = selected.sku;
+        items[idx].displayName = selected.displayName;
+        items[idx].color = selected.color;
+        items[idx].size = selected.size;
+        items[idx].salePrice = selected.salePrice || items[idx].salePrice;
+        newShippingOrderForm.set({ ...$newShippingOrderForm, items });
+    }
+
+    function handleBulkVariantSelect(idx, event) {
+        let $newBulkOrderForm;
+        newBulkOrderForm.subscribe((v) => ($newBulkOrderForm = v))();
+        const selected = event.detail.item;
+        const items = [...$newBulkOrderForm.items];
+        items[idx].sku = selected.sku;
+        items[idx].displayName = selected.displayName;
+        items[idx].color = selected.color;
+        items[idx].size = selected.size;
+        items[idx].salePrice = selected.salePrice || items[idx].salePrice;
+        newBulkOrderForm.set({ ...$newBulkOrderForm, items });
+    }
 </script>
 
 <AdminHeader />
@@ -363,11 +595,360 @@
     <div class="admin-header">
         <h2>Customer Orders</h2>
         <div class="controls">
+            <button class="btn btn-primary" on:click={openAddOrderModal}>
+                <span class="icon">＋</span> Add New Order
+            </button>
+            <button class="btn btn-primary" on:click={openAddShippingOrderModal}>
+                <span class="icon">🚚</span> Add New Shipping Order
+            </button>
+            <button class="btn btn-primary" on:click={openAddBulkOrderModal}>
+                <span class="icon">📦</span> Add Many Orders
+            </button>
             <button class="btn btn-primary" on:click={exportOrdersAsCSV}>
                 <span class="icon">↓</span> Export to CSV
             </button>
         </div>
     </div>
+
+    {#if $showAddOrderModal}
+        <div class="modal-overlay">
+            <div class="modal modal-new-order">
+                <div class="modal-header">
+                    <h3>Add New Order</h3>
+                    <button class="modal-close" on:click={closeAddOrderModal}>✕</button>
+                </div>
+                <form class="modal-form" on:submit|preventDefault={submitNewOrder}>
+                    <div class="modal-section">
+                        <h4>Customer Details</h4>
+                        <div class="modal-row">
+                            <label>
+                                <span>Customer Name</span>
+                                <input type="text" bind:value={$newOrderForm.customerName} placeholder="Full Name" />
+                            </label>
+                            <label>
+                                <span>Phone</span>
+                                <input
+                                    type="text"
+                                    bind:value={$newOrderForm.customerPhone}
+                                    placeholder="Phone Number"
+                                />
+                            </label>
+                        </div>
+                        <div class="modal-row">
+                            <label>
+                                <span>Money Holder</span>
+                                <input
+                                    type="text"
+                                    bind:value={$newOrderForm.moneyHolder}
+                                    placeholder="Who holds the money?"
+                                />
+                            </label>
+                            <label>
+                                <span>Payment Method</span>
+                                <select bind:value={$newOrderForm.paymentMethod}>
+                                    {#each paymentMethods as method}
+                                        <option value={method.value}>{method.label}</option>
+                                    {/each}
+                                </select>
+                            </label>
+                        </div>
+                        <div class="modal-row">
+                            <label>
+                                <span>Date</span>
+                                <input type="date" bind:value={$newOrderForm.orderDate} />
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h4>Order Items</h4>
+                        <div class="modal-item-row modal-item-labels">
+                            <span class="item-sku-label">SKU / Product</span>
+                            <span class="item-qty-label">Qty</span>
+                            <span class="item-price-label">Sale Price</span>
+                            <span></span>
+                        </div>
+                        {#each $newOrderForm.items as item, idx}
+                            <div class="modal-item-row">
+                                <AutoComplete
+                                    items={$productVariants}
+                                    bind:value={item.sku}
+                                    itemLabel={(v) => `${v.sku} - ${v.displayName} (${v.color}, ${v.size})`}
+                                    itemValue={(v) => v.sku}
+                                    placeholder="Search SKU or product name..."
+                                    inputClass="item-sku"
+                                    dropdownClass="item-sku-dropdown"
+                                    on:select={(e) => handleVariantSelect(idx, e)}
+                                />
+                                <input
+                                    type="number"
+                                    class="item-qty"
+                                    min="1"
+                                    placeholder="Qty"
+                                    bind:value={item.quantity}
+                                    required
+                                />
+                                <input
+                                    type="number"
+                                    class="item-price"
+                                    min="0.01"
+                                    step="0.01"
+                                    placeholder="Sale Price"
+                                    bind:value={item.salePrice}
+                                    required
+                                />
+                                <button
+                                    class="btn btn-remove"
+                                    type="button"
+                                    on:click={() => removeOrderItem(idx)}
+                                    disabled={$newOrderForm.items.length === 1}>✕</button
+                                >
+                            </div>
+                        {/each}
+                        <button class="btn btn-add-item" type="button" on:click={addOrderItem}>＋ Add Item</button>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" type="submit">Submit Order</button>
+                        <button class="btn btn-cancel" type="button" on:click={closeAddOrderModal}>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {/if}
+
+    {#if $showAddShippingOrderModal}
+        <div class="modal-overlay">
+            <div class="modal modal-new-order">
+                <div class="modal-header">
+                    <h3>Add New Shipping Order</h3>
+                    <button class="modal-close" on:click={closeAddShippingOrderModal}>✕</button>
+                </div>
+                <form class="modal-form" on:submit|preventDefault={submitNewShippingOrder}>
+                    <div class="modal-section">
+                        <h4>Customer Details</h4>
+                        <div class="modal-row">
+                            <label>
+                                <span>Customer Name</span>
+                                <input
+                                    type="text"
+                                    bind:value={$newShippingOrderForm.customerName}
+                                    placeholder="Full Name"
+                                />
+                            </label>
+                            <label>
+                                <span>Phone</span>
+                                <input
+                                    type="text"
+                                    bind:value={$newShippingOrderForm.customerPhone}
+                                    placeholder="Phone Number"
+                                />
+                            </label>
+                        </div>
+                        <div class="modal-row">
+                            <label>
+                                <span>Money Holder</span>
+                                <input
+                                    type="text"
+                                    bind:value={$newShippingOrderForm.moneyHolder}
+                                    placeholder="Who holds the money?"
+                                />
+                            </label>
+                            <label>
+                                <span>Payment Method</span>
+                                <select bind:value={$newShippingOrderForm.paymentMethod}>
+                                    {#each paymentMethods as method}
+                                        <option value={method.value}>{method.label}</option>
+                                    {/each}
+                                </select>
+                            </label>
+                        </div>
+                        <div class="modal-row">
+                            <label>
+                                <span>Date</span>
+                                <input type="date" bind:value={$newShippingOrderForm.orderDate} />
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h4>Order Items</h4>
+                        <div class="modal-item-row modal-item-labels">
+                            <span class="item-sku-label">SKU / Product</span>
+                            <span class="item-qty-label">Qty</span>
+                            <span class="item-price-label">Sale Price</span>
+                            <span></span>
+                        </div>
+                        {#each $newShippingOrderForm.items as item, idx}
+                            <div class="modal-item-row">
+                                <AutoComplete
+                                    items={$productVariants}
+                                    bind:value={item.sku}
+                                    itemLabel={(v) => `${v.sku} - ${v.displayName} (${v.color}, ${v.size})`}
+                                    itemValue={(v) => v.sku}
+                                    placeholder="Search SKU or product name..."
+                                    inputClass="item-sku"
+                                    dropdownClass="item-sku-dropdown"
+                                    on:select={(e) => handleShippingVariantSelect(idx, e)}
+                                />
+                                <input
+                                    type="number"
+                                    class="item-qty"
+                                    min="1"
+                                    placeholder="Qty"
+                                    bind:value={item.quantity}
+                                    required
+                                />
+                                <input
+                                    type="number"
+                                    class="item-price"
+                                    min="0.01"
+                                    step="0.01"
+                                    placeholder="Sale Price"
+                                    bind:value={item.salePrice}
+                                    required
+                                />
+                                <button
+                                    class="btn btn-remove"
+                                    type="button"
+                                    on:click={() => removeShippingOrderItem(idx)}
+                                    disabled={$newShippingOrderForm.items.length === 1}>✕</button
+                                >
+                            </div>
+                        {/each}
+                        <button class="btn btn-add-item" type="button" on:click={addShippingOrderItem}
+                            >＋ Add Item</button
+                        >
+                    </div>
+                    <div class="modal-section">
+                        <h4>Additional Info</h4>
+                        <div class="modal-row">
+                            <label>
+                                <span>Shipping Address</span>
+                                <input
+                                    type="text"
+                                    bind:value={$newShippingOrderForm.shippingAddress}
+                                    placeholder="Street, City, State, Zip, Country"
+                                />
+                            </label>
+                            <label>
+                                <span>Shipping Cost</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    bind:value={$newShippingOrderForm.shippingCost}
+                                    placeholder="USD"
+                                />
+                            </label>
+                        </div>
+                        <div class="modal-row">
+                            <label class="checkbox-label">
+                                <input type="checkbox" bind:checked={$newShippingOrderForm.freeShipping} />
+                                <span>Free Shipping?</span>
+                            </label>
+                            <label>
+                                <span>Shipping Method</span>
+                                <input
+                                    type="text"
+                                    bind:value={$newShippingOrderForm.shippingMethod}
+                                    placeholder="e.g. USPS Priority, In-Store Pickup"
+                                />
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" type="submit">Submit Shipping Order</button>
+                        <button class="btn btn-cancel" type="button" on:click={closeAddShippingOrderModal}
+                            >Cancel</button
+                        >
+                    </div>
+                </form>
+            </div>
+        </div>
+    {/if}
+
+    {#if $showAddBulkOrderModal}
+        <div class="modal-overlay">
+            <div class="modal modal-new-order">
+                <div class="modal-header">
+                    <h3>Add Many Orders</h3>
+                    <button class="modal-close" on:click={closeAddBulkOrderModal}>✕</button>
+                </div>
+                <form class="modal-form" on:submit|preventDefault={submitNewBulkOrder}>
+                    <div class="modal-section">
+                        <div class="modal-row">
+                            <label>
+                                <span>Date</span>
+                                <input type="date" bind:value={$newBulkOrderForm.orderDate} />
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h4>Order Items</h4>
+                        <div class="modal-item-row modal-item-labels">
+                            <span class="item-sku-label">SKU / Product</span>
+                            <span class="item-qty-label">Qty</span>
+                            <span class="item-price-label">Sale Price</span>
+                            <span class="item-method-label">Payment Method</span>
+                            <span class="item-holder-label">Money Holder</span>
+                            <span></span>
+                        </div>
+                        {#each $newBulkOrderForm.items as item, idx}
+                            <div class="modal-item-row">
+                                <AutoComplete
+                                    items={$productVariants}
+                                    bind:value={item.sku}
+                                    itemLabel={(v) => `${v.sku} - ${v.displayName} (${v.color}, ${v.size})`}
+                                    itemValue={(v) => v.sku}
+                                    placeholder="Search SKU or product name..."
+                                    inputClass="item-sku"
+                                    dropdownClass="item-sku-dropdown"
+                                    on:select={(e) => handleBulkVariantSelect(idx, e)}
+                                />
+                                <input
+                                    type="number"
+                                    class="item-qty"
+                                    min="1"
+                                    placeholder="Qty"
+                                    bind:value={item.quantity}
+                                    required
+                                />
+                                <input
+                                    type="number"
+                                    class="item-price"
+                                    min="0.01"
+                                    step="0.01"
+                                    placeholder="Sale Price"
+                                    bind:value={item.salePrice}
+                                    required
+                                />
+                                <select class="item-method" bind:value={item.paymentMethod}>
+                                    {#each paymentMethods as method}
+                                        <option value={method.value}>{method.label}</option>
+                                    {/each}
+                                </select>
+                                <input
+                                    type="text"
+                                    class="item-holder"
+                                    placeholder="Money Holder"
+                                    bind:value={item.moneyHolder}
+                                />
+                                <button
+                                    class="btn btn-remove"
+                                    type="button"
+                                    on:click={() => removeBulkOrderItem(idx)}
+                                    disabled={$newBulkOrderForm.items.length === 1}>✕</button
+                                >
+                            </div>
+                        {/each}
+                        <button class="btn btn-add-item" type="button" on:click={addBulkOrderItem}>＋ Add Item</button>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" type="submit">Submit Bulk Orders</button>
+                        <button class="btn btn-cancel" type="button" on:click={closeAddBulkOrderModal}>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {/if}
 
     <!-- Summary Cards -->
     {#if !$loadingTransactions && !$errorTransactions}
@@ -381,8 +962,8 @@
                 <p>{formatCurrency($orderSummary.total)}</p>
             </div>
             <div class="summary-card uncollected">
-                <h4>Uncollected Money</h4>
-                <p>{formatCurrency($orderSummary.moneyUncollected)}</p>
+                <h4>Profit</h4>
+                <p>{formatCurrency($orderSummary.profit)}</p>
             </div>
         </div>
     {/if}
@@ -410,6 +991,24 @@
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
             </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="start-date">Start Date:</label>
+            <input
+                type="date"
+                id="start-date"
+                bind:value={$startDate}
+                on:change={(e) => {
+                    if (!$endDate || $endDate < e.target.value) {
+                        endDate.set(e.target.value);
+                    }
+                }}
+            />
+        </div>
+        <div class="filter-group">
+            <label for="end-date">End Date:</label>
+            <input type="date" id="end-date" bind:value={$endDate} min={$startDate} />
         </div>
 
         <button class="filter-button" on:click={resetFilters}>Reset Filters</button>
@@ -601,121 +1200,126 @@
                     {#if $expandedOrder === order.id}
                         <tr class:order-cancelled={order.fulfillmentStatus === "CANCELLED"} class="expanded-row">
                             <td></td>
-                            <td colspan="8" class="expanded-content" transition:slide={{ duration: 300 }}>
-                                <div class="expanded-section">
-                                    <h4>Order Details</h4>
-                                    <div class="order-details">
-                                        <div class="detail-item">
-                                            <span class="detail-label">Created:</span>
-                                            <span class="detail-value">{formatDate(order.createdAt)}</span>
-                                        </div>
-                                        <div class="detail-item">
-                                            <span class="detail-label">Last Updated:</span>
-                                            <span class="detail-value">{formatDate(order.updatedAt)}</span>
-                                        </div>
-                                        {#if order.staffId}
+                            <td colspan="8" class="expanded-content">
+                                <div transition:slide={{ duration: 300 }}>
+                                    <div class="expanded-section">
+                                        <h4>Order Details</h4>
+                                        <div class="order-details">
                                             <div class="detail-item">
-                                                <span class="detail-label">Staff:</span>
-                                                <span class="detail-value">{order.staff?.name || order.staffId}</span>
+                                                <span class="detail-label">Created:</span>
+                                                <span class="detail-value">{formatDate(order.createdAt)}</span>
                                             </div>
-                                        {/if}
-                                        {#if order.notes}
-                                            <div class="detail-item detail-notes">
-                                                <span class="detail-label">Notes:</span>
-                                                <span class="detail-value">{order.notes}</span>
+                                            <div class="detail-item">
+                                                <span class="detail-label">Last Updated:</span>
+                                                <span class="detail-value">{formatDate(order.updatedAt)}</span>
                                             </div>
-                                        {/if}
-                                    </div>
-                                </div>
-
-                                <div class="expanded-section">
-                                    <h4>Order Items</h4>
-                                    <table class="variant-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Product</th>
-                                                <th>Variant</th>
-                                                <th>Quantity</th>
-                                                <th>Sale Price</th>
-                                                <th>Subtotal</th>
-                                                <th>COGS</th>
-                                                <th>Profit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {#each order.items as item}
-                                                <tr>
-                                                    <td
-                                                        >{item.productName ??
-                                                            item.variant?.product?.displayName ??
-                                                            "-"}</td
+                                            {#if order.staffId}
+                                                <div class="detail-item">
+                                                    <span class="detail-label">Staff:</span>
+                                                    <span class="detail-value"
+                                                        >{order.staff?.name || order.staffId}</span
                                                     >
+                                                </div>
+                                            {/if}
+                                            {#if order.notes}
+                                                <div class="detail-item detail-notes">
+                                                    <span class="detail-label">Notes:</span>
+                                                    <span class="detail-value">{order.notes}</span>
+                                                </div>
+                                            {/if}
+                                        </div>
+                                    </div>
+
+                                    <div class="expanded-section">
+                                        <h4>Order Items</h4>
+                                        <table class="variant-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th>Variant</th>
+                                                    <th>Quantity</th>
+                                                    <th>Sale Price</th>
+                                                    <th>Subtotal</th>
+                                                    <th>COGS</th>
+                                                    <th>Profit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {#each order.items as item}
+                                                    <tr>
+                                                        <td
+                                                            >{item.productName ??
+                                                                item.variant?.product?.displayName ??
+                                                                "-"}</td
+                                                        >
+                                                        <td>
+                                                            <div>{item.variant?.color || "-"}</div>
+                                                            <div class="variant-sku">
+                                                                {item.productSku ?? item.variant?.sku ?? "-"}
+                                                            </div>
+                                                        </td>
+                                                        <td>{item.quantity}</td>
+                                                        <td>{formatCurrency(item.salePrice)}</td>
+                                                        <td>{formatCurrency(item.salePrice * item.quantity)}</td>
+                                                        <td>{item.cogs ? formatCurrency(item.cogs) : "-"}</td>
+                                                        <td>
+                                                            {item.cogs
+                                                                ? formatCurrency(
+                                                                      item.salePrice * item.quantity -
+                                                                          item.cogs * item.quantity
+                                                                  )
+                                                                : "-"}
+                                                        </td>
+                                                    </tr>
+                                                {/each}
+                                                <tr class="totals-row">
+                                                    <td colspan="4" class="right-align"><strong>Totals:</strong></td>
                                                     <td>
-                                                        <div>{item.variant?.color || "-"}</div>
-                                                        <div class="variant-sku">
-                                                            {item.productSku ?? item.variant?.sku ?? "-"}
-                                                        </div>
+                                                        <strong>
+                                                            {formatCurrency(
+                                                                order.items.reduce(
+                                                                    (sum, item) => sum + item.salePrice * item.quantity,
+                                                                    0
+                                                                )
+                                                            )}
+                                                        </strong>
                                                     </td>
-                                                    <td>{item.quantity}</td>
-                                                    <td>{formatCurrency(item.salePrice)}</td>
-                                                    <td>{formatCurrency(item.salePrice * item.quantity)}</td>
-                                                    <td>{item.cogs ? formatCurrency(item.cogs) : "-"}</td>
                                                     <td>
-                                                        {item.cogs
-                                                            ? formatCurrency(
-                                                                  item.salePrice * item.quantity -
-                                                                      item.cogs * item.quantity
-                                                              )
-                                                            : "-"}
+                                                        <strong>
+                                                            {formatCurrency(
+                                                                order.items.reduce(
+                                                                    (sum, item) =>
+                                                                        sum + (item.cogs || 0) * item.quantity,
+                                                                    0
+                                                                )
+                                                            )}
+                                                        </strong>
+                                                    </td>
+                                                    <td>
+                                                        <strong>
+                                                            {formatCurrency(
+                                                                order.items.reduce(
+                                                                    (sum, item) =>
+                                                                        sum +
+                                                                        (item.salePrice * item.quantity -
+                                                                            (item.cogs || 0) * item.quantity),
+                                                                    0
+                                                                )
+                                                            )}
+                                                        </strong>
                                                     </td>
                                                 </tr>
-                                            {/each}
-                                            <tr class="totals-row">
-                                                <td colspan="4" class="right-align"><strong>Totals:</strong></td>
-                                                <td>
-                                                    <strong>
-                                                        {formatCurrency(
-                                                            order.items.reduce(
-                                                                (sum, item) => sum + item.salePrice * item.quantity,
-                                                                0
-                                                            )
-                                                        )}
-                                                    </strong>
-                                                </td>
-                                                <td>
-                                                    <strong>
-                                                        {formatCurrency(
-                                                            order.items.reduce(
-                                                                (sum, item) => sum + (item.cogs || 0) * item.quantity,
-                                                                0
-                                                            )
-                                                        )}
-                                                    </strong>
-                                                </td>
-                                                <td>
-                                                    <strong>
-                                                        {formatCurrency(
-                                                            order.items.reduce(
-                                                                (sum, item) =>
-                                                                    sum +
-                                                                    (item.salePrice * item.quantity -
-                                                                        (item.cogs || 0) * item.quantity),
-                                                                0
-                                                            )
-                                                        )}
-                                                    </strong>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {#if order.fulfillmentStatus === "CANCELLED"}
-                                    <div class="order-cancelled-notice">
-                                        <span class="icon">⚠️</span>
-                                        <strong>This order has been voided.</strong>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                {/if}
+
+                                    {#if order.fulfillmentStatus === "CANCELLED"}
+                                        <div class="order-cancelled-notice">
+                                            <span class="icon">⚠️</span>
+                                            <strong>This order has been voided.</strong>
+                                        </div>
+                                    {/if}
+                                </div>
                             </td>
                         </tr>
                     {/if}
@@ -779,566 +1383,3 @@
         {/if}
     {/if}
 </div>
-
-<style>
-    /* Toast notifications */
-    .toast {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 1rem;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        z-index: 1000;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        min-width: 300px;
-        max-width: 500px;
-        animation: slideIn 0.3s ease;
-    }
-
-    .toast-success {
-        background-color: var(--status-received-bg);
-        color: var(--status-received-color);
-        border-left: 4px solid var(--color-success);
-    }
-
-    .toast-error {
-        background-color: var(--order-cancelled-bg);
-        color: var(--order-cancelled-color);
-        border-left: 4px solid var(--color-danger);
-    }
-
-    .toast-info {
-        background-color: #e0f7fa;
-        color: #006064;
-        border-left: 4px solid #00b8d4;
-    }
-
-    .toast button {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 1.2rem;
-        padding: 0;
-        margin-left: auto;
-    }
-
-    /* Admin header with controls */
-    .admin-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
-
-    .controls {
-        display: flex;
-        gap: 1rem;
-    }
-
-    /* Summary cards */
-    .summary-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .summary-card {
-        background: var(--color-link-bg-hover);
-        border-radius: 8px;
-        padding: 1rem;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .summary-card h4 {
-        margin: 0 0 0.5rem;
-        font-weight: 500;
-    }
-
-    .summary-card p {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-
-    .summary-card.uncollected p {
-        color: var(--color-warning);
-    }
-
-    /* Filters */
-    .filters {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-        padding: 1rem;
-        background: var(--color-link-bg-hover);
-        border-radius: 8px;
-    }
-
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        min-width: 180px;
-    }
-
-    .filter-group label {
-        margin-bottom: 0.3rem;
-        font-weight: 500;
-        font-size: 0.85rem;
-    }
-
-    .filter-group input,
-    .filter-group select {
-        padding: 0.5rem;
-        border: 1px solid var(--color-border);
-        border-radius: 4px;
-        background: var(--color-bg);
-        color: var(--color-text);
-        font-size: 0.9rem;
-    }
-
-    .filter-button {
-        align-self: flex-end;
-        background: var(--color-bg);
-        color: var(--color-link);
-        border: 1px solid var(--color-border);
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-top: auto;
-        font-size: 0.9rem;
-    }
-
-    .filter-button:hover {
-        background: var(--color-link-bg-hover);
-    }
-
-    /* Loading spinner */
-    .loading-spinner {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 3rem 0;
-    }
-
-    .spinner {
-        border: 4px solid rgba(0, 0, 0, 0.1);
-        border-radius: 50%;
-        border-top: 4px solid var(--color-primary);
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        margin-bottom: 1rem;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* Error message */
-    .error-message {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 2rem;
-        background: var(--order-cancelled-bg);
-        border-radius: 8px;
-        color: var(--order-cancelled-color);
-    }
-
-    .error-message .icon {
-        font-size: 2rem;
-        margin-bottom: 1rem;
-    }
-
-    .error-message button {
-        margin-top: 1rem;
-        background: var(--color-bg);
-        border: 1px solid var(--color-border);
-        padding: 0.5rem 1.5rem;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-
-    /* Results info and per page control */
-    .results-info {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-        font-size: 0.9rem;
-    }
-
-    .pagination-controls {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .pagination-controls select {
-        padding: 0.25rem;
-        border: 1px solid var(--color-border);
-        border-radius: 4px;
-        background: var(--color-bg);
-    }
-
-    /* Improved table styling */
-    .customer-cell {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .customer-name {
-        font-weight: 500;
-    }
-
-    .customer-phone {
-        font-size: 0.85rem;
-        color: var(--color-text-light);
-    }
-
-    .total-cell {
-        font-weight: 600;
-    }
-
-    .money-holder-cell {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .money-status {
-        font-size: 0.8rem;
-        margin-top: 0.2rem;
-    }
-
-    .money-collected {
-        color: var(--color-success);
-        background: var(--status-received-bg);
-        padding: 0.1rem 0.4rem;
-        border-radius: 4px;
-        font-weight: 500;
-    }
-
-    .money-pending {
-        color: var(--color-warning);
-        background: var(--status-pending-bg);
-        padding: 0.1rem 0.4rem;
-        border-radius: 4px;
-        font-weight: 500;
-    }
-
-    /* Status badges */
-    .status-badge {
-        display: inline-block;
-        padding: 0.3rem 0.6rem;
-        border-radius: 4px;
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-
-    .status-unfulfilled {
-        background: var(--status-pending-bg);
-        color: var(--color-warning);
-    }
-
-    .status-processing {
-        background: #e6f7ff;
-        color: #0070f3;
-    }
-
-    .status-shipped {
-        background: #edf7ed;
-        color: #2e7d32;
-    }
-
-    .status-delivered,
-    .status-picked_up {
-        background: var(--status-received-bg);
-        color: var(--color-success);
-    }
-
-    .status-cancelled {
-        background: var(--order-cancelled-bg);
-        color: var(--order-cancelled-color);
-    }
-
-    /* Action buttons */
-    .actions-cell {
-        white-space: nowrap;
-    }
-
-    .action-buttons {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .btn {
-        padding: 0.4rem 0.8rem;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        border: none;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn .icon {
-        margin-right: 0.3rem;
-    }
-
-    .action-buttons .btn {
-        padding: 0.3rem;
-        min-width: 32px;
-        height: 32px;
-    }
-
-    .btn-primary {
-        background: var(--color-primary);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: var(--color-primary-hover);
-    }
-
-    .btn-edit {
-        background: var(--color-link-bg-hover);
-        color: var(--color-link);
-    }
-
-    .btn-edit:hover {
-        background: var(--color-link-bg-hover);
-        color: var(--color-primary);
-    }
-
-    .btn-collect {
-        background: #edf7ed;
-        color: var(--color-success);
-    }
-
-    .btn-collect:hover {
-        background: var(--status-received-bg);
-    }
-
-    .btn-collected {
-        background: var(--status-received-bg);
-        color: var(--color-success);
-    }
-
-    .btn-void {
-        background: var(--color-bg);
-        color: var(--color-danger);
-    }
-
-    .btn-void:hover {
-        background: var(--order-cancelled-bg);
-    }
-
-    .btn-save {
-        background: var(--color-primary);
-        color: white;
-    }
-
-    .btn-cancel {
-        background: var(--color-link-bg-hover);
-        color: var(--color-text);
-    }
-
-    .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    /* Editing form */
-    .editing-cell {
-        padding: 0.5rem !important;
-    }
-
-    .edit-field {
-        margin-bottom: 0.5rem;
-    }
-
-    .edit-field label {
-        display: block;
-        font-size: 0.8rem;
-        margin-bottom: 0.2rem;
-        color: var(--color-text-light);
-    }
-
-    .form-input,
-    .form-select {
-        width: 100%;
-        padding: 0.3rem 0.5rem;
-        border: 1px solid var(--color-border);
-        border-radius: 4px;
-        background: var(--color-bg);
-        color: var(--color-text);
-        font-size: 0.9rem;
-    }
-
-    .checkbox-field {
-        display: flex;
-        align-items: center;
-        margin-top: 0.3rem;
-    }
-
-    .checkbox-field input {
-        margin-right: 0.3rem;
-    }
-
-    /* Expanded row styling */
-    .expanded-row {
-        background-color: var(--table-expanded-bg) !important;
-    }
-
-    .expanded-content {
-        padding: 1rem !important;
-    }
-
-    .expanded-section {
-        margin-bottom: 1.5rem;
-    }
-
-    .expanded-section h4 {
-        margin: 0 0 0.5rem 0;
-        font-size: 1rem;
-        font-weight: 600;
-    }
-
-    .order-details {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-    }
-
-    .detail-item {
-        margin-bottom: 0.5rem;
-    }
-
-    .detail-label {
-        display: block;
-        font-size: 0.8rem;
-        color: var(--color-text-light);
-    }
-
-    .detail-value {
-        font-weight: 500;
-    }
-
-    .detail-notes {
-        grid-column: 1 / -1;
-    }
-
-    .order-cancelled-notice {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-top: 1rem;
-        padding: 0.5rem 1rem;
-        background: var(--order-cancelled-bg);
-        color: var(--order-cancelled-color);
-        border-radius: 6px;
-    }
-
-    .variant-sku {
-        font-size: 0.8rem;
-        color: var(--color-text-light);
-    }
-
-    .totals-row {
-        background: rgba(0, 0, 0, 0.02);
-    }
-
-    .right-align {
-        text-align: right;
-    }
-
-    /* Pagination */
-    .pagination {
-        display: flex;
-        justify-content: center;
-        gap: 0.3rem;
-        margin: 2rem 0 1rem;
-    }
-
-    .pagination-button {
-        min-width: 2rem;
-        height: 2rem;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--color-bg);
-        border: 1px solid var(--color-border);
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .pagination-button.active {
-        background: var(--color-primary);
-        color: white;
-        border-color: var(--color-primary);
-    }
-
-    .pagination-button:hover:not(:disabled):not(.active) {
-        background: var(--color-link-bg-hover);
-    }
-
-    .pagination-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .pagination-ellipsis {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 2rem;
-        height: 2rem;
-    }
-
-    /* No orders message */
-    .no-orders {
-        text-align: center;
-        padding: 3rem 0;
-    }
-
-    .no-orders p {
-        margin-bottom: 1rem;
-        color: var(--color-text-light);
-    }
-
-    /* Make responsive */
-    @media (max-width: 1200px) {
-        .admin-table {
-            font-size: 0.9rem;
-        }
-
-        .expanded-section {
-            overflow-x: auto;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .filters {
-            flex-direction: column;
-        }
-
-        .summary-cards {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
