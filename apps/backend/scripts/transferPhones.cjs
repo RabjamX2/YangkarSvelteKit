@@ -69,7 +69,7 @@ async function main() {
                 supplier = await prisma.supplier.create({
                     data: {
                         name: supplierName,
-                        idString: "phone",
+                        idString: "phon",
                     },
                 });
                 console.log(`Created new supplier: ${supplier.name}`);

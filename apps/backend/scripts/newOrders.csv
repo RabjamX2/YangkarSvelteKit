@@ -80,7 +80,7 @@ ORDER DATE,BatchNumber,Category,Style,Color / Type,Size,Seller,Item name,CNY Per
 7/28/2025,2,Chupa,LhasaGuchen,Green,L,BhodLa,Guchen Utsang Chupa,¥210.00,$29.87,TRUE,3,3,blLhasaGuchen,blLhasaGuchenGreenL,,¥630.00,$89.62,
 7/28/2025,2,Chupa,LhasaGuchen,Blue,XL,BhodLa,Guchen Utsang Chupa,¥210.00,$29.87,TRUE,3,3,blLhasaGuchen,blLhasaGuchenBlueXL,,¥630.00,$89.62,
 7/28/2025,2,Chupa,LhasaGuchen,Blue,L,BhodLa,Guchen Utsang Chupa,¥210.00,$29.87,TRUE,3,3,blLhasaGuchen,blLhasaGuchenBlueL,,¥630.00,$89.62,
-7/28/2025,2,Chupa,LhasaGuchenNoFold,Orange,XL,BhodLa,Guchen Utsang Chupa (No Fold),¥165.00,$23.47,TRUE,1,1,blLhasaGuchen,blLhasaGuchenNoFoldOrangeXL,,¥165.00,$23.47,dechen's
+7/28/2025,2,Chupa,LhasaGuchen,Orange,XL,BhodLa,Guchen Utsang Chupa,¥165.00,$23.47,TRUE,1,1,blLhasaGuchen,blLhasaGuchenOrangeXL,,¥165.00,$23.47,dechen's
 7/30/2025,2,Chupa,Boy-Line,Black,XL,Bhod Thakchen,Thakshar Chupa,¥180.00,$25.60,TRUE,4,4,btBoy-Line,btBoy-LineBlackXL,,¥720.00,$102.42,
 7/30/2025,2,Chupa,Boy-Line,Black,L,Bhod Thakchen,Thakshar Chupa,¥180.00,$25.60,TRUE,6,6,btBoy-Line,btBoy-LineBlackL,,"¥1,080.00",$153.63,
 7/30/2025,2,Chupa,Boy-Line,Brown,XL,Bhod Thakchen,Thakshar Chupa,¥180.00,$25.60,TRUE,4,4,btBoy-Line,btBoy-LineBrownXL,,¥720.00,$102.42,
@@ -118,6 +118,7 @@ ORDER DATE,BatchNumber,Category,Style,Color / Type,Size,Seller,Item name,CNY Per
 7/30/2025,2,Wonju,VestShirtMen,Wine Red,XL,Losan,Phosar Vest,¥50.00,$7.11,TRUE,2,2,losVestShirtMen,losVestShirtMenWine RedXL,,¥100.00,$14.22,
 7/30/2025,2,Wonju,VestShirtMen,Mustard,XXL,Losan,Phosar Vest,¥50.00,$7.11,TRUE,3,3,losVestShirtMen,losVestShirtMenMustardXXL,,¥150.00,$21.34,
 7/30/2025,2,Wonju,VestShirtMen,Wine Red,XXL,Losan,Phosar Vest,¥50.00,$7.11,TRUE,3,3,losVestShirtMen,losVestShirtMenWine RedXXL,,¥150.00,$21.34,
+7/31/2025,2,Chupa,Boy-Line,Black,L,Bhod Thakchen,Thakshar Chupa,¥180.00,$25.60,TRUE,6,6,btBoy-Line,btBoy-LineBlackL,,"¥1,080.00",$153.63,
 8/7/2025,2,Chupa,GirlFold,BlueBlack,XL,Phama Tsering Logya,Graceful Chupa,¥190.00,$27.03,TRUE,1,1,ptlGirlFold,ptlGirlFoldBlueBlackXL,,¥190.00,$27.03,
 8/7/2025,2,Chupa,GirlFold,GoldWhite,XL,Phama Tsering Logya,Graceful Chupa,¥190.00,$27.03,TRUE,1,1,ptlGirlFold,ptlGirlFoldGoldWhiteXL,,¥190.00,$27.03,
 8/7/2025,2,Chupa,MenFold,GoldWhite,XL,Phama Tsering Logya,Graceful Chupa,¥190.00,$27.03,TRUE,1,1,ptlMenFold,ptlMenFoldGoldWhiteXL,,¥190.00,$27.03,
@@ -187,4 +188,4 @@ ORDER DATE,BatchNumber,Category,Style,Color / Type,Size,Seller,Item name,CNY Per
 8/14/2025,3,Jewelry,SMecha,Phosar,N/A,Gyencha,Mini Mecha No Link,¥20.00,$2.84,TRUE,5,5,gcSMecha,gcSMechaPhosar,,¥100.00,$14.22,
 8/14/2025,3,Jewelry,LapChain3,2Stack,N/A,Gyencha,Bold 3 Chain Lap Rack,¥110.00,$15.65,TRUE,3,3,gcLapChain3,gcLapChain32Stack,,¥330.00,$46.94,
 8/14/2025,3,Jewelry,Lulong,MDarkGold,N/A,Gyencha,Medium Lulong Pair,¥80.00,$11.38,TRUE,1,1,gcLulong,gcLulongMDarkGold,,¥80.00,$11.38,quantity pertains to pairs?
-8/14/2025,3,Jewelry,Kera,Red/white,N/A,Tsering Dolkar,Kerag,¥70.00,$9.96,TRUE,6,6,mmKera,mmKeraRed/white,,¥420.00,$59.74,
+8/14/2025,3,Jewelry,Kera,Red/white,N/A,mom,Kerag,¥70.00,$9.96,TRUE,6,6,mmKera,mmKeraRed/white,,¥420.00,$59.74,

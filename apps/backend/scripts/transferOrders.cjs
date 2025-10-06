@@ -34,6 +34,8 @@ async function main() {
         Losan: 7,
         "Men You Ping": 8,
         Jama: 9,
+        "Phone Supplier": 10,
+        "Tsering Dolkar": 11,
     };
     const supplierNames = {
         "Bhod Thakchen": "bt",
@@ -45,6 +47,8 @@ async function main() {
         Losan: "ls",
         "Men You Ping": "myp",
         Jama: "jm",
+        "Phone Supplier": "phon",
+        "Tsering Dolkar": "mm",
     };
 
     const categoryDict = {
@@ -173,7 +177,6 @@ async function main() {
                     update: {
                         displayName: item["Item name"],
                         style: item["Style"],
-                        notes: item["Notes"] || null,
                         supplierId: supplier.id,
                         categoryId: category.id,
                     },
@@ -204,16 +207,38 @@ async function main() {
                         productId: product.id,
                     },
                 });
-                // 5. Create PurchaseOrderItem
-                await prisma.purchaseOrderItem.create({
-                    data: {
-                        quantityOrdered: item["Quantity"] ? parseInt(item["Quantity"], 10) : 0,
-                        costPerItemCny: item["CNY Per"] ? parseFloat(item["CNY Per"].replace(/[¥,]/g, "")) : null,
-                        costPerItemUsd: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
-                        order: { connect: { id: purchaseOrder.id } },
-                        variant: { connect: { id: variant.id } },
+                // 5. Find or create PurchaseOrderItem
+                let purchaseOrderItem = await prisma.purchaseOrderItem.findFirst({
+                    where: {
+                        purchaseOrderId: purchaseOrder.id,
+                        productVariantId: variant.id,
                     },
                 });
+
+                if (purchaseOrderItem) {
+                    console.log(`Updating existing item for row ${index + 1} in batch ${batchNumber}: ${skuSpecific}`);
+                    await prisma.purchaseOrderItem.update({
+                        where: {
+                            id: purchaseOrderItem.id,
+                        },
+                        data: {
+                            quantityOrdered: item["Quantity"] ? parseInt(item["Quantity"], 10) : 0,
+                            costPerItemCny: item["CNY Per"] ? parseFloat(item["CNY Per"].replace(/[¥,]/g, "")) : null,
+                            costPerItemUsd: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
+                        },
+                    });
+                } else {
+                    console.log(`Creating new item for row ${index + 1} in batch ${batchNumber}: ${skuSpecific}`);
+                    purchaseOrderItem = await prisma.purchaseOrderItem.create({
+                        data: {
+                            quantityOrdered: item["Quantity"] ? parseInt(item["Quantity"], 10) : 0,
+                            costPerItemCny: item["CNY Per"] ? parseFloat(item["CNY Per"].replace(/[¥,]/g, "")) : null,
+                            costPerItemUsd: item["USD Per"] ? parseFloat(item["USD Per"].replace(/[$,]/g, "")) : null,
+                            order: { connect: { id: purchaseOrder.id } },
+                            variant: { connect: { id: variant.id } },
+                        },
+                    });
+                }
                 console.log(`Processed row ${index + 1} in batch ${batchNumber}: ${skuSpecific}`);
             } catch (err) {
                 console.error(`Error processing row ${index + 1} in batch ${batchNumber}:`, err);

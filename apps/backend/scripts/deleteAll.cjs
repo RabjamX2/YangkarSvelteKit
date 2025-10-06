@@ -14,15 +14,7 @@ const tableNameList2 = [
 ];
 const tableNameList = ["CustomerOrderItem", "CustomerOrder", "Customer"];
 const tableNameList3 = ["InventoryBatch", "StockChange", "CustomerOrderItem", "CustomerOrder", "Customer"];
-const tableNameList4 = [
-    "InventoryBatch",
-    "StockChange",
-    "PurchaseOrderItem",
-    "PurchaseOrder",
-    "CustomerOrderItem",
-    "CustomerOrder",
-    "Customer",
-];
+const tableNameList4 = ["InventoryBatch", "StockChange", "CustomerOrderItem", "CustomerOrder", "Customer"];
 
 async function main() {
     for (const tableName of tableNameList4) {

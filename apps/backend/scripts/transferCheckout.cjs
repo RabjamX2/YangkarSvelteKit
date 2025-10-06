@@ -5,6 +5,11 @@ const Papa = require("papaparse");
 
 const prisma = new PrismaClient();
 
+function roundToDecimals(value) {
+    const factor = Math.pow(10, 2);
+    return Math.round(value * factor) / factor;
+}
+
 async function main() {
     // Read invoices.csv
     const invoicesPath = path.resolve(__dirname, "invoices.csv");
@@ -98,10 +103,11 @@ async function main() {
                     // If Zelle, set moneyHolder if available. for example, "Zelle R" mean recipient is "R" etc
                     // So remove "zelle" and trim. If nothing is left, set to null
                     // for example, If it includes "zelle r" (case insensitive), set moneyHolder to "R"
-                    const moneyHolderMatch = invoice["Payment Type"].toLowerCase().match(/zelle\s*(.*)/)[1];
-                    if (moneyHolderMatch[1]) {
+                    const match = invoice["Payment Type"].toLowerCase().match(/zelle\s*(.*)/);
+                    if (match && match[1]) {
+                        const moneyHolderMatch = match[1].trim();
                         console.log(`Money holder match for invoice ${invoiceNum}:`, moneyHolderMatch);
-                        let orderMoneyHolderLetter = moneyHolderMatch[1].trim();
+                        let orderMoneyHolderLetter = moneyHolderMatch;
                         switch (orderMoneyHolderLetter) {
                             case "r":
                                 orderMoneyHolder = "Rabjam";
@@ -115,7 +121,7 @@ async function main() {
                             default:
                                 orderMoneyHolder = null;
                         }
-                        console.log(console.log(`                      is `, orderMoneyHolder));
+                        console.log(`Money holder for invoice ${invoiceNum} is:`, orderMoneyHolder);
                     }
                 }
             } else {
@@ -209,7 +215,8 @@ async function main() {
                     for (const batch of batches) {
                         if (quantityToFulfill === 0) break;
                         const quantityFromThisBatch = Math.min(quantityToFulfill, batch.quantity);
-                        const cost = batch.costCNY ?? batch.costUSD ?? 0;
+                        const cost =
+                            batch.costUSD ?? roundToDecimals(batch.costCNY / purchaseOrderItem.order.usdToCnyRate);
                         totalCogs += quantityFromThisBatch * parseFloat(cost);
                         await prisma.inventoryBatch.update({
                             where: { id: batch.id },
