@@ -5,6 +5,7 @@
 //   node updateCurrencyValues.cjs           # Only update missing values
 //   node updateCurrencyValues.cjs overwrite # Overwrite PurchaseOrderItem.costPerItemUsd values
 //   node updateCurrencyValues.cjs total     # Calculate and update the calculatedTotalUsd field in PurchaseOrder
+//   node updateCurrencyValues.cjs cogs      # Convert CustomerOrderItem.cogs from CNY to USD
 
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
@@ -12,6 +13,7 @@ const prisma = new PrismaClient();
 // Check command line arguments
 const shouldOverwrite = process.argv.includes("overwrite");
 const shouldUpdateTotal = process.argv.includes("total");
+const shouldUpdateCogs = process.argv.includes("cogs");
 
 // Configure rounding precision (number of decimal places)
 const USD_PRECISION = 2; // USD typically uses 2 decimal places
@@ -192,106 +194,195 @@ async function updatePurchaseOrders() {
         let ordersUpdated = 0;
         let itemsUpdated = 0;
         let batchesUpdated = 0;
+        let cogsItemsUpdated = 0;
 
-        for (const order of purchaseOrders) {
-            if (!order.usdToCnyRate) {
-                console.log(`Skipping order #${order.id} (batch ${order.batchNumber}) - no exchange rate defined`);
-                continue;
+        // for (const order of purchaseOrders) {
+        //     if (!order.usdToCnyRate) {
+        //         console.log(`Skipping order #${order.id} (batch ${order.batchNumber}) - no exchange rate defined`);
+        //         continue;
+        //     }
+
+        //     const rate = Number(order.usdToCnyRate);
+        //     let orderUpdated = false;
+
+        //     // Calculate and update total USD if requested
+        //     if (shouldUpdateTotal) {
+        //         const calculatedTotal = calculateOrderTotalUsd(order, rate);
+        //         await prisma.purchaseOrder.update({
+        //             where: { id: order.id },
+        //             data: { calculatedTotalUsd: calculatedTotal },
+        //         });
+        //         console.log(
+        //             `Updated order #${order.id} (batch ${order.batchNumber}) with calculated total: $${calculatedTotal}`
+        //         );
+        //         ordersUpdated++;
+        //     }
+
+        //     // Update order-level costs
+        //     const updates = {};
+
+        //     if (order.shippingCostUsd === null && order.shippingCostCny !== null) {
+        //         updates.shippingCostUsd = cnyToUsd(Number(order.shippingCostCny), rate);
+        //         orderUpdated = true;
+        //     } else if (order.shippingCostCny === null && order.shippingCostUsd !== null) {
+        //         updates.shippingCostCny = usdToCny(Number(order.shippingCostUsd), rate);
+        //         orderUpdated = true;
+        //     }
+
+        //     if (order.extraFeesUsd === null && order.extraFeesCny !== null) {
+        //         updates.extraFeesUsd = cnyToUsd(Number(order.extraFeesCny), rate);
+        //         orderUpdated = true;
+        //     } else if (order.extraFeesCny === null && order.extraFeesUsd !== null) {
+        //         updates.extraFeesCny = usdToCny(Number(order.extraFeesUsd), rate);
+        //         orderUpdated = true;
+        //     }
+
+        //     // If we need to update the order
+        //     if (orderUpdated) {
+        //         await prisma.purchaseOrder.update({
+        //             where: { id: order.id },
+        //             data: updates,
+        //         });
+        //         ordersUpdated++;
+        //         console.log(`Updated purchase order #${order.id} (batch ${order.batchNumber})`);
+        //     }
+
+        //     // Update item-level costs
+        //     for (const item of order.items) {
+        //         let itemUpdated = false;
+        //         const itemUpdates = {};
+
+        //         // If overwrite flag is used, recalculate costPerItemUsd from CNY values
+        //         if (shouldOverwrite && item.costPerItemCny !== null) {
+        //             itemUpdates.costPerItemUsd = cnyToUsd(Number(item.costPerItemCny), rate);
+        //             itemUpdated = true;
+        //             console.log(
+        //                 `Overwriting costPerItemUsd for item #${item.id} with ${itemUpdates.costPerItemUsd} USD`
+        //             );
+        //         } else if (item.costPerItemUsd === null && item.costPerItemCny !== null) {
+        //             itemUpdates.costPerItemUsd = cnyToUsd(Number(item.costPerItemCny), rate);
+        //             itemUpdated = true;
+        //         } else if (item.costPerItemCny === null && item.costPerItemUsd !== null) {
+        //             itemUpdates.costPerItemCny = usdToCny(Number(item.costPerItemUsd), rate);
+        //             itemUpdated = true;
+        //         }
+
+        //         if (itemUpdated) {
+        //             await prisma.purchaseOrderItem.update({
+        //                 where: { id: item.id },
+        //                 data: itemUpdates,
+        //             });
+        //             itemsUpdated++;
+        //         }
+
+        //         // Update inventory batch costs if they exist
+        //         if (item.inventoryBatch) {
+        //             let batchUpdated = false;
+        //             const batchUpdates = {};
+
+        //             if (item.inventoryBatch.costUSD === null && item.inventoryBatch.costCNY !== null) {
+        //                 batchUpdates.costUSD = cnyToUsd(Number(item.inventoryBatch.costCNY), rate);
+        //                 batchUpdated = true;
+        //             } else if (item.inventoryBatch.costCNY === null && item.inventoryBatch.costUSD !== null) {
+        //                 batchUpdates.costCNY = usdToCny(Number(item.inventoryBatch.costUSD), rate);
+        //                 batchUpdated = true;
+        //             }
+
+        //             if (batchUpdated) {
+        //                 await prisma.inventoryBatch.update({
+        //                     where: { id: item.inventoryBatch.id },
+        //                     data: batchUpdates,
+        //                 });
+        //                 batchesUpdated++;
+        //             }
+        //         }
+        //     }
+        // }
+
+        // Update CustomerOrderItem COGS values if flag is set
+        if (shouldUpdateCogs) {
+            console.log("\nUpdating CustomerOrderItem COGS values from CNY to USD...");
+
+            // Get exchange rates from all purchase orders for lookup
+            const exchangeRates = {};
+            for (const order of purchaseOrders) {
+                if (order.usdToCnyRate && order.batchNumber) {
+                    exchangeRates[order.batchNumber] = Number(order.usdToCnyRate);
+                }
             }
 
-            const rate = Number(order.usdToCnyRate);
-            let orderUpdated = false;
+            // We'll use a standard rate if we can't determine one
+            const defaultRate = 7.03; // Default USD to CNY rate if we can't find a specific one
 
-            // Calculate and update total USD if requested
-            if (shouldUpdateTotal) {
-                const calculatedTotal = calculateOrderTotalUsd(order, rate);
-                await prisma.purchaseOrder.update({
-                    where: { id: order.id },
-                    data: { calculatedTotalUsd: calculatedTotal },
-                });
-                console.log(
-                    `Updated order #${order.id} (batch ${order.batchNumber}) with calculated total: $${calculatedTotal}`
-                );
-                ordersUpdated++;
-            }
+            // Get all CustomerOrderItems with CNY COGS values
+            const customerOrderItems = await prisma.customerOrderItem.findMany({
+                where: {
+                    cogs: {
+                        not: null,
+                    },
+                },
+                include: {
+                    variant: {
+                        include: {
+                            inventoryBatches: {
+                                include: {
+                                    purchaseOrderItem: {
+                                        include: {
+                                            order: true,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            });
 
-            // Update order-level costs
-            const updates = {};
+            console.log(`Found ${customerOrderItems.length} customer order items to process`);
 
-            if (order.shippingCostUsd === null && order.shippingCostCny !== null) {
-                updates.shippingCostUsd = cnyToUsd(Number(order.shippingCostCny), rate);
-                orderUpdated = true;
-            } else if (order.shippingCostCny === null && order.shippingCostUsd !== null) {
-                updates.shippingCostCny = usdToCny(Number(order.shippingCostUsd), rate);
-                orderUpdated = true;
-            }
+            for (const item of customerOrderItems) {
+                // Skip if no COGS value
+                if (item.cogs === null) continue;
 
-            if (order.extraFeesUsd === null && order.extraFeesCny !== null) {
-                updates.extraFeesUsd = cnyToUsd(Number(order.extraFeesCny), rate);
-                orderUpdated = true;
-            } else if (order.extraFeesCny === null && order.extraFeesUsd !== null) {
-                updates.extraFeesCny = usdToCny(Number(order.extraFeesUsd), rate);
-                orderUpdated = true;
-            }
+                // Get the exchange rate from the related variant's inventory batches
+                let rate = null;
 
-            // If we need to update the order
-            if (orderUpdated) {
-                await prisma.purchaseOrder.update({
-                    where: { id: order.id },
-                    data: updates,
-                });
-                ordersUpdated++;
-                console.log(`Updated purchase order #${order.id} (batch ${order.batchNumber})`);
-            }
+                // Try to find a rate from the related inventory batches
+                if (item.variant && item.variant.inventoryBatches && item.variant.inventoryBatches.length > 0) {
+                    for (const batch of item.variant.inventoryBatches) {
+                        if (
+                            batch.purchaseOrderItem &&
+                            batch.purchaseOrderItem.order &&
+                            batch.purchaseOrderItem.order.usdToCnyRate
+                        ) {
+                            rate = Number(batch.purchaseOrderItem.order.usdToCnyRate);
+                            break;
+                        }
+                    }
+                }
 
-            // Update item-level costs
-            for (const item of order.items) {
-                let itemUpdated = false;
-                const itemUpdates = {};
-
-                // If overwrite flag is used, recalculate costPerItemUsd from CNY values
-                if (shouldOverwrite && item.costPerItemCny !== null) {
-                    itemUpdates.costPerItemUsd = cnyToUsd(Number(item.costPerItemCny), rate);
-                    itemUpdated = true;
+                // If we still don't have a rate, use the default
+                if (!rate) {
                     console.log(
-                        `Overwriting costPerItemUsd for item #${item.id} with ${itemUpdates.costPerItemUsd} USD`
+                        `Using default exchange rate (${defaultRate}) for item #${item.id} - couldn't find specific rate`
                     );
-                } else if (item.costPerItemUsd === null && item.costPerItemCny !== null) {
-                    itemUpdates.costPerItemUsd = cnyToUsd(Number(item.costPerItemCny), rate);
-                    itemUpdated = true;
-                } else if (item.costPerItemCny === null && item.costPerItemUsd !== null) {
-                    itemUpdates.costPerItemCny = usdToCny(Number(item.costPerItemUsd), rate);
-                    itemUpdated = true;
+                    rate = defaultRate;
                 }
 
-                if (itemUpdated) {
-                    await prisma.purchaseOrderItem.update({
+                // Convert from CNY to USD
+                const currentCogsCNY = Number(item.cogs);
+                const newCogsUSD = cnyToUsd(currentCogsCNY, rate);
+
+                if (newCogsUSD !== null) {
+                    await prisma.customerOrderItem.update({
                         where: { id: item.id },
-                        data: itemUpdates,
+                        data: { cogs: newCogsUSD },
                     });
-                    itemsUpdated++;
-                }
 
-                // Update inventory batch costs if they exist
-                if (item.inventoryBatch) {
-                    let batchUpdated = false;
-                    const batchUpdates = {};
-
-                    if (item.inventoryBatch.costUSD === null && item.inventoryBatch.costCNY !== null) {
-                        batchUpdates.costUSD = cnyToUsd(Number(item.inventoryBatch.costCNY), rate);
-                        batchUpdated = true;
-                    } else if (item.inventoryBatch.costCNY === null && item.inventoryBatch.costUSD !== null) {
-                        batchUpdates.costCNY = usdToCny(Number(item.inventoryBatch.costUSD), rate);
-                        batchUpdated = true;
-                    }
-
-                    if (batchUpdated) {
-                        await prisma.inventoryBatch.update({
-                            where: { id: item.inventoryBatch.id },
-                            data: batchUpdates,
-                        });
-                        batchesUpdated++;
-                    }
+                    console.log(
+                        `Updated CustomerOrderItem #${item.id}: COGS ¥${currentCogsCNY.toFixed(2)} CNY -> $${newCogsUSD.toFixed(2)} USD (rate: ${rate})`
+                    );
+                    cogsItemsUpdated++;
                 }
             }
         }
@@ -300,6 +391,9 @@ async function updatePurchaseOrders() {
         console.log(`Purchase Orders Updated: ${ordersUpdated}`);
         console.log(`Purchase Order Items Updated: ${itemsUpdated}`);
         console.log(`Inventory Batches Updated: ${batchesUpdated}`);
+        if (shouldUpdateCogs) {
+            console.log(`Customer Order Items (COGS) Updated: ${cogsItemsUpdated}`);
+        }
         console.log("=========================\n");
     } catch (error) {
         console.error("Error updating currency values:", error);
