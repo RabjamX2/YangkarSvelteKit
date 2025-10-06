@@ -168,6 +168,8 @@ model InventoryBatch {
     purchaseOrderItemId Int               @unique
     purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
 
+    CustomerOrder CustomerOrderItem[]
+
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
 }
@@ -328,6 +330,7 @@ model CustomerOrder {
     paid     Boolean  @default(false)
 
     // --- Fulfillment Details ---
+    shippingCost   Decimal? // Actual shipping cost incurred
     shippingMethod String? // e.g., "USPS Priority", "In-Store Pickup"
     trackingNumber String?
 
@@ -372,6 +375,9 @@ model CustomerOrderItem {
 
     productVariantId Int
     variant          ProductVariant @relation(fields: [productVariantId], references: [id])
+
+    inventoryBatchId Int?
+    inventoryBatch   InventoryBatch? @relation(fields: [inventoryBatchId], references: [id])
 
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
