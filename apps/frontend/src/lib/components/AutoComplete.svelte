@@ -1,4 +1,5 @@
 <script>
+    // @ts-nocheck
     import { createEventDispatcher, onMount } from "svelte";
     import fuzzysort from "fuzzysort";
     export let value = "";
