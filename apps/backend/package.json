@@ -19,10 +19,8 @@
     "license": "ISC",
     "packageManager": "pnpm@10.13.1",
     "devDependencies": {
-        "@types/papaparse": "^5.3.16",
         "papaparse": "^5.5.3",
-        "prisma": "^6.16.2",
-        "ts-node": "^10.9.2"
+        "prisma": "^6.16.2"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.504.0",

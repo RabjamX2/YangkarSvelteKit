@@ -53,11 +53,6 @@ jobs:
                       # Then install dependencies
                       pnpm install --no-frozen-lockfile
 
-                      # Ensure all backend dependencies are installed properly
-                      cd apps/backend
-                      npm install -D prisma
-                      cd ../..
-
                       # Run migrations with the latest schema
                       pnpm --filter backend exec prisma migrate deploy
 
