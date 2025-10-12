@@ -1,0 +1,75 @@
+/* Add these additional styles at the bottom of the orderForms.css file */
+
+/* Dark mode styles for form actions and buttons */
+.dark .form-actions {
+    border-top-color: var(--color-border);
+}
+
+.dark .form-actions button {
+    color: var(--color-text);
+}
+
+.dark .form-section {
+    border-bottom-color: var(--color-border);
+}
+
+.dark .form-section h4 {
+    color: var(--color-text);
+}
+
+.dark .item-row {
+    border-bottom-color: var(--color-border);
+}
+
+/* AutoComplete dark mode styles */
+.dark .autocomplete-container {
+    background-color: #2d3033;
+}
+
+.dark .autocomplete-dropdown {
+    background-color: #2d3033;
+    border-color: var(--color-border);
+}
+
+.dark .autocomplete-option {
+    border-bottom-color: var(--color-border);
+}
+
+.dark .autocomplete-option:hover,
+.dark .autocomplete-option.selected {
+    background-color: #3a3f45;
+}
+
+/* Item row styling in dark mode */
+.dark .item-sku,
+.dark .item-qty,
+.dark .item-price,
+.dark .item-method,
+.dark .item-holder {
+    background-color: #2d3033;
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+.dark .item-labels {
+    color: var(--color-text-light);
+    border-bottom-color: var(--color-border);
+}
+
+/* Add Item button in dark mode */
+.dark .btn-add-item {
+    background-color: #2d3033;
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+.dark .btn-add-item:hover {
+    background-color: #3a3f45;
+}
+
+/* Error message styles in dark mode */
+.dark .error-message {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #f87171;
+    border-color: rgba(220, 38, 38, 0.3);
+}

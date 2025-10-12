@@ -8,9 +8,15 @@
     import { createAuthFetch } from "$lib/utils/csrf.js";
     import "../transactionTable.css";
     import "./customerOrders.css";
+    import "./orderForms.css";
+    import "./orderForms-dark.css";
     import { browser } from "$app/environment";
     import AutoComplete from "$lib/components/AutoComplete.svelte";
     import { productVariants, fetchProductVariants } from "$lib/stores/productVariants.js";
+    import OrderForm from "$lib/components/orders/OrderForm.svelte";
+    import ShippingOrderForm from "$lib/components/orders/ShippingOrderForm.svelte";
+    import BulkOrderForm from "$lib/components/orders/BulkOrderForm.svelte";
+    import OrderTabs from "$lib/components/orders/OrderTabs.svelte";
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     const customerOrders = writable([]);
@@ -72,9 +78,10 @@
     const expandedOrder = writable(null);
     const editingOrder = writable(null); // order id being edited
     const editForm = writable({}); // temp form state
-    const showAddOrderModal = writable(false);
-    const showAddShippingOrderModal = writable(false);
-    const showAddBulkOrderModal = writable(false);
+
+    // Form section controls
+    const showOrderFormSection = writable(false);
+    const activeOrderTab = writable("standard"); // 'standard', 'shipping', 'bulk'
 
     const newOrderForm = writable({
         customerName: "",
@@ -392,28 +399,40 @@
         }
     });
 
-    function openAddOrderModal() {
-        showAddOrderModal.set(true);
+    function toggleOrderFormSection(show = true, tab = "standard") {
+        showOrderFormSection.set(show);
+        if (show) {
+            activeOrderTab.set(tab);
+            // Reset forms when opening
+            newOrderForm.set({
+                customerName: "",
+                customerPhone: "",
+                moneyHolder: "",
+                paymentMethod: "",
+                orderDate: "",
+                items: [{ sku: "", quantity: 1, salePrice: 0 }],
+            });
+            newShippingOrderForm.set({
+                customerName: "",
+                customerPhone: "",
+                moneyHolder: "",
+                paymentMethod: "",
+                orderDate: "",
+                items: [{ sku: "", quantity: 1, salePrice: 0 }],
+                shippingAddress: "",
+                shippingCost: 0,
+                freeShipping: false,
+                shippingMethod: "",
+            });
+            newBulkOrderForm.set({
+                orderDate: "",
+                items: [{ sku: "", quantity: 1, salePrice: 0, paymentMethod: "CASH", moneyHolder: "" }],
+            });
+        }
     }
 
-    function closeAddOrderModal() {
-        showAddOrderModal.set(false);
-    }
-
-    function openAddShippingOrderModal() {
-        showAddShippingOrderModal.set(true);
-    }
-
-    function closeAddShippingOrderModal() {
-        showAddShippingOrderModal.set(false);
-    }
-
-    function openAddBulkOrderModal() {
-        showAddBulkOrderModal.set(true);
-    }
-
-    function closeAddBulkOrderModal() {
-        showAddBulkOrderModal.set(false);
+    function handleTabChange(event) {
+        activeOrderTab.set(event.detail);
     }
 
     function addOrderItem() {
@@ -434,12 +453,11 @@
         });
     }
 
-    async function submitNewOrder() {
-        let $newOrderForm;
-        newOrderForm.subscribe((v) => ($newOrderForm = v))();
+    async function handleOrderFormSubmit(event) {
         try {
             // Validate items
-            for (const item of $newOrderForm.items) {
+            const formData = event.detail;
+            for (const item of formData.items) {
                 if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
                     throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
                 }
@@ -448,14 +466,7 @@
             const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customerName: $newOrderForm.customerName,
-                    customerPhone: $newOrderForm.customerPhone,
-                    moneyHolder: $newOrderForm.moneyHolder,
-                    paymentMethod: $newOrderForm.paymentMethod,
-                    items: $newOrderForm.items,
-                    orderDate: $newOrderForm.orderDate,
-                }),
+                body: JSON.stringify(formData),
             });
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
@@ -463,39 +474,32 @@
             }
 
             showToast("Order created successfully", "success");
-            closeAddOrderModal();
+            toggleOrderFormSection(false);
             await refreshOrders();
         } catch (e) {
             showToast(e instanceof Error ? e.message : String(e), "error");
         }
     }
 
-    async function submitNewShippingOrder() {
-        let $newShippingOrderForm;
-        newShippingOrderForm.subscribe((v) => ($newShippingOrderForm = v))();
+    async function handleShippingOrderFormSubmit(event) {
         try {
             // Validate items
-            for (const item of $newShippingOrderForm.items) {
+            const formData = event.detail;
+            for (const item of formData.items) {
                 if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
                     throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
                 }
             }
 
+            // Handle free shipping
+            if (formData.freeShipping) {
+                formData.shippingCost = 0;
+            }
+
             const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customerName: $newShippingOrderForm.customerName,
-                    customerPhone: $newShippingOrderForm.customerPhone,
-                    moneyHolder: $newShippingOrderForm.moneyHolder,
-                    paymentMethod: $newShippingOrderForm.paymentMethod,
-                    items: $newShippingOrderForm.items,
-                    orderDate: $newShippingOrderForm.orderDate,
-                    shippingAddress: $newShippingOrderForm.shippingAddress,
-                    shippingCost: $newShippingOrderForm.shippingCost,
-                    freeShipping: $newShippingOrderForm.freeShipping,
-                    shippingMethod: $newShippingOrderForm.shippingMethod,
-                }),
+                body: JSON.stringify(formData),
             });
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
@@ -503,19 +507,18 @@
             }
 
             showToast("Shipping order created successfully", "success");
-            closeAddShippingOrderModal();
+            toggleOrderFormSection(false);
             await refreshOrders();
         } catch (e) {
             showToast(e instanceof Error ? e.message : String(e), "error");
         }
     }
 
-    async function submitNewBulkOrder() {
-        let $newBulkOrderForm;
-        newBulkOrderForm.subscribe((v) => ($newBulkOrderForm = v))();
+    async function handleBulkOrderFormSubmit(event) {
         try {
             // Validate items
-            for (const item of $newBulkOrderForm.items) {
+            const formData = event.detail;
+            for (const item of formData.items) {
                 if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
                     throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
                 }
@@ -525,8 +528,8 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    items: $newBulkOrderForm.items,
-                    orderDate: $newBulkOrderForm.orderDate,
+                    items: formData.items,
+                    orderDate: formData.orderDate,
                 }),
             });
             if (!res.ok) {
@@ -535,7 +538,7 @@
             }
 
             showToast("Bulk orders created successfully", "success");
-            closeAddBulkOrderModal();
+            toggleOrderFormSection(false);
             await refreshOrders();
         } catch (e) {
             showToast(e instanceof Error ? e.message : String(e), "error");
@@ -580,6 +583,45 @@
         items[idx].salePrice = selected.salePrice || items[idx].salePrice;
         newBulkOrderForm.set({ ...$newBulkOrderForm, items });
     }
+
+    function addShippingOrderItem() {
+        let $newShippingOrderForm;
+        newShippingOrderForm.subscribe((v) => ($newShippingOrderForm = v))();
+        newShippingOrderForm.set({
+            ...$newShippingOrderForm,
+            items: [...$newShippingOrderForm.items, { sku: "", quantity: 1, salePrice: 0 }],
+        });
+    }
+
+    function removeShippingOrderItem(index) {
+        let $newShippingOrderForm;
+        newShippingOrderForm.subscribe((v) => ($newShippingOrderForm = v))();
+        newShippingOrderForm.set({
+            ...$newShippingOrderForm,
+            items: $newShippingOrderForm.items.filter((_, idx) => idx !== index),
+        });
+    }
+
+    function addBulkOrderItem() {
+        let $newBulkOrderForm;
+        newBulkOrderForm.subscribe((v) => ($newBulkOrderForm = v))();
+        newBulkOrderForm.set({
+            ...$newBulkOrderForm,
+            items: [
+                ...$newBulkOrderForm.items,
+                { sku: "", quantity: 1, salePrice: 0, paymentMethod: "CASH", moneyHolder: "" },
+            ],
+        });
+    }
+
+    function removeBulkOrderItem(index) {
+        let $newBulkOrderForm;
+        newBulkOrderForm.subscribe((v) => ($newBulkOrderForm = v))();
+        newBulkOrderForm.set({
+            ...$newBulkOrderForm,
+            items: $newBulkOrderForm.items.filter((_, idx) => idx !== index),
+        });
+    }
 </script>
 
 <AdminHeader />
@@ -595,14 +637,8 @@
     <div class="admin-header">
         <h2>Customer Orders</h2>
         <div class="controls">
-            <button class="btn btn-primary" on:click={openAddOrderModal}>
+            <button class="btn btn-primary" on:click={() => toggleOrderFormSection(true, "standard")}>
                 <span class="icon">＋</span> Add New Order
-            </button>
-            <button class="btn btn-primary" on:click={openAddShippingOrderModal}>
-                <span class="icon">🚚</span> Add New Shipping Order
-            </button>
-            <button class="btn btn-primary" on:click={openAddBulkOrderModal}>
-                <span class="icon">📦</span> Add Many Orders
             </button>
             <button class="btn btn-primary" on:click={exportOrdersAsCSV}>
                 <span class="icon">↓</span> Export to CSV
@@ -610,345 +646,36 @@
         </div>
     </div>
 
-    {#if $showAddOrderModal}
-        <div class="modal-overlay">
-            <div class="modal modal-new-order">
-                <div class="modal-header">
-                    <h3>Add New Order</h3>
-                    <button class="modal-close" on:click={closeAddOrderModal}>✕</button>
-                </div>
-                <form class="modal-form" on:submit|preventDefault={submitNewOrder}>
-                    <div class="modal-section">
-                        <h4>Customer Details</h4>
-                        <div class="modal-row">
-                            <label>
-                                <span>Customer Name</span>
-                                <input type="text" bind:value={$newOrderForm.customerName} placeholder="Full Name" />
-                            </label>
-                            <label>
-                                <span>Phone</span>
-                                <input
-                                    type="text"
-                                    bind:value={$newOrderForm.customerPhone}
-                                    placeholder="Phone Number"
-                                />
-                            </label>
-                        </div>
-                        <div class="modal-row">
-                            <label>
-                                <span>Money Holder</span>
-                                <input
-                                    type="text"
-                                    bind:value={$newOrderForm.moneyHolder}
-                                    placeholder="Who holds the money?"
-                                />
-                            </label>
-                            <label>
-                                <span>Payment Method</span>
-                                <select bind:value={$newOrderForm.paymentMethod}>
-                                    {#each paymentMethods as method}
-                                        <option value={method.value}>{method.label}</option>
-                                    {/each}
-                                </select>
-                            </label>
-                        </div>
-                        <div class="modal-row">
-                            <label>
-                                <span>Date</span>
-                                <input type="date" bind:value={$newOrderForm.orderDate} />
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-section">
-                        <h4>Order Items</h4>
-                        <div class="modal-item-row modal-item-labels">
-                            <span class="item-sku-label">SKU / Product</span>
-                            <span class="item-qty-label">Qty</span>
-                            <span class="item-price-label">Sale Price</span>
-                            <span></span>
-                        </div>
-                        {#each $newOrderForm.items as item, idx}
-                            <div class="modal-item-row">
-                                <AutoComplete
-                                    items={$productVariants}
-                                    bind:value={item.sku}
-                                    itemLabel={(v) => `${v.sku} - ${v.displayName} (${v.color}, ${v.size})`}
-                                    itemValue={(v) => v.sku}
-                                    placeholder="Search SKU or product name..."
-                                    inputClass="item-sku"
-                                    dropdownClass="item-sku-dropdown"
-                                    on:select={(e) => handleVariantSelect(idx, e)}
-                                />
-                                <input
-                                    type="number"
-                                    class="item-qty"
-                                    min="1"
-                                    placeholder="Qty"
-                                    bind:value={item.quantity}
-                                    required
-                                />
-                                <input
-                                    type="number"
-                                    class="item-price"
-                                    min="0.01"
-                                    step="0.01"
-                                    placeholder="Sale Price"
-                                    bind:value={item.salePrice}
-                                    required
-                                />
-                                <button
-                                    class="btn btn-remove"
-                                    type="button"
-                                    on:click={() => removeOrderItem(idx)}
-                                    disabled={$newOrderForm.items.length === 1}>✕</button
-                                >
-                            </div>
-                        {/each}
-                        <button class="btn btn-add-item" type="button" on:click={addOrderItem}>＋ Add Item</button>
-                    </div>
-                    <div class="modal-actions">
-                        <button class="btn btn-primary" type="submit">Submit Order</button>
-                        <button class="btn btn-cancel" type="button" on:click={closeAddOrderModal}>Cancel</button>
-                    </div>
-                </form>
-            </div>
+    {#if $showOrderFormSection}
+        <div class="order-form-section" transition:slide={{ duration: 300 }}>
+            <OrderTabs activeTab={$activeOrderTab} on:tabChange={handleTabChange} />
+
+            {#if $activeOrderTab === "standard"}
+                <OrderForm
+                    formData={$newOrderForm}
+                    {paymentMethods}
+                    on:submit={handleOrderFormSubmit}
+                    on:cancel={() => toggleOrderFormSection(false)}
+                />
+            {:else if $activeOrderTab === "shipping"}
+                <ShippingOrderForm
+                    formData={$newShippingOrderForm}
+                    {paymentMethods}
+                    on:submit={handleShippingOrderFormSubmit}
+                    on:cancel={() => toggleOrderFormSection(false)}
+                />
+            {:else if $activeOrderTab === "bulk"}
+                <BulkOrderForm
+                    formData={$newBulkOrderForm}
+                    {paymentMethods}
+                    on:submit={handleBulkOrderFormSubmit}
+                    on:cancel={() => toggleOrderFormSection(false)}
+                />
+            {/if}
         </div>
     {/if}
 
-    {#if $showAddShippingOrderModal}
-        <div class="modal-overlay">
-            <div class="modal modal-new-order">
-                <div class="modal-header">
-                    <h3>Add New Shipping Order</h3>
-                    <button class="modal-close" on:click={closeAddShippingOrderModal}>✕</button>
-                </div>
-                <form class="modal-form" on:submit|preventDefault={submitNewShippingOrder}>
-                    <div class="modal-section">
-                        <h4>Customer Details</h4>
-                        <div class="modal-row">
-                            <label>
-                                <span>Customer Name</span>
-                                <input
-                                    type="text"
-                                    bind:value={$newShippingOrderForm.customerName}
-                                    placeholder="Full Name"
-                                />
-                            </label>
-                            <label>
-                                <span>Phone</span>
-                                <input
-                                    type="text"
-                                    bind:value={$newShippingOrderForm.customerPhone}
-                                    placeholder="Phone Number"
-                                />
-                            </label>
-                        </div>
-                        <div class="modal-row">
-                            <label>
-                                <span>Money Holder</span>
-                                <input
-                                    type="text"
-                                    bind:value={$newShippingOrderForm.moneyHolder}
-                                    placeholder="Who holds the money?"
-                                />
-                            </label>
-                            <label>
-                                <span>Payment Method</span>
-                                <select bind:value={$newShippingOrderForm.paymentMethod}>
-                                    {#each paymentMethods as method}
-                                        <option value={method.value}>{method.label}</option>
-                                    {/each}
-                                </select>
-                            </label>
-                        </div>
-                        <div class="modal-row">
-                            <label>
-                                <span>Date</span>
-                                <input type="date" bind:value={$newShippingOrderForm.orderDate} />
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-section">
-                        <h4>Order Items</h4>
-                        <div class="modal-item-row modal-item-labels">
-                            <span class="item-sku-label">SKU / Product</span>
-                            <span class="item-qty-label">Qty</span>
-                            <span class="item-price-label">Sale Price</span>
-                            <span></span>
-                        </div>
-                        {#each $newShippingOrderForm.items as item, idx}
-                            <div class="modal-item-row">
-                                <AutoComplete
-                                    items={$productVariants}
-                                    bind:value={item.sku}
-                                    itemLabel={(v) => `${v.sku} - ${v.displayName} (${v.color}, ${v.size})`}
-                                    itemValue={(v) => v.sku}
-                                    placeholder="Search SKU or product name..."
-                                    inputClass="item-sku"
-                                    dropdownClass="item-sku-dropdown"
-                                    on:select={(e) => handleShippingVariantSelect(idx, e)}
-                                />
-                                <input
-                                    type="number"
-                                    class="item-qty"
-                                    min="1"
-                                    placeholder="Qty"
-                                    bind:value={item.quantity}
-                                    required
-                                />
-                                <input
-                                    type="number"
-                                    class="item-price"
-                                    min="0.01"
-                                    step="0.01"
-                                    placeholder="Sale Price"
-                                    bind:value={item.salePrice}
-                                    required
-                                />
-                                <button
-                                    class="btn btn-remove"
-                                    type="button"
-                                    on:click={() => removeShippingOrderItem(idx)}
-                                    disabled={$newShippingOrderForm.items.length === 1}>✕</button
-                                >
-                            </div>
-                        {/each}
-                        <button class="btn btn-add-item" type="button" on:click={addShippingOrderItem}
-                            >＋ Add Item</button
-                        >
-                    </div>
-                    <div class="modal-section">
-                        <h4>Additional Info</h4>
-                        <div class="modal-row">
-                            <label>
-                                <span>Shipping Address</span>
-                                <input
-                                    type="text"
-                                    bind:value={$newShippingOrderForm.shippingAddress}
-                                    placeholder="Street, City, State, Zip, Country"
-                                />
-                            </label>
-                            <label>
-                                <span>Shipping Cost</span>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    bind:value={$newShippingOrderForm.shippingCost}
-                                    placeholder="USD"
-                                />
-                            </label>
-                        </div>
-                        <div class="modal-row">
-                            <label class="checkbox-label">
-                                <input type="checkbox" bind:checked={$newShippingOrderForm.freeShipping} />
-                                <span>Free Shipping?</span>
-                            </label>
-                            <label>
-                                <span>Shipping Method</span>
-                                <input
-                                    type="text"
-                                    bind:value={$newShippingOrderForm.shippingMethod}
-                                    placeholder="e.g. USPS Priority, In-Store Pickup"
-                                />
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-actions">
-                        <button class="btn btn-primary" type="submit">Submit Shipping Order</button>
-                        <button class="btn btn-cancel" type="button" on:click={closeAddShippingOrderModal}
-                            >Cancel</button
-                        >
-                    </div>
-                </form>
-            </div>
-        </div>
-    {/if}
-
-    {#if $showAddBulkOrderModal}
-        <div class="modal-overlay">
-            <div class="modal modal-new-order">
-                <div class="modal-header">
-                    <h3>Add Many Orders</h3>
-                    <button class="modal-close" on:click={closeAddBulkOrderModal}>✕</button>
-                </div>
-                <form class="modal-form" on:submit|preventDefault={submitNewBulkOrder}>
-                    <div class="modal-section">
-                        <div class="modal-row">
-                            <label>
-                                <span>Date</span>
-                                <input type="date" bind:value={$newBulkOrderForm.orderDate} />
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-section">
-                        <h4>Order Items</h4>
-                        <div class="modal-item-row modal-item-labels">
-                            <span class="item-sku-label">SKU / Product</span>
-                            <span class="item-qty-label">Qty</span>
-                            <span class="item-price-label">Sale Price</span>
-                            <span class="item-method-label">Payment Method</span>
-                            <span class="item-holder-label">Money Holder</span>
-                            <span></span>
-                        </div>
-                        {#each $newBulkOrderForm.items as item, idx}
-                            <div class="modal-item-row">
-                                <AutoComplete
-                                    items={$productVariants}
-                                    bind:value={item.sku}
-                                    itemLabel={(v) => `${v.sku} - ${v.displayName} (${v.color}, ${v.size})`}
-                                    itemValue={(v) => v.sku}
-                                    placeholder="Search SKU or product name..."
-                                    inputClass="item-sku"
-                                    dropdownClass="item-sku-dropdown"
-                                    on:select={(e) => handleBulkVariantSelect(idx, e)}
-                                />
-                                <input
-                                    type="number"
-                                    class="item-qty"
-                                    min="1"
-                                    placeholder="Qty"
-                                    bind:value={item.quantity}
-                                    required
-                                />
-                                <input
-                                    type="number"
-                                    class="item-price"
-                                    min="0.01"
-                                    step="0.01"
-                                    placeholder="Sale Price"
-                                    bind:value={item.salePrice}
-                                    required
-                                />
-                                <select class="item-method" bind:value={item.paymentMethod}>
-                                    {#each paymentMethods as method}
-                                        <option value={method.value}>{method.label}</option>
-                                    {/each}
-                                </select>
-                                <input
-                                    type="text"
-                                    class="item-holder"
-                                    placeholder="Money Holder"
-                                    bind:value={item.moneyHolder}
-                                />
-                                <button
-                                    class="btn btn-remove"
-                                    type="button"
-                                    on:click={() => removeBulkOrderItem(idx)}
-                                    disabled={$newBulkOrderForm.items.length === 1}>✕</button
-                                >
-                            </div>
-                        {/each}
-                        <button class="btn btn-add-item" type="button" on:click={addBulkOrderItem}>＋ Add Item</button>
-                    </div>
-                    <div class="modal-actions">
-                        <button class="btn btn-primary" type="submit">Submit Bulk Orders</button>
-                        <button class="btn btn-cancel" type="button" on:click={closeAddBulkOrderModal}>Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    {/if}
+    <!-- Order form components are now rendered above in the inline section -->
 
     <!-- Summary Cards -->
     {#if !$loadingTransactions && !$errorTransactions}
