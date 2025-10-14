@@ -13,12 +13,26 @@ const prisma = new PrismaClient();
  */
 export async function receiveStock(productVariantId, quantity, costCNY, purchaseOrderItemId, arrivalDate) {
     return prisma.$transaction(async (tx) => {
+        // Get the purchase order item to access the purchase order
+        const purchaseOrderItem = await tx.purchaseOrderItem.findUnique({
+            where: { id: purchaseOrderItemId },
+            include: { order: true },
+        });
+
+        // Calculate USD cost if there's a conversion rate
+        let costUSD = null;
+        if (purchaseOrderItem?.order?.usdToCnyRate) {
+            const usdToCnyRate = parseFloat(purchaseOrderItem.order.usdToCnyRate);
+            costUSD = parseFloat(costCNY) / usdToCnyRate;
+        }
+
         // 1. Create the new batch of inventory with its specific cost and arrival date.
         const newBatch = await tx.inventoryBatch.create({
             data: {
                 productVariantId,
                 quantity,
                 costCNY,
+                costUSD,
                 purchaseOrderItemId,
                 arrivalDate,
             },
@@ -82,7 +96,22 @@ export async function fulfillStock(productVariantId, quantityToSell, customerOrd
             const quantityFromThisBatch = Math.min(quantityToFulfill, batch.quantity);
 
             // 3. Add to the total COGS for this sale.
-            totalCogs += quantityFromThisBatch * parseFloat(batch.cost);
+            // Use costUSD if available, otherwise calculate it from costCNY using the purchase order's usdToCnyRate
+            let batchCost = 0;
+            if (batch.costUSD !== null && batch.costUSD !== undefined) {
+                batchCost = parseFloat(batch.costUSD);
+            } else if (batch.costCNY !== null && batch.costCNY !== undefined) {
+                // Get the usdToCnyRate from the purchase order
+                const usdToCnyRate = batch.purchaseOrderItem?.order?.usdToCnyRate;
+                if (usdToCnyRate) {
+                    // Convert from CNY to USD
+                    batchCost = parseFloat(batch.costCNY) / parseFloat(usdToCnyRate);
+                } else {
+                    console.warn(`No usdToCnyRate found for batch ${batch.id}, using 0 for cost`);
+                    batchCost = 0;
+                }
+            }
+            totalCogs += quantityFromThisBatch * batchCost;
 
             // 4. Update the batch to reflect the sale.
             await tx.inventoryBatch.update({

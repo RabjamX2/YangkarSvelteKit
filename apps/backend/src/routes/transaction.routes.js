@@ -70,13 +70,18 @@ const addInventoryBatch = asyncHandler(async (req, res) => {
             },
         });
     }
-    // Create inventory batch
+    // Create inventory batch - calculate costUSD from costCNY if needed
+    let calculatedCostUSD = costUSD;
+    if (!calculatedCostUSD && costCNY && req.body.usdToCnyRate) {
+        calculatedCostUSD = parseFloat(costCNY) / parseFloat(req.body.usdToCnyRate);
+    }
+
     const batch = await prisma.inventoryBatch.create({
         data: {
             productVariantId: variant.id,
             quantity,
             costCNY: costCNY || null,
-            costUSD: costUSD || null,
+            costUSD: calculatedCostUSD || null,
         },
         include: { productVariant: true },
     });
@@ -322,7 +327,7 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
                 productVariantId: item.productVariantId,
                 change: -item.quantity,
                 reason: "Sale",
-                user: userFromToken?.username || customer?.name || "Guest",
+                user: userFromToken?.username || customerName || "Guest",
                 orderId: order.id,
                 orderType: "CUSTOMER",
             },
@@ -415,7 +420,7 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
                 data: {
                     productVariantId: item.productVariantId,
                     quantity: item.quantityOrdered,
-                    cost: costPerItem,
+                    costUSD: costPerItem, // Store as USD since COGS is always calculated in USD
                 },
             });
 
