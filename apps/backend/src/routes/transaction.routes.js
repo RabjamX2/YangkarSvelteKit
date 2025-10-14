@@ -272,7 +272,8 @@ const getStockChanges = asyncHandler(async (req, res) => {
  */
 const createCustomerOrder = asyncHandler(async (req, res) => {
     const userFromToken = req.user;
-    const { customer, items, moneyHolder, paymentMethod } = req.body;
+    const { customerName, customerPhone, items, moneyHolder, paymentMethod, paymentStatus, fulfillmentStatus } =
+        req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400);
         throw new Error("No items in order");
@@ -295,9 +296,12 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
     // Create order and items
     const order = await prisma.customerOrder.create({
         data: {
-            customerName: customer?.name || "Guest",
+            customerName: customerName || "Guest",
+            customerPhone,
             moneyHolder,
             paymentMethod,
+            paymentStatus: paymentStatus || "PAID",
+            fulfillmentStatus: fulfillmentStatus || "PICKED_UP",
             items: {
                 create: items.map((item) => ({
                     variant: { connect: { id: item.productVariantId } },

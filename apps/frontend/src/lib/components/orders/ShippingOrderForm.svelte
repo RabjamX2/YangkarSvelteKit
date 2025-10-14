@@ -38,6 +38,7 @@
         const selected = event.detail.item;
         const items = [...formData.items];
         items[idx].sku = selected.sku;
+        items[idx].productVariantId = selected.id; // Add this line to include the ID
         items[idx].displayName = selected.displayName;
         items[idx].color = selected.color;
         items[idx].size = selected.size;
@@ -65,11 +66,11 @@
             <div class="form-row">
                 <label>
                     <span>Customer Name</span>
-                    <input type="text" bind:value={formData.customerName} placeholder="Enter customer name" required />
+                    <input type="text" bind:value={formData.customerName} placeholder="Enter customer name" />
                 </label>
                 <label>
                     <span>Phone Number</span>
-                    <input type="text" bind:value={formData.customerPhone} placeholder="Enter phone number" required />
+                    <input type="text" bind:value={formData.customerPhone} placeholder="Enter phone number" />
                 </label>
             </div>
         </div>
@@ -79,11 +80,11 @@
             <div class="form-row">
                 <label>
                     <span>Money Holder</span>
-                    <input type="text" bind:value={formData.moneyHolder} placeholder="Who holds the money" required />
+                    <input type="text" bind:value={formData.moneyHolder} placeholder="Who holds the money" />
                 </label>
                 <label>
                     <span>Payment Method</span>
-                    <select bind:value={formData.paymentMethod} required>
+                    <select bind:value={formData.paymentMethod}>
                         <option value="" disabled selected>Select payment method</option>
                         {#each paymentMethods as method}
                             <option value={method.value}>{method.label}</option>
@@ -92,7 +93,7 @@
                 </label>
                 <label>
                     <span>Order Date</span>
-                    <input type="date" bind:value={formData.orderDate} required />
+                    <input type="date" bind:value={formData.orderDate} />
                 </label>
             </div>
         </div>
@@ -106,14 +107,13 @@
                         bind:value={formData.shippingAddress}
                         rows="3"
                         placeholder="Enter complete shipping address"
-                        required
                     ></textarea>
                 </label>
             </div>
             <div class="form-row">
                 <label>
                     <span>Shipping Method</span>
-                    <select bind:value={formData.shippingMethod} required>
+                    <select bind:value={formData.shippingMethod}>
                         <option value="" disabled selected>Select shipping method</option>
                         {#each shippingMethods as method}
                             <option value={method}>{method}</option>
@@ -128,7 +128,6 @@
                         min="0"
                         bind:value={formData.shippingCost}
                         disabled={formData.freeShipping}
-                        required={!formData.freeShipping}
                     />
                 </label>
                 <label class="checkbox-label">
@@ -158,14 +157,7 @@
                         dropdownClass="item-sku-dropdown"
                         on:select={(e) => handleVariantSelect(idx, e)}
                     />
-                    <input
-                        type="number"
-                        class="item-qty"
-                        min="1"
-                        placeholder="Qty"
-                        bind:value={item.quantity}
-                        required
-                    />
+                    <input type="number" class="item-qty" min="1" placeholder="Qty" bind:value={item.quantity} />
                     <input
                         type="number"
                         class="item-price"
@@ -173,7 +165,6 @@
                         step="0.01"
                         placeholder="Sale Price"
                         bind:value={item.salePrice}
-                        required
                     />
                     <button
                         class="btn btn-remove"

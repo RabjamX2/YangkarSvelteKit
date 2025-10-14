@@ -29,6 +29,7 @@
         const selected = event.detail.item;
         const items = [...formData.items];
         items[idx].sku = selected.sku;
+        items[idx].productVariantId = selected.id; // Add this line to include the ID
         items[idx].displayName = selected.displayName;
         items[idx].color = selected.color;
         items[idx].size = selected.size;
@@ -55,7 +56,7 @@
             <div class="form-row">
                 <label>
                     <span>Order Date</span>
-                    <input type="date" bind:value={formData.orderDate} required />
+                    <input type="date" bind:value={formData.orderDate} />
                 </label>
             </div>
             <p class="help-text">
@@ -85,22 +86,15 @@
                         dropdownClass="item-sku-dropdown"
                         on:select={(e) => handleVariantSelect(idx, e)}
                     />
-                    <input type="number" min="1" placeholder="Qty" bind:value={item.quantity} required />
-                    <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        placeholder="Sale Price"
-                        bind:value={item.salePrice}
-                        required
-                    />
-                    <select bind:value={item.paymentMethod} required>
+                    <input type="number" min="1" placeholder="Qty" bind:value={item.quantity} />
+                    <input type="number" min="0.01" step="0.01" placeholder="Sale Price" bind:value={item.salePrice} />
+                    <select bind:value={item.paymentMethod}>
                         <option value="" disabled>Select payment</option>
                         {#each paymentMethods as method}
                             <option value={method.value}>{method.label}</option>
                         {/each}
                     </select>
-                    <input type="text" placeholder="Money Holder" bind:value={item.moneyHolder} required />
+                    <input type="text" placeholder="Money Holder" bind:value={item.moneyHolder} />
                     <button
                         class="btn btn-remove"
                         type="button"

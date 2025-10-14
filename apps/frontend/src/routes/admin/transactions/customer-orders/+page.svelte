@@ -469,16 +469,50 @@
         try {
             // Validate items
             const formData = event.detail;
+            // Fill in defaults for optional fields that might be missing
+            if (!formData.paymentStatus) formData.paymentStatus = "PAID";
+            if (!formData.fulfillmentStatus) formData.fulfillmentStatus = "PICKED_UP";
+
+            // Process items
             for (const item of formData.items) {
-                if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
-                    throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
+                // Check if we have a productVariantId or try to find it by SKU
+                if (!item.productVariantId) {
+                    if (!item.sku) {
+                        throw new Error("Please ensure all items have a valid SKU or product selection.");
+                    }
+                    // Try to find the variant by SKU
+                    const variant = $productVariants.find((v) => v.sku === item.sku);
+                    if (!variant) {
+                        throw new Error(`Cannot find product variant with SKU: ${item.sku}`);
+                    }
+                    item.productVariantId = variant.id;
+                }
+
+                // Set defaults for optional fields
+                if (!item.quantity || item.quantity <= 0) item.quantity = 1;
+                if (!item.salePrice || item.salePrice <= 0) {
+                    // Try to get the sale price from the product variants
+                    const variant = $productVariants.find((v) => v.id === item.productVariantId || v.sku === item.sku);
+                    item.salePrice = variant?.salePrice || 0;
                 }
             }
+
+            // Prepare data structure expected by the backend
+            const orderData = {
+                customerName: formData.customerName,
+                customerPhone: formData.customerPhone,
+                items: formData.items,
+                moneyHolder: formData.moneyHolder,
+                paymentMethod: formData.paymentMethod,
+                paymentStatus: formData.paymentStatus,
+                fulfillmentStatus: formData.fulfillmentStatus,
+                orderDate: formData.orderDate || new Date().toISOString(),
+            };
 
             const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(orderData),
             });
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
@@ -497,9 +531,32 @@
         try {
             // Validate items
             const formData = event.detail;
+            // Default values for shipping order
+            formData.paymentStatus = formData.paymentStatus || "PAID";
+            formData.fulfillmentStatus = formData.fulfillmentStatus || "SHIPPED"; // Default to SHIPPED for shipping orders
+
             for (const item of formData.items) {
-                if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
-                    throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
+                // Only validate SKU as it's required to identify the product
+                if (!item.sku) {
+                    throw new Error("Please ensure all items have a valid SKU.");
+                }
+
+                // Ensure we have product variant ID
+                if (!item.productVariantId) {
+                    const variant = $productVariants.find((v) => v.sku === item.sku);
+                    if (variant) {
+                        item.productVariantId = variant.id;
+                    } else {
+                        throw new Error(`Cannot find product variant with SKU: ${item.sku}`);
+                    }
+                }
+
+                // Set defaults for optional fields
+                if (!item.quantity || item.quantity <= 0) item.quantity = 1;
+                if (!item.salePrice || item.salePrice <= 0) {
+                    // Try to get the sale price from the product variants
+                    const variant = $productVariants.find((v) => v.id === item.productVariantId || v.sku === item.sku);
+                    item.salePrice = variant?.salePrice || 0;
                 }
             }
 
@@ -508,10 +565,26 @@
                 formData.shippingCost = 0;
             }
 
+            // Prepare data structure expected by the backend
+            const orderData = {
+                customerName: formData.customerName, // Direct field, not nested under customer
+                customerPhone: formData.customerPhone,
+                items: formData.items,
+                moneyHolder: formData.moneyHolder,
+                paymentMethod: formData.paymentMethod,
+                paymentStatus: formData.paymentStatus,
+                fulfillmentStatus: formData.fulfillmentStatus,
+                orderDate: formData.orderDate || new Date().toISOString(),
+                shippingCost: formData.shippingCost,
+                shippingMethod: formData.shippingMethod,
+                trackingNumber: formData.trackingNumber,
+                shippingAddress: formData.shippingAddress,
+            };
+
             const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(orderData),
             });
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
@@ -530,10 +603,32 @@
         try {
             // Validate items
             const formData = event.detail;
+
             for (const item of formData.items) {
-                if (!item.sku || item.quantity <= 0 || item.salePrice <= 0) {
-                    throw new Error("Please ensure all items have valid SKU, quantity, and sale price.");
+                // Only validate SKU as it's required to identify the product
+                if (!item.sku) {
+                    throw new Error("Please ensure all items have a valid SKU.");
                 }
+
+                // Ensure we have product variant ID
+                if (!item.productVariantId) {
+                    const variant = $productVariants.find((v) => v.sku === item.sku);
+                    if (variant) {
+                        item.productVariantId = variant.id;
+                    } else {
+                        throw new Error(`Cannot find product variant with SKU: ${item.sku}`);
+                    }
+                }
+
+                // Set defaults for optional fields
+                if (!item.quantity || item.quantity <= 0) item.quantity = 1;
+                if (!item.salePrice || item.salePrice <= 0) {
+                    // Try to get the sale price from the product variants
+                    const variant = $productVariants.find((v) => v.id === item.productVariantId || v.sku === item.sku);
+                    item.salePrice = variant?.salePrice || 0;
+                }
+                // Set defaults for payment method and money holder
+                item.paymentMethod = item.paymentMethod || "CASH";
             }
 
             const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders/bulk`, {
@@ -563,6 +658,7 @@
         const selected = event.detail.item;
         const items = [...$newOrderForm.items];
         items[idx].sku = selected.sku;
+        items[idx].productVariantId = selected.id; // Add this line to include the ID
         items[idx].displayName = selected.displayName;
         items[idx].color = selected.color;
         items[idx].size = selected.size;
@@ -576,6 +672,7 @@
         const selected = event.detail.item;
         const items = [...$newShippingOrderForm.items];
         items[idx].sku = selected.sku;
+        items[idx].productVariantId = selected.id; // Add this line to include the ID
         items[idx].displayName = selected.displayName;
         items[idx].color = selected.color;
         items[idx].size = selected.size;
@@ -589,6 +686,7 @@
         const selected = event.detail.item;
         const items = [...$newBulkOrderForm.items];
         items[idx].sku = selected.sku;
+        items[idx].productVariantId = selected.id; // Add this line to include the ID
         items[idx].displayName = selected.displayName;
         items[idx].color = selected.color;
         items[idx].size = selected.size;
