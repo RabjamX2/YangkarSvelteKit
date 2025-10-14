@@ -89,6 +89,8 @@
         moneyHolder: "",
         paymentMethod: "",
         orderDate: "",
+        paymentStatus: "PAID",
+        fulfillmentStatus: "PICKED_UP",
         items: [{ sku: "", quantity: 1, salePrice: 0 }],
     });
     const newShippingOrderForm = writable({
@@ -133,13 +135,21 @@
     $: fetchAuth = createAuthFetch(csrfToken);
 
     // Status options for dropdown
-    const statusOptions = [
+    const fulfillmentStatusOptions = [
         { value: "UNFULFILLED", label: "Unfulfilled" },
         { value: "PROCESSING", label: "Processing" },
         { value: "SHIPPED", label: "Shipped" },
         { value: "DELIVERED", label: "Delivered" },
         { value: "PICKED_UP", label: "Picked Up" },
         { value: "CANCELLED", label: "Cancelled" },
+    ];
+
+    // Payment status options for dropdown
+    const paymentStatusOptions = [
+        { value: "PENDING", label: "Pending" },
+        { value: "PAID", label: "Paid" },
+        { value: "REFUNDED", label: "Refunded" },
+        { value: "FAILED", label: "Failed" },
     ];
 
     // Payment methods for dropdown
@@ -364,7 +374,7 @@
         );
 
         const countByStatus = {};
-        statusOptions.forEach((status) => {
+        fulfillmentStatusOptions.forEach((status) => {
             countByStatus[status.value] = $filteredOrders.filter(
                 (order) => order.fulfillmentStatus === status.value
             ).length;
@@ -410,6 +420,8 @@
                 moneyHolder: "",
                 paymentMethod: "",
                 orderDate: "",
+                paymentStatus: "PAID",
+                fulfillmentStatus: "PICKED_UP",
                 items: [{ sku: "", quantity: 1, salePrice: 0 }],
             });
             newShippingOrderForm.set({
@@ -654,6 +666,8 @@
                 <OrderForm
                     formData={$newOrderForm}
                     {paymentMethods}
+                    {paymentStatusOptions}
+                    {fulfillmentStatusOptions}
                     on:submit={handleOrderFormSubmit}
                     on:cancel={() => toggleOrderFormSection(false)}
                 />
@@ -706,7 +720,7 @@
             <label for="status">Status:</label>
             <select id="status" bind:value={$statusFilter}>
                 <option value="ALL">All Statuses</option>
-                {#each statusOptions as status}
+                {#each fulfillmentStatusOptions as status}
                     <option value={status.value}>{status.label}</option>
                 {/each}
             </select>
@@ -845,7 +859,7 @@
                             </td>
                             <td>
                                 <select bind:value={$editForm.status} class="form-select">
-                                    {#each statusOptions as status}
+                                    {#each fulfillmentStatusOptions as status}
                                         <option value={status.value}>{status.label}</option>
                                     {/each}
                                 </select>

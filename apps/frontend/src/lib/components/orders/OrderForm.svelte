@@ -9,9 +9,13 @@
         moneyHolder: "",
         paymentMethod: "",
         orderDate: "",
+        paymentStatus: "PAID",
+        fulfillmentStatus: "PICKED_UP",
         items: [{ sku: "", quantity: 1, salePrice: 0 }],
     };
     export let paymentMethods = [];
+    export let paymentStatusOptions = [];
+    export let fulfillmentStatusOptions = [];
 
     const dispatch = createEventDispatcher();
 
@@ -88,6 +92,24 @@
                 <label>
                     <span>Order Date</span>
                     <input type="date" bind:value={formData.orderDate} required />
+                </label>
+            </div>
+            <div class="form-row">
+                <label>
+                    <span>Payment Status</span>
+                    <select bind:value={formData.paymentStatus}>
+                        {#each paymentStatusOptions as status}
+                            <option value={status.value}>{status.label}</option>
+                        {/each}
+                    </select>
+                </label>
+                <label>
+                    <span>Fulfillment Status</span>
+                    <select bind:value={formData.fulfillmentStatus}>
+                        {#each fulfillmentStatusOptions as status}
+                            <option value={status.value}>{status.label}</option>
+                        {/each}
+                    </select>
                 </label>
             </div>
         </div>
