@@ -38,23 +38,57 @@
     $: filteredAndSortedOrders = derived(
         [purchaseOrders, searchTerm, statusFilter, sortField, sortDirection],
         ([$purchaseOrders, $searchTerm, $statusFilter, $sortField, $sortDirection]) => {
+            // Normalize search term
+            const normalizedSearchTerm = ($searchTerm || "").toLowerCase().trim();
+
             // Filter by search term and status
             let filtered = $purchaseOrders.filter((order) => {
-                const matchesSearch =
-                    $searchTerm === "" ||
-                    order.batchNumber.toLowerCase().includes($searchTerm.toLowerCase()) ||
-                    order.items.some(
-                        (item) =>
-                            item.variant?.sku?.toLowerCase().includes($searchTerm.toLowerCase()) ||
-                            item.variant?.product?.name?.toLowerCase().includes($searchTerm.toLowerCase())
-                    );
-
+                // Status filter check
                 const matchesStatus =
                     $statusFilter === "all" ||
                     ($statusFilter === "pending" && !order.hasArrived) ||
                     ($statusFilter === "received" && order.hasArrived);
 
-                return matchesSearch && matchesStatus;
+                // If status doesn't match, skip this order
+                if (!matchesStatus) return false;
+
+                // If no search term, include all orders that match status
+                if (normalizedSearchTerm === "") return true;
+
+                // Search in batch number
+                const batchNumber = String(order.batchNumber || "").toLowerCase();
+                if (batchNumber.includes(normalizedSearchTerm)) return true;
+
+                // Search in order notes
+                const notes = String(order.notes || "").toLowerCase();
+                if (notes.includes(normalizedSearchTerm)) return true;
+
+                // Search in order items
+                const matchesInItems = order.items?.some((item) => {
+                    // Search in SKU
+                    const sku = String(item.variant?.sku || "").toLowerCase();
+                    if (sku.includes(normalizedSearchTerm)) return true;
+
+                    // Search in product name
+                    const productName = String(item.variant?.product?.name || "").toLowerCase();
+                    if (productName.includes(normalizedSearchTerm)) return true;
+
+                    // Search in product display name
+                    const displayName = String(item.variant?.product?.displayName || "").toLowerCase();
+                    if (displayName.includes(normalizedSearchTerm)) return true;
+
+                    // Search in color
+                    const color = String(item.variant?.color || "").toLowerCase();
+                    if (color.includes(normalizedSearchTerm)) return true;
+
+                    // Search in size
+                    const size = String(item.variant?.size || "").toLowerCase();
+                    if (size.includes(normalizedSearchTerm)) return true;
+
+                    return false;
+                });
+
+                return matchesInItems;
             });
 
             // Sort by selected field and direction
@@ -63,8 +97,8 @@
 
                 switch ($sortField) {
                     case "batchNumber":
-                        valueA = a.batchNumber;
-                        valueB = b.batchNumber;
+                        valueA = String(a.batchNumber || "").toLowerCase();
+                        valueB = String(b.batchNumber || "").toLowerCase();
                         break;
                     case "shipDate":
                         valueA = a.shipDate ? new Date(a.shipDate).getTime() : 0;
@@ -75,25 +109,31 @@
                         valueB = b.arrivalDate ? new Date(b.arrivalDate).getTime() : 0;
                         break;
                     case "totalItems":
-                        valueA = a.items.reduce((sum, item) => sum + item.quantityOrdered, 0);
-                        valueB = b.items.reduce((sum, item) => sum + item.quantityOrdered, 0);
+                        valueA = (a.items || []).reduce((sum, item) => sum + (item.quantityOrdered || 0), 0);
+                        valueB = (b.items || []).reduce((sum, item) => sum + (item.quantityOrdered || 0), 0);
                         break;
                     case "totalCost":
-                        valueA = a.items.reduce(
-                            (sum, item) => sum + item.quantityOrdered * parseFloat(item.costPerItemUsd || 0),
+                        valueA = (a.items || []).reduce(
+                            (sum, item) => sum + (item.quantityOrdered || 0) * parseFloat(item.costPerItemUsd || 0),
                             0
                         );
-                        valueB = b.items.reduce(
-                            (sum, item) => sum + item.quantityOrdered * parseFloat(item.costPerItemUsd || 0),
+                        valueB = (b.items || []).reduce(
+                            (sum, item) => sum + (item.quantityOrdered || 0) * parseFloat(item.costPerItemUsd || 0),
                             0
                         );
                         break;
                     default:
-                        valueA = a.batchNumber;
-                        valueB = b.batchNumber;
+                        valueA = String(a.batchNumber || "").toLowerCase();
+                        valueB = String(b.batchNumber || "").toLowerCase();
                 }
 
-                const comparison = typeof valueA === "string" ? valueA.localeCompare(valueB) : valueA - valueB;
+                // Handle comparison with null safety
+                let comparison = 0;
+                if (typeof valueA === "string" && typeof valueB === "string") {
+                    comparison = valueA.localeCompare(valueB);
+                } else {
+                    comparison = (valueA || 0) - (valueB || 0);
+                }
 
                 return $sortDirection === "asc" ? comparison : -comparison;
             });
@@ -251,14 +291,25 @@
         loadingTransactions.set(true);
         errorTransactions.set(null);
         try {
+            console.log("Fetching purchase orders from:", `${PUBLIC_BACKEND_URL}/api/purchase-orders`);
+
             const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-orders`);
+
+            console.log("Purchase orders response status:", response.status);
+
             if (!response.ok) {
-                throw new Error("Failed to fetch purchase orders.");
+                const errorText = await response.text();
+                console.error("Purchase orders error response:", errorText);
+                throw new Error(`Failed to fetch purchase orders: ${response.status} ${response.statusText}`);
             }
+
             const result = await response.json();
-            purchaseOrders.set(result.data);
+            console.log("Purchase orders data:", result);
+
+            purchaseOrders.set(result.data || []);
         } catch (err) {
-            errorTransactions.set(err.message);
+            console.error("Error fetching purchase orders:", err);
+            errorTransactions.set(err.message || "Failed to fetch purchase orders");
         } finally {
             loadingTransactions.set(false);
         }

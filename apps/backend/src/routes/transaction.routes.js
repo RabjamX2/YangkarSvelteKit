@@ -268,6 +268,7 @@ const getStockChanges = asyncHandler(async (req, res) => {
         include: {
             variant: { include: { product: true } },
         },
+        orderBy: [{ changeTime: "desc" }, { date: "desc" }, { id: "desc" }],
     });
     res.json({ data: changes });
 });
@@ -339,6 +340,73 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Creates multiple customer orders in bulk (one order per item).
+ */
+const createBulkCustomerOrders = asyncHandler(async (req, res) => {
+    const userFromToken = req.user;
+    const { items, orderDate } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        res.status(400);
+        throw new Error("No items in bulk order");
+    }
+
+    const createdOrders = [];
+
+    // Create a separate order for each item
+    for (const item of items) {
+        if (!item.productVariantId) {
+            res.status(400);
+            throw new Error("Each item must have a productVariantId");
+        }
+
+        // Create order with single item
+        const order = await prisma.customerOrder.create({
+            data: {
+                customerName: "Bulk Order",
+                moneyHolder: item.moneyHolder || null,
+                paymentMethod: item.paymentMethod || "CASH",
+                paymentStatus: "PAID",
+                fulfillmentStatus: "PICKED_UP",
+                orderDate: orderDate ? new Date(orderDate) : new Date(),
+                items: {
+                    create: {
+                        variant: { connect: { id: item.productVariantId } },
+                        quantity: item.quantity || 1,
+                        salePrice: item.salePrice || 0,
+                    },
+                },
+            },
+            include: { items: true },
+        });
+
+        // FIFO logic: fulfill stock for the item
+        const orderItem = order.items[0];
+        await fulfillStock(orderItem.productVariantId, orderItem.quantity, orderItem.id);
+
+        // Log stock change
+        await prisma.stockChange.create({
+            data: {
+                productVariantId: orderItem.productVariantId,
+                change: -orderItem.quantity,
+                reason: "Bulk Sale",
+                user: userFromToken?.username || "Guest",
+                orderId: order.id,
+                orderType: "CUSTOMER",
+            },
+        });
+
+        createdOrders.push(order);
+    }
+
+    req.log.info(
+        { event: "bulk_orders_created", orderCount: createdOrders.length, userId: userFromToken?.id },
+        "Bulk customer orders created"
+    );
+    res.status(201).json({ data: createdOrders, count: createdOrders.length });
+});
+
+/**
  * Receives a purchase order and updates stock for each item.
  */
 const receivePurchaseOrder = asyncHandler(async (req, res) => {
@@ -398,8 +466,15 @@ const getInventoryBatches = asyncHandler(async (req, res) => {
  */
 const voidCustomerOrder = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
+    const orderIdInt = parseInt(orderId, 10);
+
+    if (isNaN(orderIdInt)) {
+        res.status(400);
+        throw new Error("Invalid order ID");
+    }
+
     const order = await prisma.customerOrder.findUnique({
-        where: { id: orderId },
+        where: { id: orderIdInt },
         include: { items: true },
     });
     if (!order) {
@@ -441,8 +516,8 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
     }
     // Mark order as cancelled
     await prisma.customerOrder.update({
-        where: { id: orderId },
-        data: { status: "CANCELLED" },
+        where: { id: orderIdInt },
+        data: { fulfillmentStatus: "CANCELLED" },
     });
     res.json({ message: "Order voided and stock restored." });
 });
@@ -476,8 +551,10 @@ const createStockChange = asyncHandler(async (req, res) => {
 // Customer Orders
 router.get("/customer-orders", authenticateToken, getCustomerOrders);
 router.post("/customer-orders", authenticateToken, createCustomerOrder);
+router.post("/customer-orders/bulk", authenticateToken, createBulkCustomerOrders);
 router.patch("/customer-orders/:id", authenticateToken, updateCustomerOrder);
-router.post("/void-sale/:orderId", authenticateToken, voidCustomerOrder);
+router.post("/customer-orders/:orderId/void", authenticateToken, voidCustomerOrder);
+router.post("/void-sale/:orderId", authenticateToken, voidCustomerOrder); // Legacy route
 
 // Purchase Orders
 router.get("/purchase-orders", authenticateToken, getPurchaseOrders);

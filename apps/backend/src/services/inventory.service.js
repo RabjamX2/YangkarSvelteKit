@@ -84,8 +84,16 @@ export async function fulfillStock(productVariantId, quantityToSell, customerOrd
 
         const totalStock = batches.reduce((sum, batch) => sum + batch.quantity, 0);
         if (totalStock < quantityToSell) {
+            // Fetch product variant details for a better error message
+            const variant = await tx.productVariant.findUnique({
+                where: { id: productVariantId },
+                include: { product: true },
+            });
+            const variantName = variant
+                ? `${variant.product.displayName || variant.product.name} (${variant.color}${variant.size ? `, ${variant.size}` : ""}) - SKU: ${variant.sku}`
+                : `variant ID ${productVariantId}`;
             throw new Error(
-                `Not enough stock for variant ${productVariantId}. Available: ${totalStock}, Requested: ${quantityToSell}`
+                `Insufficient stock for ${variantName}. Available: ${totalStock}, Requested: ${quantityToSell}`
             );
         }
 
