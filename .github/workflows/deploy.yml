@@ -113,4 +113,4 @@ jobs:
                       NODE_ENV=production pnpm --filter frontend build
 
                       # Restart the service with updated environment, or start if not running
-                      pm2 restart frontend --update-env || pm2 start build/index.js --name frontend --update-env
+                      pm2 restart frontend --update-env || pm2 start apps/frontend/build/index.js --name frontend --update-env
