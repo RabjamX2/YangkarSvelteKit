@@ -81,3 +81,5 @@ This project includes several VS Code tasks for common operations:
 ## Package Management
 
 This project uses pnpm exclusively. Please do not use npm or yarn as this may cause dependency resolution issues.
+
+Server went down randomly fix it by redeploying
