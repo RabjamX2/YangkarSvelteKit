@@ -60,8 +60,8 @@ jobs:
                       # Using the new --no-engine flag as recommended for production
                       pnpm --filter backend exec prisma generate --no-engine
 
-                      # Restart backend with updated environment
-                      pm2 restart backend --update-env
+                      # Restart backend with updated environment, or start if not running
+                      pm2 restart backend --update-env || pm2 start apps/backend/src/index.js --name backend --update-env
 
     deploy-frontend:
         name: Deploy Frontend App
@@ -112,5 +112,5 @@ jobs:
                       # Build the frontend app directly on the server
                       NODE_ENV=production pnpm --filter frontend build
 
-                      # Restart the service with updated environment
-                      pm2 restart frontend --update-env
+                      # Restart the service with updated environment, or start if not running
+                      pm2 restart frontend --update-env || pm2 start build/index.js --name frontend --update-env
