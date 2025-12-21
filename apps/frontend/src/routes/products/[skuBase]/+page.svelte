@@ -99,10 +99,10 @@
             {/if}
         </div>
 
-        <div class="product-description">
+        <!-- <div class="product-description">
             <h3>Description</h3>
             <p>{data.product.notes || "No description available."}</p>
-        </div>
+        </div> -->
     </div>
 </div>
 
