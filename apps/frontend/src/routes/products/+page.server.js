@@ -5,10 +5,11 @@ export async function load({ url, fetch }) {
     // The 'category' param can be a comma-separated list.
     const sort = url.searchParams.get("sort") || "default";
     const categoriesParam = url.searchParams.get("category");
+    const page = url.searchParams.get("page") || "1"; // Get page from URL or default to 1
 
     // 2. Build the API request URL safely using URLSearchParams.
     const apiParams = new URLSearchParams();
-    apiParams.set("page", "1"); // Always fetch page 1 for the initial load
+    apiParams.set("page", page); // Use the page from URL
     apiParams.set("sort", sort);
 
     // Only add the category parameter to the API call if it actually exists.

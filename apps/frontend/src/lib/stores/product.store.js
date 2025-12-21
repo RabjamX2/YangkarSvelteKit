@@ -84,6 +84,7 @@ function createProductStore() {
         const currentActiveCategories = get(activeCategories);
 
         const params = new URLSearchParams();
+        params.set("page", "1"); // Always reset to page 1 when filters/sort change
         params.set("sort", currentSortKey);
 
         if (currentActiveCategories.size > 0) {

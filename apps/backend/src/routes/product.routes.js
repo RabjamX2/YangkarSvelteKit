@@ -112,11 +112,21 @@ const getProducts = asyncHandler(async (req, res) => {
         return product.variants.length > 0;
     });
 
+    // Get the TOTAL count of ALL products with visible variants (not just this page)
+    // This requires counting products that have at least one visible variant
     const whereFilter = categoryIds.length > 0 ? { categoryId: { in: categoryIds } } : {};
-    const totalProductsResult = await prisma.product.count({ where: whereFilter });
 
-    // Get the count of products with at least one visible variant
-    const totalVisibleProducts = filteredProducts.length;
+    // Count total products with at least one visible variant
+    const totalVisibleProducts = await prisma.product.count({
+        where: {
+            ...whereFilter,
+            variants: {
+                some: {
+                    visable: true,
+                },
+            },
+        },
+    });
 
     res.json({
         data: filteredProducts,
