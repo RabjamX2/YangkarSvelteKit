@@ -147,18 +147,12 @@ const getProductBySku = asyncHandler(async (req, res) => {
                 where: {
                     visable: true,
                 },
-                select: {
-                    id: true,
-                    sku: true,
-                    productId: true,
-                    color: true,
-                    displayColor: true,
-                    colorHex: true,
-                    size: true,
-                    salePrice: true,
-                    stock: true,
-                    imgUrl: true,
-                    visable: true,
+                include: {
+                    inventoryBatches: {
+                        select: {
+                            quantity: true,
+                        },
+                    },
                 },
                 orderBy: [{ color: "asc" }, { size: "asc" }],
             },
@@ -175,6 +169,13 @@ const getProductBySku = asyncHandler(async (req, res) => {
         res.status(404);
         throw new Error("Product not available");
     }
+
+    // Calculate stock for each variant from inventoryBatches
+    product.variants = product.variants.map((variant) => ({
+        ...variant,
+        stock: variant.inventoryBatches.reduce((sum, batch) => sum + batch.quantity, 0),
+        inventoryBatches: undefined, // Remove from response
+    }));
 
     res.json(product);
 });
