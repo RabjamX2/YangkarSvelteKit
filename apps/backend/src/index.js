@@ -11,6 +11,7 @@ import productRoutes from "./routes/product.routes.js";
 import cartRoutes from "./routes/cart.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js"; // Import transaction routes
 import imageRoutes from "./routes/image.routes.js"; // Import image routes
+import sellerRoutes from "./routes/seller.routes.js"; // Import seller routes
 
 // Import services
 import { maybeCleanupExpiredSessions, scheduleSessionCleanup } from "./services/sessionCleanup.js";
@@ -252,6 +253,8 @@ app.use("/api", cartRoutes); // Use cart routes
 app.use("/api", transactionRoutes); // Use transaction routes
 // All image-related routes
 app.use("/api", imageRoutes);
+// All seller-related routes
+app.use("/api", sellerRoutes);
 
 // --- Centralized Error Handler ---
 // This should be the LAST middleware you use

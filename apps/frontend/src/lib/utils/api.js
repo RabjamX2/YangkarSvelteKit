@@ -1,5 +1,6 @@
 import { auth } from "$lib/stores/auth.store.js";
 import { browser } from "$app/environment";
+import { get } from "svelte/store";
 
 // Get the backend URL from environment variables
 const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
@@ -8,6 +9,40 @@ const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 let isRefreshing = false;
 let refreshPromise = null;
 const pendingRequests = [];
+
+/**
+ * Helper function to get a cookie value by name
+ */
+function getCookie(name) {
+    if (!browser) return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+        const part = parts.pop();
+        return part ? part.split(";").shift() : null;
+    }
+    return null;
+}
+
+/**
+ * Helper function to decode JWT and extract CSRF token
+ */
+function getCsrfTokenFromCookie() {
+    if (!browser) return null;
+
+    const accessToken = getCookie("access_token");
+    if (!accessToken) return null;
+
+    try {
+        // JWT format is: header.payload.signature
+        const payload = accessToken.split(".")[1];
+        const decoded = JSON.parse(atob(payload));
+        return decoded.csrf || null;
+    } catch (error) {
+        console.error("Failed to decode JWT for CSRF token:", error);
+        return null;
+    }
+}
 
 /**
  * Custom fetch utility with automatic token refresh
@@ -25,13 +60,18 @@ export async function apiFetch(url, options = {}) {
     // Always include credentials for cookies
     fetchOptions.credentials = "include";
 
-    // Add CSRF token for non-GET/HEAD requests if available
+    // Add CSRF token for non-GET/HEAD requests
     if (!["GET", "HEAD"].includes(fetchOptions.method || "GET")) {
-        const csrfToken = auth?.csrfToken;
+        // Get current auth store value
+        const authValue = get(auth);
+
+        // Try to get CSRF token from cookie first (won't work due to HttpOnly), then from auth store
+        const csrfToken = getCsrfTokenFromCookie() || authValue?.csrfToken;
+
         if (csrfToken) {
             fetchOptions.headers = {
                 ...fetchOptions.headers,
-                "X-CSRF-Token": csrfToken,
+                "x-csrf-token": csrfToken,
             };
         }
     }

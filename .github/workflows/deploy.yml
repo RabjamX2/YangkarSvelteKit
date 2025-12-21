@@ -116,5 +116,5 @@ jobs:
 
                       # Restart the service with updated environment, or start if not running
                       cd apps/frontend
-                      pm2 restart frontend --update-env || ORIGIN=https://yangkarbhoeche.com pm2 start build/index.js --name frontend --update-env
+                      pm2 restart frontend --update-env || PORT=5000 PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com pm2 start build/index.js --name frontend --update-env
                       cd ../..
