@@ -9,6 +9,20 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // =========================
+// Helper Functions
+// =========================
+
+/**
+ * Calculates current stock for a variant by summing all inventory batch quantities
+ */
+async function calculateCurrentStock(variantId) {
+    const batches = await prisma.inventoryBatch.findMany({
+        where: { productVariantId: variantId },
+    });
+    return batches.reduce((sum, batch) => sum + batch.quantity, 0);
+}
+
+// =========================
 // Route Controllers
 // =========================
 
@@ -266,10 +280,15 @@ const getPurchaseOrders = asyncHandler(async (req, res) => {
 const getStockChanges = asyncHandler(async (req, res) => {
     const changes = await prisma.stockChange.findMany({
         include: {
-            variant: { include: { product: true } },
+            variant: {
+                include: {
+                    product: true,
+                },
+            },
         },
         orderBy: [{ changeTime: "desc" }, { date: "desc" }, { id: "desc" }],
     });
+
     res.json({ data: changes });
 });
 
@@ -322,11 +341,14 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
     // FIFO logic: fulfill stock for each item
     for (const item of order.items) {
         await fulfillStock(item.productVariantId, item.quantity, item.id);
+        // Calculate stock after this change
+        const stockAfter = await calculateCurrentStock(item.productVariantId);
         // Log stock change only; no direct productVariant stock update
         await prisma.stockChange.create({
             data: {
                 productVariantId: item.productVariantId,
                 change: -item.quantity,
+                stockAfterChange: stockAfter,
                 reason: "Sale",
                 user: userFromToken?.username || customerName || "Guest",
                 orderId: order.id,
@@ -384,11 +406,14 @@ const createBulkCustomerOrders = asyncHandler(async (req, res) => {
         const orderItem = order.items[0];
         await fulfillStock(orderItem.productVariantId, orderItem.quantity, orderItem.id);
 
+        // Calculate stock after this change
+        const stockAfter = await calculateCurrentStock(orderItem.productVariantId);
         // Log stock change
         await prisma.stockChange.create({
             data: {
                 productVariantId: orderItem.productVariantId,
                 change: -orderItem.quantity,
+                stockAfterChange: stockAfter,
                 reason: "Bulk Sale",
                 user: userFromToken?.username || "Guest",
                 orderId: order.id,
@@ -420,10 +445,13 @@ const receivePurchaseOrder = asyncHandler(async (req, res) => {
     }
     for (const item of purchaseOrder.items) {
         await receiveStock(item.productVariantId, item.quantityOrdered, parseFloat(item.costPerItemCny), item.id);
+        // Calculate stock after this change
+        const stockAfter = await calculateCurrentStock(item.productVariantId);
         await prisma.stockChange.create({
             data: {
                 productVariantId: item.productVariantId,
                 change: item.quantityOrdered,
+                stockAfterChange: stockAfter,
                 changeTime: purchaseOrder.arrivalDate || new Date(),
                 reason: "Purchase Order Received",
                 user: req.user?.username || "System",
@@ -501,11 +529,14 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
 
             // No direct productVariant stock update; stock is tracked via inventory batches only
 
+            // Calculate stock after this change
+            const stockAfter = await calculateCurrentStock(item.productVariantId);
             // Log the stock change
             await prisma.stockChange.create({
                 data: {
                     productVariantId: item.productVariantId,
                     change: item.quantityOrdered,
+                    stockAfterChange: stockAfter,
                     reason: "Void Sale",
                     user: order.customer?.name || "Unknown",
                     orderId: order.id,
@@ -532,15 +563,76 @@ const createStockChange = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("productVariantId, change, and reason are required");
     }
+
+    const changeAmount = Number(change);
+    const variantId = Number(productVariantId);
+
+    // Handle inventory batch updates based on whether this is an addition or removal
+    if (changeAmount > 0) {
+        // Adding stock - create a new inventory batch
+        await prisma.inventoryBatch.create({
+            data: {
+                productVariantId: variantId,
+                quantity: changeAmount,
+                costCNY: 0, // Manual additions don't have cost tracking
+                costUSD: 0,
+            },
+        });
+    } else if (changeAmount < 0) {
+        // Removing stock - use FIFO to reduce from oldest batches first
+        let remainingToRemove = Math.abs(changeAmount);
+
+        // Get all batches for this variant, ordered by creation date (FIFO)
+        const batches = await prisma.inventoryBatch.findMany({
+            where: { productVariantId: variantId },
+            orderBy: { createdAt: "asc" },
+        });
+
+        for (const batch of batches) {
+            if (remainingToRemove <= 0) break;
+
+            if (batch.quantity > 0) {
+                const toRemoveFromBatch = Math.min(batch.quantity, remainingToRemove);
+
+                // Update the batch quantity
+                await prisma.inventoryBatch.update({
+                    where: { id: batch.id },
+                    data: { quantity: batch.quantity - toRemoveFromBatch },
+                });
+
+                remainingToRemove -= toRemoveFromBatch;
+            }
+        }
+
+        if (remainingToRemove > 0) {
+            req.log?.warn({ variantId, remainingToRemove }, "Not enough inventory to fulfill manual stock removal");
+            // Create a negative batch to track the deficit
+            await prisma.inventoryBatch.create({
+                data: {
+                    productVariantId: variantId,
+                    quantity: -remainingToRemove,
+                    costCNY: 0,
+                    costUSD: 0,
+                },
+            });
+        }
+    }
+
+    // Calculate stock after this change
+    const stockAfter = await calculateCurrentStock(variantId);
+
+    // Create the stock change record for audit trail
     const stockChange = await prisma.stockChange.create({
         data: {
-            productVariantId: Number(productVariantId),
-            change: Number(change),
+            productVariantId: variantId,
+            change: changeAmount,
+            stockAfterChange: stockAfter,
             reason,
             user: userFromToken?.username || "Manual",
             orderType: "MANUAL",
         },
     });
+
     res.status(201).json({ data: stockChange });
 });
 

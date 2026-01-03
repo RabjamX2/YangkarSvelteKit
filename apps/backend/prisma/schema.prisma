@@ -21,10 +21,11 @@ model StockChange {
     productVariantId Int
     variant          ProductVariant @relation(fields: [productVariantId], references: [id])
 
-    change     Int // Positive for addition, negative for removal
-    reason     String?
-    user       String? // Optionally, who made the change
-    changeTime DateTime? @default(now())
+    change           Int // Positive for addition, negative for removal
+    stockAfterChange Int? // Snapshot of stock immediately after this change
+    reason           String?
+    user             String? // Optionally, who made the change
+    changeTime       DateTime? @default(now())
 
     orderId   Int? // Optionally, link to a CustomerOrder or PurchaseOrder
     orderType OrderType?

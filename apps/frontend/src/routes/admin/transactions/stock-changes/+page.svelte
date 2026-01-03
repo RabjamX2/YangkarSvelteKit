@@ -27,6 +27,9 @@
     const loadingTransactions = writable(false);
     const errorTransactions = writable(null);
     const variantSearch = writable("");
+    const variantSelectorSearch = writable("");
+    const showVariantDropdown = writable(false);
+    const selectedVariantDisplay = writable("");
     const expandedDates = writable({});
     const dateFrom = writable("");
     const dateTo = writable("");
@@ -72,12 +75,16 @@
             const variants = [];
             for (const product of data.data) {
                 for (const v of product.variants) {
+                    // Calculate stock from inventory batches
+                    const stock = v.inventoryBatches
+                        ? v.inventoryBatches.reduce((sum, batch) => sum + (batch.quantity || 0), 0)
+                        : 0;
                     variants.push({
                         id: v.id,
                         sku: v.sku,
                         color: v.color,
                         size: v.size,
-                        stock: v.stock,
+                        stock: stock,
                         productName: product.name,
                     });
                 }
@@ -108,8 +115,11 @@
             });
             if (!res.ok) throw new Error("Failed to record stock change");
             manualStockChange.set({ variantId: "", change: "", reason: "", user: "" });
+            selectedVariantDisplay.set("");
+            variantSelectorSearch.set("");
             manualStockChangeError.set("");
             fetchStockChanges();
+            fetchProductVariants(); // Refresh to update stock counts
         } catch (e) {
             manualStockChangeError.set(e instanceof Error ? e.message : String(e));
         }
@@ -118,9 +128,24 @@
     onMount(() => {
         fetchStockChanges();
         fetchProductVariants();
+
+        // Close dropdown when clicking outside
+        const handleClickOutside = (event) => {
+            const dropdown = document.querySelector(".variant-selector-dropdown");
+            const input = document.getElementById("variant");
+            if (dropdown && !dropdown.contains(event.target) && event.target !== input) {
+                showVariantDropdown.set(false);
+            }
+        };
+
+        document.addEventListener("click", handleClickOutside);
+
+        return () => {
+            document.removeEventListener("click", handleClickOutside);
+        };
     });
 
-    // Derived store for filtered variants
+    // Derived store for filtered variants (for table filter)
     const filteredVariants = derived([productVariants, variantSearch], ([$productVariants, $variantSearch]) => {
         if (!$variantSearch) return $productVariants;
         const term = $variantSearch.toLowerCase();
@@ -132,6 +157,37 @@
                 (v.size && v.size.toLowerCase().includes(term))
         );
     });
+
+    // Derived store for variant selector dropdown
+    const filteredVariantsForSelector = derived(
+        [productVariants, variantSelectorSearch],
+        ([$productVariants, $variantSelectorSearch]) => {
+            if (!$variantSelectorSearch || $variantSelectorSearch.length < 1) return $productVariants;
+            const term = $variantSelectorSearch.toLowerCase();
+            return $productVariants.filter(
+                (v) =>
+                    v.productName?.toLowerCase().includes(term) ||
+                    v.sku?.toLowerCase().includes(term) ||
+                    v.color?.toLowerCase().includes(term) ||
+                    (v.size && v.size.toLowerCase().includes(term))
+            );
+        }
+    );
+
+    function selectVariant(variant) {
+        manualStockChange.update((v) => ({ ...v, variantId: variant.id }));
+        selectedVariantDisplay.set(
+            `${variant.productName} | ${variant.sku} | ${variant.color}${variant.size ? ` (${variant.size})` : ""} | Stock: ${variant.stock}`
+        );
+        variantSelectorSearch.set("");
+        showVariantDropdown.set(false);
+    }
+
+    function clearVariantSelection() {
+        manualStockChange.update((v) => ({ ...v, variantId: "" }));
+        selectedVariantDisplay.set("");
+        variantSelectorSearch.set("");
+    }
 
     // Derived store for filtered grouped stock changes
     const filteredGroupedStockChanges = derived(
@@ -225,7 +281,7 @@
                     variant.color || "-",
                     variant.size || "-",
                     change.change,
-                    change.variant?.stock ?? "-",
+                    change.stockAfterChange ?? "-",
                     change.reason || "-",
                     change.user || "-",
                     change.orderType || "-",
@@ -380,16 +436,68 @@
             on:submit|preventDefault={submitManualStockChange}
             style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:1rem;align-items:end;"
         >
-            <div>
+            <div style="position:relative;">
                 <label for="variant" style="font-weight:600;">Variant:</label>
-                <select id="variant" bind:value={$manualStockChange.variantId} required style="width:100%;">
-                    <option value="">Select variant...</option>
-                    {#each $filteredVariants as v}
-                        <option value={v.id}
-                            >{v.productName} | {v.sku} | {v.color}{v.size ? ` (${v.size})` : ""} | Stock: {v.stock}</option
+                {#if $manualStockChange.variantId && $selectedVariantDisplay}
+                    <div
+                        style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);"
+                    >
+                        <span style="flex:1;font-size:0.95rem;">{$selectedVariantDisplay}</span>
+                        <button
+                            type="button"
+                            on:click={clearVariantSelection}
+                            style="background:#dc3545;color:white;padding:0.3rem 0.6rem;font-size:0.85rem;"
                         >
-                    {/each}
-                </select>
+                            ✕
+                        </button>
+                    </div>
+                {:else}
+                    <input
+                        id="variant"
+                        type="text"
+                        bind:value={$variantSelectorSearch}
+                        on:focus={() => showVariantDropdown.set(true)}
+                        on:input={() => showVariantDropdown.set(true)}
+                        placeholder="Search by name, SKU, color, or size..."
+                        required={!$manualStockChange.variantId}
+                        style="width:100%;"
+                        autocomplete="off"
+                    />
+                    {#if $showVariantDropdown && $filteredVariantsForSelector.length > 0}
+                        <div
+                            class="variant-selector-dropdown"
+                            style="position:absolute;top:100%;left:0;right:0;max-height:300px;overflow-y:auto;background:var(--color-bg);border:1px solid var(--color-border);border-radius:4px;margin-top:0.25rem;z-index:100;box-shadow:0 4px 6px rgba(0,0,0,0.1);"
+                        >
+                            {#each $filteredVariantsForSelector.slice(0, 50) as variant}
+                                <button
+                                    type="button"
+                                    on:click={() => selectVariant(variant)}
+                                    style="width:100%;text-align:left;padding:0.6rem;border:none;background:var(--color-bg);color:var(--color-text);cursor:pointer;border-bottom:1px solid var(--color-border);font-size:0.95rem;"
+                                    on:mouseenter={(e) => (e.target.style.background = "var(--color-link-bg-hover)")}
+                                    on:mouseleave={(e) => (e.target.style.background = "var(--color-bg)")}
+                                >
+                                    <div style="font-weight:600;">{variant.productName}</div>
+                                    <div style="font-size:0.85rem;color:var(--color-text-light);margin-top:0.2rem;">
+                                        {variant.sku} | {variant.color}{variant.size ? ` (${variant.size})` : ""} | Stock:
+                                        <span
+                                            style="font-weight:600;color:{variant.stock > 0
+                                                ? 'var(--status-received-color)'
+                                                : 'var(--order-cancelled-color)'};">{variant.stock}</span
+                                        >
+                                    </div>
+                                </button>
+                            {/each}
+                            {#if $filteredVariantsForSelector.length > 50}
+                                <div
+                                    style="padding:0.6rem;text-align:center;color:var(--color-text-light);font-size:0.9rem;"
+                                >
+                                    Showing first 50 of {$filteredVariantsForSelector.length} results. Keep typing to narrow
+                                    down...
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+                {/if}
             </div>
             <div>
                 <label for="change" style="font-weight:600;">Change:</label>
@@ -586,7 +694,7 @@
                                             >
                                                 {isPositive ? "+" : ""}{change.change}
                                             </td>
-                                            <td style="font-weight:600;">{change.variant?.stock ?? "-"}</td>
+                                            <td style="font-weight:600;">{change.stockAfterChange ?? "-"}</td>
                                             <td>
                                                 <span
                                                     style="background:var(--color-link-bg-hover);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.9rem;"
