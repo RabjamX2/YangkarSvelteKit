@@ -572,7 +572,7 @@ const createStockChange = asyncHandler(async (req, res) => {
         // Adding stock - create a new inventory batch
         await prisma.inventoryBatch.create({
             data: {
-                productVariantId: variantId,
+                productVariant: { connect: { id: variantId } },
                 quantity: changeAmount,
                 costCNY: 0, // Manual additions don't have cost tracking
                 costUSD: 0,
@@ -609,7 +609,7 @@ const createStockChange = asyncHandler(async (req, res) => {
             // Create a negative batch to track the deficit
             await prisma.inventoryBatch.create({
                 data: {
-                    productVariantId: variantId,
+                    productVariant: { connect: { id: variantId } },
                     quantity: -remainingToRemove,
                     costCNY: 0,
                     costUSD: 0,
