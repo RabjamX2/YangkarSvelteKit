@@ -29,11 +29,11 @@ export async function receiveStock(productVariantId, quantity, costCNY, purchase
         // 1. Create the new batch of inventory with its specific cost and arrival date.
         const newBatch = await tx.inventoryBatch.create({
             data: {
-                productVariantId,
+                productVariant: { connect: { id: productVariantId } },
                 quantity,
                 costCNY,
                 costUSD,
-                purchaseOrderItemId,
+                purchaseOrderItem: purchaseOrderItemId ? { connect: { id: purchaseOrderItemId } } : undefined,
                 arrivalDate,
             },
         });

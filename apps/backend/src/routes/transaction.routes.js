@@ -92,7 +92,7 @@ const addInventoryBatch = asyncHandler(async (req, res) => {
 
     const batch = await prisma.inventoryBatch.create({
         data: {
-            productVariantId: variant.id,
+            productVariant: { connect: { id: variant.id } },
             quantity,
             costCNY: costCNY || null,
             costUSD: calculatedCostUSD || null,
@@ -521,7 +521,7 @@ const voidCustomerOrder = asyncHandler(async (req, res) => {
             // Create a new inventory batch for the returned items
             await prisma.inventoryBatch.create({
                 data: {
-                    productVariantId: item.productVariantId,
+                    productVariant: { connect: { id: item.productVariantId } },
                     quantity: item.quantityOrdered,
                     costUSD: costPerItem, // Store as USD since COGS is always calculated in USD
                 },

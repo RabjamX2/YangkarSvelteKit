@@ -166,8 +166,8 @@ model InventoryBatch {
     costUSD  Decimal?
     costCNY  Decimal?
 
-    purchaseOrderItemId Int               @unique
-    purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+    purchaseOrderItemId Int?              @unique
+    purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
 
     CustomerOrder CustomerOrderItem[]
 
