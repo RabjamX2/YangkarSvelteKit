@@ -1,8 +1,17 @@
 <script>
     // @ts-nocheck
-    // Import createAuthFetch utility for making authenticated requests
-    import { createAuthFetch } from "$lib/utils/csrf.js";
+    import { apiFetch } from "$lib/utils/api.js";
+    import { auth } from "$lib/stores/auth.store.js";
     import { onMount } from "svelte";
+
+    export let data;
+
+    // Set CSRF token from server data
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
 
     // State variables
     let debugResult = null;
@@ -15,19 +24,16 @@
         error = null;
 
         try {
-            // Create authenticated fetch
-            const fetchAuth = createAuthFetch();
-
             // Call the debug endpoint
-            const response = await fetchAuth(`${import.meta.env.VITE_PUBLIC_BACKEND_URL}/api/debug-set-cookie`);
+            const response = await apiFetch(`/api/debug-set-cookie`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error ${response.status}`);
             }
 
             // Parse the response
-            const data = await response.json();
-            debugResult = data;
+            const responseData = await response.json();
+            debugResult = responseData;
         } catch (err) {
             console.error("Error testing cookies:", err);
             error = err.message;

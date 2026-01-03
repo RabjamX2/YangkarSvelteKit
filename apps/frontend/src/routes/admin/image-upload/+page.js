@@ -1,5 +1,5 @@
 /** @type {import('./$types').PageLoad} */
-export async function load({ fetch }) {
+export async function load({ fetch, data }) {
     // Pre-fetch user data using SvelteKit's fetch
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
@@ -10,12 +10,12 @@ export async function load({ fetch }) {
 
         if (response.ok) {
             const userData = await response.json();
-            return { userData };
+            return { userData, csrfToken: data.csrfToken };
         }
 
-        return { userData: null };
+        return { userData: null, csrfToken: data.csrfToken };
     } catch (error) {
         console.error("Error fetching user data:", error);
-        return { userData: null };
+        return { userData: null, csrfToken: data.csrfToken };
     }
 }

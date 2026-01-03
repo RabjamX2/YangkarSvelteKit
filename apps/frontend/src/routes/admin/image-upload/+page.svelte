@@ -2,8 +2,7 @@
     // @ts-nocheck
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
-    import { page } from "$app/stores";
+    import { apiFetch } from "$lib/utils/api.js";
     import { browser } from "$app/environment";
     import { auth } from "$lib/stores/auth.store.js";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
@@ -16,8 +15,15 @@
         import("./cropper-essential.css");
     }
 
-    // Environment variables
-    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+    // Get data passed from the page load function
+    export let data;
+
+    // Set CSRF token from server data
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
 
     // Stores
     const products = writable([]);
@@ -49,9 +55,6 @@
     let quality = 0.8; // Image compression quality (0-1)
     const maxWidth = 1000; // Maximum width for the uploaded image
     let Cropper;
-
-    // Get data passed from the page load function
-    export let data;
 
     // Initialize data and Cropper library
     onMount(async () => {
@@ -97,15 +100,14 @@
         error.set(null);
 
         try {
-            const fetchAuth = createAuthFetch($page);
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
+            const res = await apiFetch(`/api/products-with-variants?all=true`);
 
             if (!res.ok) {
                 throw new Error(`Error fetching products: ${res.statusText}`);
             }
 
-            const data = await res.json();
-            const productsData = data.data || data;
+            const resData = await res.json();
+            const productsData = resData.data || resData;
             products.set(productsData);
             filteredProducts.set(productsData);
         } catch (err) {
@@ -195,8 +197,7 @@
     // Fetch unique colors for a product
     async function fetchProductColors(productId) {
         try {
-            const fetchAuth = createAuthFetch($page);
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products/${productId}/colors`);
+            const res = await apiFetch(`/api/products/${productId}/colors`);
 
             if (!res.ok) {
                 throw new Error(`Error fetching product colors: ${res.statusText}`);
@@ -1427,9 +1428,9 @@
                     headers["X-CSRF-Token"] = authData.csrfToken;
                 }
 
-                // Fallback to page data if store doesn't have token
-                if (!headers["X-CSRF-Token"] && $page.data?.csrfToken) {
-                    headers["X-CSRF-Token"] = $page.data.csrfToken;
+                // Fallback to data prop if store doesn't have token
+                if (!headers["X-CSRF-Token"] && data?.csrfToken) {
+                    headers["X-CSRF-Token"] = data.csrfToken;
                 }
 
                 // Debug the formData
@@ -1455,12 +1456,12 @@
             // Ensure we have the CSRF token in the formData as well (as a backup approach)
             if ($auth.csrfToken) {
                 formData.append("_csrf", $auth.csrfToken);
-            } else if ($page.data?.csrfToken) {
-                formData.append("_csrf", $page.data.csrfToken);
+            } else if (data?.csrfToken) {
+                formData.append("_csrf", data.csrfToken);
             }
 
             // Use our custom fetch that doesn't set Content-Type
-            const res = await customFetchAuth(`${PUBLIC_BACKEND_URL}/api/upload-image`, {
+            const res = await customFetchAuth(`/api/upload-image`, {
                 method: "POST",
                 body: formData,
                 headers: {
@@ -1495,20 +1496,16 @@
 
             const uploadResult = await res.json();
 
-            // Create authenticated fetch with CSRF token for the variant update
-            const fetchAuth = createAuthFetch($page);
-
             // Update image URL based on whether to apply to all sizes or just one variant
             let updateRes;
             let updatedCount = 1;
 
             if ($applyToAllSizes && $selectedColor) {
                 // Apply to all variants of this color
-                updateRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/product-color-image`, {
+                updateRes = await apiFetch(`/api/product-color-image`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-CSRF-Token": $auth.csrfToken || $page.data?.csrfToken,
                     },
                     body: JSON.stringify({
                         productId: $selectedProduct.id,
@@ -1524,11 +1521,10 @@
                 }
             } else {
                 // Apply to just the selected variant
-                updateRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${$selectedVariant.id}/image`, {
+                updateRes = await apiFetch(`/api/variants/${$selectedVariant.id}/image`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-CSRF-Token": $auth.csrfToken || $page.data?.csrfToken,
                     },
                     body: JSON.stringify({
                         imgUrl: uploadResult.location,

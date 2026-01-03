@@ -5,7 +5,8 @@
     import { page } from "$app/stores";
     import { slide, fade } from "svelte/transition";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
+    import { apiFetch } from "$lib/utils/api.js";
+    import { auth } from "$lib/stores/auth.store.js";
     import "../transactionTable.css";
     import "./customerOrders.css";
     import "./orderForms.css";
@@ -17,6 +18,16 @@
     import ShippingOrderForm from "$lib/components/orders/ShippingOrderForm.svelte";
     import BulkOrderForm from "$lib/components/orders/BulkOrderForm.svelte";
     import OrderTabs from "$lib/components/orders/OrderTabs.svelte";
+
+    // REQUIRED: Receive data prop from layout
+    export let data;
+
+    // REQUIRED: Set CSRF token in auth store
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     const customerOrders = writable([]);
@@ -129,10 +140,6 @@
 
     let loggedInUser = "";
     $: loggedInUser = $page.data?.user?.name || $page.data?.user?.username || $page.data?.user?.email || "";
-
-    // Create authenticated fetch with CSRF protection
-    $: csrfToken = $page.data?.csrfToken;
-    $: fetchAuth = createAuthFetch(csrfToken);
 
     // Status options for dropdown
     const fulfillmentStatusOptions = [
@@ -267,7 +274,7 @@
     // Refresh order data
     async function refreshOrders() {
         try {
-            const custRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`);
+            const custRes = await apiFetch(`/api/customer-orders`);
             if (!custRes.ok) throw new Error("Failed to fetch customer orders");
             const custData = await custRes.json();
             customerOrders.set(custData.data || []);
@@ -281,7 +288,7 @@
     // Toggle money collected status
     async function toggleMoneyCollected(order) {
         try {
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders/${order.id}`, {
+            const res = await apiFetch(`/api/customer-orders/${order.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -300,7 +307,7 @@
     async function voidOrder(orderId) {
         if (!confirm("Are you sure you want to void this transaction? This cannot be undone.")) return;
         try {
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders/${orderId}/void`, {
+            const res = await apiFetch(`/api/customer-orders/${orderId}/void`, {
                 method: "POST",
             });
 
@@ -399,7 +406,7 @@
 
     onMount(async () => {
         loadingTransactions.set(true);
-        await fetchProductVariants(PUBLIC_BACKEND_URL, fetchAuth);
+        await fetchProductVariants();
         try {
             await refreshOrders();
         } catch (e) {
@@ -581,7 +588,7 @@
                 shippingAddress: formData.shippingAddress,
             };
 
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
+            const res = await apiFetch(`/api/customer-orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(orderData),
@@ -631,7 +638,7 @@
                 item.paymentMethod = item.paymentMethod || "CASH";
             }
 
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders/bulk`, {
+            const res = await apiFetch(`/api/customer-orders/bulk`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

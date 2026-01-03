@@ -5,11 +5,22 @@
     import { page } from "$app/stores";
     import { slide, fade } from "svelte/transition";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
+    import { apiFetch } from "$lib/utils/api.js";
+    import { auth } from "$lib/stores/auth.store.js";
     import "./purchaseOrders.css";
     import "./orderSummary.css";
     import "../transactionTable.css";
     import { browser } from "$app/environment";
+
+    // REQUIRED: Receive data prop from layout
+    export let data;
+
+    // REQUIRED: Set CSRF token in auth store
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
@@ -29,10 +40,6 @@
     const statusFilter = writable("all"); // all, pending, received
     const sortField = writable("batchNumber");
     const sortDirection = writable("asc");
-
-    // Create authenticated fetch with CSRF protection
-    $: csrfToken = $page.data?.csrfToken;
-    $: fetchAuth = createAuthFetch(csrfToken);
 
     // Filter and sort orders
     $: filteredAndSortedOrders = derived(
@@ -194,7 +201,7 @@
         try {
             // Update color if changed
             if ($editForm.color !== undefined) {
-                await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-order-items/${itemId}/color`, {
+                await apiFetch(`/api/purchase-order-items/${itemId}/color`, {
                     method: "POST",
                     body: JSON.stringify({ color: $editForm.color }),
                 });
@@ -202,7 +209,7 @@
 
             // Update size if changed
             if ($editForm.size !== undefined) {
-                await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-order-items/${itemId}/size`, {
+                await apiFetch(`/api/purchase-order-items/${itemId}/size`, {
                     method: "POST",
                     body: JSON.stringify({ size: $editForm.size }),
                 });
@@ -210,7 +217,7 @@
 
             // Update quantity if changed
             if ($editForm.quantity !== undefined) {
-                await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-order-items/${itemId}/quantity`, {
+                await apiFetch(`/api/purchase-order-items/${itemId}/quantity`, {
                     method: "POST",
                     body: JSON.stringify({ quantityOrdered: Number($editForm.quantity) }),
                 });
@@ -218,7 +225,7 @@
 
             // Update cost if changed
             if ($editForm.cost !== undefined) {
-                await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-order-items/${itemId}/cost`, {
+                await apiFetch(`/api/purchase-order-items/${itemId}/cost`, {
                     method: "POST",
                     body: JSON.stringify({ costPerItemUsd: parseFloat($editForm.cost) }),
                 });
@@ -267,7 +274,7 @@
 
         receivingOrderId.set(orderId);
         try {
-            const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/receive-purchase-order/${orderId}`, {
+            const response = await apiFetch(`/api/receive-purchase-order/${orderId}`, {
                 method: "POST",
             });
 
@@ -293,7 +300,7 @@
         try {
             console.log("Fetching purchase orders from:", `${PUBLIC_BACKEND_URL}/api/purchase-orders`);
 
-            const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/purchase-orders`);
+            const response = await apiFetch(`/api/purchase-orders`);
 
             console.log("Purchase orders response status:", response.status);
 

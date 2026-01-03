@@ -4,7 +4,6 @@
     import CartIcon from "$lib/components/CartIcon.svelte";
     import CartSidebar from "$lib/components/CartSidebar.svelte";
     import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import "./layout.css";

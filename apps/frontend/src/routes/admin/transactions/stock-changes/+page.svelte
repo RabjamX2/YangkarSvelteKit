@@ -3,9 +3,20 @@
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
+    import { apiFetch } from "$lib/utils/api.js";
+    import { auth } from "$lib/stores/auth.store.js";
     import { page } from "$app/stores";
     import "../transactionTable.css";
+
+    // REQUIRED: Receive data prop from layout
+    export let data;
+
+    // REQUIRED: Set CSRF token in auth store
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     const stockChanges = writable([]);
@@ -27,10 +38,6 @@
     const loadingOrderDetails = writable(false);
     const orderDetailsError = writable("");
 
-    // Create authenticated fetch with CSRF protection
-    $: csrfToken = $page.data?.csrfToken;
-    $: fetchAuth = createAuthFetch(csrfToken);
-
     function groupByDay(changes) {
         const groups = {};
         for (const change of changes) {
@@ -47,7 +54,7 @@
 
     async function fetchStockChanges() {
         try {
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/stock-changes`);
+            const res = await apiFetch(`/api/stock-changes`);
             if (!res.ok) throw new Error("Failed to fetch stock changes");
             const data = await res.json();
             stockChanges.set(data.data || []);
@@ -59,7 +66,7 @@
 
     async function fetchProductVariants() {
         try {
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
+            const res = await apiFetch(`/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch variants");
             const data = await res.json();
             const variants = [];
@@ -89,7 +96,7 @@
             return;
         }
         try {
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/stock-changes`, {
+            const res = await apiFetch(`/api/stock-changes`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -275,14 +282,14 @@
         try {
             let endpoint = "";
             if (orderType === "CUSTOMER") {
-                endpoint = `${PUBLIC_BACKEND_URL}/api/customer-orders`;
+                endpoint = `/api/customer-orders`;
             } else if (orderType === "PURCHASE") {
-                endpoint = `${PUBLIC_BACKEND_URL}/api/purchase-orders`;
+                endpoint = `/api/purchase-orders`;
             } else {
                 throw new Error("Invalid order type");
             }
 
-            const res = await fetchAuth(endpoint);
+            const res = await apiFetch(endpoint);
             if (!res.ok) throw new Error("Failed to fetch order details");
             const data = await res.json();
 

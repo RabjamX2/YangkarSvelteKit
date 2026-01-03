@@ -1,13 +1,14 @@
 <script>
     // @ts-nocheck
 
-    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
-    import { page } from "$app/stores";
+    import { apiFetch } from "$lib/utils/api.js";
+    import { auth } from "$lib/stores/auth.store.js";
     import "./productTable.css";
+
+    export let data;
 
     const products = writable([]);
     const expanded = writable({}); // { [productId]: true }
@@ -42,6 +43,13 @@
     const searchName = writable("");
     const sortBy = writable("none"); // "none", "salePriceAsc", "salePriceDesc"
 
+    // Set CSRF token from server data
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
+
     // Derived: categoryID to name map
     let categoryIdToName = {};
     categories.subscribe((cats) => {
@@ -56,19 +64,17 @@
     onMount(async () => {
         loading.set(true);
         try {
-            const fetchAuth = createAuthFetch($page);
-
             // Fetch categories
-            const catRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/categories`);
+            const catRes = await apiFetch(`/api/categories`);
             if (catRes.ok) {
                 const catData = await catRes.json();
                 categories.set(catData);
             }
             // Fetch products with variants (all for admin)
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
+            const res = await apiFetch(`/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch products");
-            const data = await res.json();
-            products.set(data.data);
+            const resData = await res.json();
+            products.set(resData.data);
         } catch (e) {
             error.set(e instanceof Error ? e.message : String(e));
         } finally {
@@ -85,16 +91,15 @@
         try {
             let url, body;
             if (type === "product") {
-                url = `${PUBLIC_BACKEND_URL}/api/products/${id}`;
+                url = `/api/products/${id}`;
                 body = { visable: !currentValue };
             } else if (type === "variant") {
-                url = `${PUBLIC_BACKEND_URL}/api/variants/${id}`;
+                url = `/api/variants/${id}`;
                 body = { visable: !currentValue };
             } else {
                 throw new Error("Invalid type");
             }
-            const fetchAuth = createAuthFetch($page);
-            const res = await fetchAuth(url, {
+            const res = await apiFetch(url, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
@@ -121,8 +126,7 @@
         edits.subscribe((v) => ($edits = v))();
         if (!$edits[id]) return;
         try {
-            const fetchAuth = createAuthFetch($page);
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products/${id}`, {
+            const res = await apiFetch(`/api/products/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify($edits[id]),
@@ -144,8 +148,7 @@
         edits.subscribe((v) => ($edits = v))();
         if (!$edits[variantId]) return;
         try {
-            const fetchAuth = createAuthFetch($page);
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
+            const res = await apiFetch(`/api/variants/${variantId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify($edits[variantId]),
@@ -176,10 +179,9 @@
         const variantIds = product.variants.map((v) => v.id);
         try {
             // Update all variants in parallel
-            const fetchAuth = createAuthFetch($page);
             await Promise.all(
                 variantIds.map(async (variantId) => {
-                    const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/variants/${variantId}`, {
+                    const res = await apiFetch(`/api/variants/${variantId}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ salePrice: price }),

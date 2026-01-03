@@ -3,24 +3,31 @@
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
+    import { apiFetch } from "$lib/utils/api.js";
+    import { auth } from "$lib/stores/auth.store.js";
     import { page } from "$app/stores";
     import "../transactionTable.css";
+
+    // REQUIRED: Receive data prop from layout
+    export let data;
+
+    // REQUIRED: Set CSRF token in auth store
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
 
     const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
     const inventoryBatches = writable([]);
     const loadingBatches = writable(false);
     const errorBatches = writable(null);
 
-    // Create authenticated fetch with CSRF protection
-    $: csrfToken = $page.data?.csrfToken;
-    $: fetchAuth = createAuthFetch(csrfToken);
-
     onMount(async () => {
         loadingBatches.set(true);
         errorBatches.set(null);
         try {
-            const response = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/inventory-batches`);
+            const response = await apiFetch(`/api/inventory-batches`);
             if (!response.ok) {
                 throw new Error("Failed to fetch inventory batches.");
             }

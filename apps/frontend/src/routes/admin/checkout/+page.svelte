@@ -1,12 +1,13 @@
 <script>
     // @ts-nocheck
-    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
     import { onMount } from "svelte";
     import { writable, derived } from "svelte/store";
     import AdminHeader from "$lib/components/AdminHeader.svelte";
-    import { createAuthFetch } from "$lib/utils/csrf.js";
-    import { page } from "$app/stores";
+    import { apiFetch } from "$lib/utils/api.js";
+    import { auth } from "$lib/stores/auth.store.js";
+
+    export let data;
 
     const products = writable([]);
     const variants = writable([]);
@@ -22,18 +23,23 @@
     const salesChannel = writable("IN_PERSON");
     const orderNotes = writable("");
 
+    // Set CSRF token from server data
+    $: if (data?.csrfToken) {
+        if ($auth.csrfToken !== data.csrfToken) {
+            auth.setCsrfToken(data.csrfToken);
+        }
+    }
+
     onMount(async () => {
         loading.set(true);
         try {
-            const fetchAuth = createAuthFetch($page);
-
             // Fetch products and variants
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/products-with-variants?all=true`);
+            const res = await apiFetch(`/api/products-with-variants?all=true`);
             if (!res.ok) throw new Error("Failed to fetch products");
-            const data = await res.json();
-            products.set(data.data);
+            const resData = await res.json();
+            products.set(resData.data);
             let allVariants = [];
-            data.data.forEach((p) => {
+            resData.data.forEach((p) => {
                 p.variants.forEach((v) => {
                     allVariants.push({ ...v, product: { skuBase: p.skuBase, displayName: p.displayName } });
                 });
@@ -41,7 +47,7 @@
             variants.set(allVariants);
 
             // Fetch inventory batches for stock calculation
-            const batchRes = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/inventory-batches`);
+            const batchRes = await apiFetch(`/api/inventory-batches`);
             if (!batchRes.ok) throw new Error("Failed to fetch inventory batches");
             const batchData = await batchRes.json();
             inventoryBatches.set(batchData.data || []);
@@ -190,8 +196,7 @@
             if ($shippingRequired) {
                 body.shippingAddress = $shippingAddress;
             }
-            const fetchAuth = createAuthFetch($page);
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
+            const res = await apiFetch(`/api/customer-orders`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
