@@ -231,7 +231,7 @@
         let $editForm;
         editForm.subscribe((v) => ($editForm = v))();
         try {
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders/${order.id}`, {
+            const res = await apiFetch(`/api/customer-orders/${order.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -516,7 +516,7 @@
                 orderDate: formData.orderDate || new Date().toISOString(),
             };
 
-            const res = await fetchAuth(`${PUBLIC_BACKEND_URL}/api/customer-orders`, {
+            const res = await apiFetch(`/api/customer-orders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(orderData),

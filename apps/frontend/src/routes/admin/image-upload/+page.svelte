@@ -1415,59 +1415,9 @@
             }
 
             // Upload to backend with CSRF protection
-            // Create a custom fetch that doesn't set Content-Type for FormData
-            const customFetchAuth = async (url, options) => {
-                // Get authentication data from auth store
-                const authData = $auth;
-
-                // Create headers without Content-Type - browser will set it for FormData
-                const headers = {};
-
-                // Add CSRF token if available
-                if (authData?.csrfToken) {
-                    headers["X-CSRF-Token"] = authData.csrfToken;
-                }
-
-                // Fallback to data prop if store doesn't have token
-                if (!headers["X-CSRF-Token"] && data?.csrfToken) {
-                    headers["X-CSRF-Token"] = data.csrfToken;
-                }
-
-                // Debug the formData
-                console.log("FormData entries:");
-                for (let pair of formData.entries()) {
-                    console.log(
-                        pair[0] +
-                            ": " +
-                            (pair[1] instanceof File ? `File: ${pair[1].name}, size: ${pair[1].size} bytes` : pair[1])
-                    );
-                }
-
-                return fetch(url, {
-                    ...options,
-                    headers: {
-                        ...headers,
-                        ...options.headers,
-                    },
-                    credentials: "include",
-                });
-            };
-
-            // Ensure we have the CSRF token in the formData as well (as a backup approach)
-            if ($auth.csrfToken) {
-                formData.append("_csrf", $auth.csrfToken);
-            } else if (data?.csrfToken) {
-                formData.append("_csrf", data.csrfToken);
-            }
-
-            // Use our custom fetch that doesn't set Content-Type
-            const res = await customFetchAuth(`/api/upload-image`, {
+            const res = await apiFetch(`/api/upload-image`, {
                 method: "POST",
                 body: formData,
-                headers: {
-                    // Don't set Content-Type here - browser will set it with boundary for FormData
-                },
-                credentials: "include",
             });
 
             if (!res.ok) {

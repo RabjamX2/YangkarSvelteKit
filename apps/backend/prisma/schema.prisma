@@ -39,6 +39,12 @@ enum Role {
     ADMIN
 }
 
+enum Gender {
+    MALE
+    FEMALE
+    UNISEX
+}
+
 model User {
     id       String    @id @default(cuid())
     username String    @unique
@@ -114,6 +120,7 @@ model Product {
     supplier   Supplier @relation(fields: [supplierId], references: [id])
     categoryId Int
     category   Category @relation(fields: [categoryId], references: [id])
+    gender     Gender?
 
     variants ProductVariant[]
 
@@ -166,7 +173,7 @@ model InventoryBatch {
     costUSD  Decimal?
     costCNY  Decimal?
 
-    purchaseOrderItemId Int?              @unique
+    purchaseOrderItemId Int?               @unique
     purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
 
     CustomerOrder CustomerOrderItem[]
