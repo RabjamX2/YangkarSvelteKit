@@ -10,6 +10,8 @@
     import "./layout.css";
     import "./preview-styles.css";
 
+    const PUBLIC_BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
+
     // Only import cropper CSS in the browser
     if (browser) {
         import("./cropper-essential.css");
@@ -655,7 +657,7 @@
                             // Check if current selection is already outside bounds
                             const currentSelectionCheck = checkSelectionBoundaries(
                                 { x: currentX, y: currentY, width: currentWidth, height: currentHeight },
-                                imageBoundaries
+                                imageBoundaries,
                             );
 
                             // Calculate current overflow
@@ -676,7 +678,7 @@
                             finalSelection = adjustSelectionToFitBounds(
                                 proposedSelection,
                                 { x: currentX, y: currentY, width: currentWidth, height: currentHeight },
-                                imageBoundaries
+                                imageBoundaries,
                             );
                         }
                     } else {
@@ -713,7 +715,7 @@
                         // Check current selection to see if it's already outside bounds
                         const currentCheck = checkSelectionBoundaries(
                             { x: selection.x, y: selection.y, width: selection.width, height: selection.height },
-                            imageBoundaries
+                            imageBoundaries,
                         );
 
                         const currentOverflow =
@@ -776,13 +778,13 @@
                         // Calculate initial distance between touch points
                         lastTouchDistance = Math.hypot(
                             initialTouches[1].x - initialTouches[0].x,
-                            initialTouches[1].y - initialTouches[0].y
+                            initialTouches[1].y - initialTouches[0].y,
                         );
 
                         isTouchZooming = true;
                     }
                 },
-                { passive: false }
+                { passive: false },
             );
 
             selection.addEventListener(
@@ -797,7 +799,7 @@
                         const touch2 = event.touches[1];
                         const currentDistance = Math.hypot(
                             touch2.clientX - touch1.clientX,
-                            touch2.clientY - touch1.clientY
+                            touch2.clientY - touch1.clientY,
                         );
 
                         // Calculate scale factor based on the change in distance
@@ -816,7 +818,7 @@
                         lastTouchDistance = currentDistance;
                     }
                 },
-                { passive: false }
+                { passive: false },
             );
 
             selection.addEventListener("touchend", (event) => {
@@ -853,7 +855,7 @@
                         const adjustedSelection = adjustSelectionToFitBounds(
                             newSelection,
                             prevSelectionState || newSelection,
-                            imageBoundaries
+                            imageBoundaries,
                         );
 
                         // Apply the adjusted selection (use the Cropper API to set it)
@@ -1053,7 +1055,7 @@
                     // Apply zooming using our helper function
                     applyZoom(zoomDirection);
                 },
-                { passive: false }
+                { passive: false },
             );
 
             // Prevent pinch-to-zoom on touch devices
@@ -1078,7 +1080,7 @@
                         }
                     }
                 },
-                { passive: false }
+                { passive: false },
             );
         }, 400); // Give time for components to initialize
     }
@@ -1373,7 +1375,7 @@
                         }
                     },
                     "image/jpeg",
-                    adaptiveQuality
+                    adaptiveQuality,
                 );
             });
 
@@ -1397,7 +1399,7 @@
                             }
                         },
                         "image/jpeg",
-                        reducedQuality
+                        reducedQuality,
                     );
                 });
                 console.log(`Image was too large. Reduced quality to ${reducedQuality.toFixed(2)}`);
@@ -1490,7 +1492,7 @@
             // Update success message based on how many variants were updated
             const sizesText = updatedCount > 1 ? `all sizes (${updatedCount} variants)` : "this size";
             success.set(
-                `Image uploaded and assigned to ${$selectedProduct.displayName || $selectedProduct.style} - ${$selectedVariant.color || ""} ${$applyToAllSizes ? `(${sizesText})` : ""}`
+                `Image uploaded and assigned to ${$selectedProduct.displayName || $selectedProduct.style} - ${$selectedVariant.color || ""} ${$applyToAllSizes ? `(${sizesText})` : ""}`,
             );
 
             // Update local state to reflect the change
