@@ -51,6 +51,12 @@
     const productSearch = writable("");
     const variantSearch = writable("");
 
+    // Drag-and-drop state
+    const isDragging = writable(false);
+
+    // HEIC conversion in-progress state
+    const heicConverting = writable(false);
+
     // Image settings
     let fileInput;
     const aspectRatio = 4 / 5; // Fixed 4:5 aspect ratio
@@ -1108,14 +1114,19 @@
     }
 
     // File and image handling
-    function handleFileSelect(event) {
-        if (!browser) return; // Don't run in SSR
+    function processFile(file) {
+        if (!browser) return;
 
-        const file = event.target.files[0];
-        if (!file) return;
+        // Detect HEIC/HEIF by extension or MIME type (browsers often report empty MIME for HEIC)
+        const fileName = file.name.toLowerCase();
+        const isHeic =
+            fileName.endsWith(".heic") ||
+            fileName.endsWith(".heif") ||
+            file.type === "image/heic" ||
+            file.type === "image/heif";
 
-        // Validate file type
-        if (!file.type.match("image.*")) {
+        // Validate file type — allow HEIC explicitly, otherwise require image/*
+        if (!isHeic && !file.type.match("image.*")) {
             error.set("Please select an image file");
             return;
         }
@@ -1133,9 +1144,8 @@
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            originalImage.set(e.target.result);
+        function initCropperWithDataUrl(dataUrl) {
+            originalImage.set(dataUrl);
             success.set(null);
             error.set(null);
 
@@ -1157,7 +1167,7 @@
                     container.innerHTML = "";
 
                     // Initialize cropper web components
-                    container.innerHTML = makeCanvasHTML(e.target.result);
+                    container.innerHTML = makeCanvasHTML(dataUrl);
 
                     // Setup the constrained selection to keep selection within image bounds
                     // with a slightly longer delay for reliable initialization
@@ -1175,8 +1185,55 @@
                     error.set("Failed to initialize image cropper: " + err.message);
                 }
             }, 200);
-        };
-        reader.readAsDataURL(file);
+        }
+
+        if (isHeic) {
+            heicConverting.set(true);
+            error.set(null);
+            import("heic2any")
+                .then(({ default: heic2any }) => heic2any({ blob: file, toType: "image/jpeg", quality }))
+                .then((convertedBlob) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        heicConverting.set(false);
+                        initCropperWithDataUrl(e.target.result);
+                    };
+                    reader.readAsDataURL(convertedBlob);
+                })
+                .catch((err) => {
+                    heicConverting.set(false);
+                    error.set("Failed to convert HEIC image: " + err.message);
+                });
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => initCropperWithDataUrl(e.target.result);
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) processFile(file);
+    }
+
+    function handleDragOver(event) {
+        event.preventDefault();
+        if ($selectedVariant && !$loading) isDragging.set(true);
+    }
+
+    function handleDragLeave(event) {
+        // Only clear if leaving the drop zone entirely (not entering a child)
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+            isDragging.set(false);
+        }
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        isDragging.set(false);
+        if (!$selectedVariant || $loading) return;
+        const file = event.dataTransfer?.files?.[0];
+        if (file) processFile(file);
     }
 
     function resetCropper() {
@@ -1812,7 +1869,15 @@
                 <div class="form-group">
                     <h3 class="form-label">Upload New Image</h3>
 
-                    <div class="drop-zone">
+                    <div
+                        class="drop-zone"
+                        class:active={$isDragging}
+                        on:dragover={handleDragOver}
+                        on:dragleave={handleDragLeave}
+                        on:drop={handleDrop}
+                        role="region"
+                        aria-label="Image drop zone"
+                    >
                         {#if !$selectedVariant}
                             <div class="flex flex-col items-center justify-center">
                                 <svg
@@ -1851,11 +1916,11 @@
                                     />
                                 </svg>
                                 <p class="upload-text">Click to browse or drop image here</p>
-                                <p class="drop-text-secondary">Supports JPG, PNG, GIF (max 10MB)</p>
+                                <p class="drop-text-secondary">Supports JPG, PNG, HEIC/HEIF (max 10MB)</p>
                                 <input
                                     type="file"
                                     id="image-upload"
-                                    accept="image/*"
+                                    accept="image/*,.heic,.heif"
                                     on:change={handleFileSelect}
                                     class="file-input"
                                     disabled={$loading}
@@ -2023,6 +2088,28 @@
 
         <!-- Status messages -->
         <div class="status-messages">
+            {#if $heicConverting}
+                <div class="alert alert-info">
+                    <svg
+                        class="alert-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <div class="alert-content">
+                        <p class="alert-message">Converting HEIC image to JPEG, please wait…</p>
+                    </div>
+                </div>
+            {/if}
+
             {#if $error}
                 <div class="alert alert-error">
                     <svg

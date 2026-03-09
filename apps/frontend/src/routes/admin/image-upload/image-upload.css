@@ -282,6 +282,7 @@
 
 .preview-details {
     width: 100%;
+    min-width: 0; /* Allow flex child to shrink below content size */
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -317,6 +318,9 @@
 .detail-value {
     font-weight: 500;
     color: var(--color-text);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
 }
 
 .color-swatch {

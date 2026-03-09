@@ -27,6 +27,7 @@
 		"browser-image-compression": "^2.0.2",
 		"cropperjs": "^2.0.1",
 		"fuzzysort": "^3.1.0",
+		"heic2any": "^0.0.4",
 		"set-cookie-parser": "^2.7.1"
 	}
 }
