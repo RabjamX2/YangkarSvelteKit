@@ -86,6 +86,21 @@
         edits.update((e) => ({ ...e, [id]: { ...e[id], [field]: value } }));
     }
 
+    function cssColorToHex(color) {
+        try {
+            const el = document.createElement("div");
+            el.style.color = color.trim();
+            document.body.appendChild(el);
+            const computed = getComputedStyle(el).color;
+            document.body.removeChild(el);
+            const match = computed.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (!match) return null;
+            return "#" + [match[1], match[2], match[3]].map((x) => parseInt(x).toString(16).padStart(2, "0")).join("");
+        } catch {
+            return null;
+        }
+    }
+
     // Toggle visable for product or variant
     async function toggleVisable(type, id, currentValue) {
         try {
@@ -214,6 +229,36 @@
         } catch (e) {
             showFeedback(product.id, "error", e instanceof Error ? e.message : String(e));
         }
+    }
+
+    function groupVariantsByColor(variants) {
+        const map = new Map();
+        for (const v of variants) {
+            const key = v.color != null ? v.color.trim().toLowerCase() : "__no_color__";
+            if (!map.has(key)) {
+                map.set(key, { color: v.color, colorHex: v.colorHex, displayColor: v.displayColor, variants: [] });
+            }
+            map.get(key).variants.push(v);
+        }
+        return Array.from(map.values());
+    }
+
+    function getFilteredGroupedVariants(product, search) {
+        const s = (search ?? "").toLowerCase();
+        const productMatch =
+            product.skuBase?.toLowerCase().includes(s) ||
+            product.displayName?.toLowerCase().includes(s) ||
+            (categoryIdToName[product.categoryId]?.toLowerCase().includes(s) ?? false);
+        const filtered =
+            !s || productMatch
+                ? product.variants
+                : product.variants.filter(
+                      (v) =>
+                          v.sku?.toLowerCase().includes(s) ||
+                          (v.color && v.color.toLowerCase().includes(s)) ||
+                          (v.size && v.size.toLowerCase().includes(s)),
+                  );
+        return groupVariantsByColor(filtered);
     }
 
     // Apply color settings from one variant to all other variants in the same product with the same base color.
@@ -458,180 +503,191 @@
                     </div>
                     {#if ($keepExpanded || $expanded[product.id]) && !$refreshAnim[product.id]}
                         <div class="variant-grid" id={`variants-${product.id}`}>
-                            {#each (() => {
-                                const s = $search.toLowerCase();
-                                // If product matches, show all variants
-                                const productMatch = product.skuBase?.toLowerCase().includes(s) || product.displayName
-                                        ?.toLowerCase()
-                                        .includes(s) || (categoryIdToName[product.categoryId]
-                                        ?.toLowerCase()
-                                        .includes(s) ?? false);
-                                if (!$search || productMatch) {
-                                    return product.variants;
-                                }
-                                // Otherwise, filter variants by search
-                                return product.variants.filter((v) => v.sku
-                                            ?.toLowerCase()
-                                            .includes(s) || (v.color && v.color
-                                                .toLowerCase()
-                                                .includes(s)) || (v.size && v.size.toLowerCase().includes(s)));
-                            })() as variant}
-                                <div class="variant-card">
-                                    <div class="variant-header">
-                                        <span class="variant-sku" title={variant.sku}>{variant.sku ?? "No SKU"}</span>
-                                        {#if variant.imgUrl}
-                                            <img src={variant.imgUrl} alt="" class="variant-img" />
-                                        {/if}
-                                        <span
-                                            class="variant-color"
-                                            style="background:{variant.colorHex ?? '#eef'};color:{variant.colorHex
-                                                ? '#fff'
-                                                : 'var(--color-link-hover)'}"
-                                        >
-                                            {variant.displayColor !== undefined &&
-                                            variant.displayColor !== null &&
-                                            variant.displayColor !== ""
-                                                ? variant.displayColor
-                                                : (variant.color ?? "No Color")}
-                                        </span>
-                                        <span class="variant-size">{variant.size ?? "No Size"}</span>
-                                        {#if $advancedView}
-                                            <span class="variant-visable-toggle" style="margin-left:0.7rem;">
-                                                <label
-                                                    style="display:flex;align-items:center;gap:0.3rem;font-size:0.97em;"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={variant.visable ?? true}
-                                                        on:change={() =>
-                                                            toggleVisable(
-                                                                "variant",
-                                                                variant.id,
-                                                                variant.visable ?? true,
-                                                            )}
-                                                    />
-                                                    <span style="color:#666;">Visible</span>
-                                                </label>
-                                                {#if $feedback[variant.id + "-visable"]}
-                                                    <span
-                                                        style="margin-left:0.3rem;color:{$feedback[
-                                                            variant.id + '-visable'
-                                                        ].type === 'success'
-                                                            ? '#059669'
-                                                            : 'red'}">{$feedback[variant.id + "-visable"].message}</span
-                                                    >
-                                                {/if}
+                            {#each getFilteredGroupedVariants(product, $search) as colorGroup}
+                                <div class="color-group-header-row">
+                                    <span class="color-swatch" style="background:{colorGroup.colorHex ?? '#eef'}"
+                                    ></span>
+                                    <span class="color-group-label"
+                                        >{colorGroup.displayColor || colorGroup.color || "No Color"}</span
+                                    >
+                                    <span class="color-group-count"
+                                        >{colorGroup.variants.length} size{colorGroup.variants.length !== 1
+                                            ? "s"
+                                            : ""}</span
+                                    >
+                                </div>
+                                {#each colorGroup.variants as variant}
+                                    <div class="variant-card" class:variant-card--dirty={!!$edits[variant.id]}>
+                                        <div class="variant-header">
+                                            <span class="variant-sku" title={variant.sku}
+                                                >{variant.sku ?? "No SKU"}</span
+                                            >
+                                            {#if variant.imgUrl}
+                                                <img src={variant.imgUrl} alt="" class="variant-img" />
+                                            {/if}
+                                            <span
+                                                class="variant-color"
+                                                style="background:{variant.colorHex ?? '#eef'};color:{variant.colorHex
+                                                    ? '#fff'
+                                                    : 'var(--color-link-hover)'}"
+                                            >
+                                                {variant.displayColor !== undefined &&
+                                                variant.displayColor !== null &&
+                                                variant.displayColor !== ""
+                                                    ? variant.displayColor
+                                                    : (variant.color ?? "No Color")}
                                             </span>
-                                        {/if}
-                                    </div>
-                                    <div class="variant-details">
-                                        <span class="variant-price">${variant.salePrice}</span>
-                                        <span class="variant-stock">
-                                            Stock: {Array.isArray(variant.inventoryBatches)
-                                                ? variant.inventoryBatches.reduce(
-                                                      (sum, b) => sum + (b.quantity ?? 0),
-                                                      0,
-                                                  )
-                                                : 0}
-                                        </span>
-                                    </div>
-                                    <div class="variant-edit">
-                                        <input
-                                            type="text"
-                                            value={$edits[variant.id]?.displayColor ?? variant.displayColor ?? ""}
-                                            on:input={(e) =>
-                                                handleEdit(variant.id, "displayColor", e.currentTarget.value)}
-                                            placeholder="Display Color"
-                                            class="edit-input color"
-                                        />
-                                        <div style="display:flex;align-items:center;gap:0.4rem;">
-                                            <input
-                                                type="color"
-                                                value={$edits[variant.id]?.colorHex ?? variant.colorHex ?? "#000000"}
-                                                on:input={(e) => {
-                                                    handleEdit(variant.id, "colorHex", e.currentTarget.value);
-                                                    handleEdit(variant.id, "color", e.currentTarget.value);
-                                                }}
-                                                title="Swatch color picker"
-                                                style="width:36px;height:36px;padding:2px;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;flex-shrink:0;"
-                                            />
+                                            <span class="variant-size">{variant.size ?? "No Size"}</span>
+                                            {#if $advancedView}
+                                                <span class="variant-visable-toggle" style="margin-left:0.7rem;">
+                                                    <label
+                                                        style="display:flex;align-items:center;gap:0.3rem;font-size:0.97em;"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={variant.visable ?? true}
+                                                            on:change={() =>
+                                                                toggleVisable(
+                                                                    "variant",
+                                                                    variant.id,
+                                                                    variant.visable ?? true,
+                                                                )}
+                                                        />
+                                                        <span style="color:#666;">Visible</span>
+                                                    </label>
+                                                    {#if $feedback[variant.id + "-visable"]}
+                                                        <span
+                                                            style="margin-left:0.3rem;color:{$feedback[
+                                                                variant.id + '-visable'
+                                                            ].type === 'success'
+                                                                ? '#059669'
+                                                                : 'red'}"
+                                                            >{$feedback[variant.id + "-visable"].message}</span
+                                                        >
+                                                    {/if}
+                                                </span>
+                                            {/if}
+                                        </div>
+                                        <div class="variant-details">
+                                            <span class="variant-price">${variant.salePrice}</span>
+                                            <span class="variant-stock">
+                                                Stock: {Array.isArray(variant.inventoryBatches)
+                                                    ? variant.inventoryBatches.reduce(
+                                                          (sum, b) => sum + (b.quantity ?? 0),
+                                                          0,
+                                                      )
+                                                    : 0}
+                                            </span>
+                                        </div>
+                                        <div class="variant-edit">
                                             <input
                                                 type="text"
-                                                value={$edits[variant.id]?.color ?? variant.color ?? ""}
-                                                on:input={(e) => handleEdit(variant.id, "color", e.currentTarget.value)}
-                                                placeholder="Color (CSS value)"
+                                                value={$edits[variant.id]?.displayColor ?? variant.displayColor ?? ""}
+                                                on:input={(e) =>
+                                                    handleEdit(variant.id, "displayColor", e.currentTarget.value)}
+                                                placeholder="Display Color"
                                                 class="edit-input color"
-                                                style="flex:1;"
                                             />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={$edits[variant.id]?.size ?? variant.size ?? ""}
-                                            on:input={(e) => handleEdit(variant.id, "size", e.currentTarget.value)}
-                                            placeholder="Size"
-                                            class="edit-input size"
-                                        />
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={$edits[variant.id]?.salePrice ?? variant.salePrice ?? ""}
-                                            on:input={(e) => handleEdit(variant.id, "salePrice", e.currentTarget.value)}
-                                            placeholder="Price (USD)"
-                                            class="edit-input price"
-                                        />
-                                        <button
-                                            class="save-btn"
-                                            on:click={() => saveVariantEdit(variant.id)}
-                                            disabled={!$edits[variant.id] ||
-                                                (($edits[variant.id]?.color ?? variant.color) === variant.color &&
-                                                    ($edits[variant.id]?.colorHex ?? variant.colorHex) ===
-                                                        variant.colorHex &&
-                                                    ($edits[variant.id]?.displayColor ?? variant.displayColor) ===
-                                                        variant.displayColor &&
-                                                    ($edits[variant.id]?.size ?? variant.size) === variant.size &&
-                                                    ($edits[variant.id]?.salePrice ?? variant.salePrice) ==
-                                                        variant.salePrice)}
-                                        >
-                                            Save
-                                        </button>
-                                        {#if $feedback[variant.id]}
-                                            <span
-                                                style="margin-left:0.7rem;color:{$feedback[variant.id].type ===
-                                                'success'
-                                                    ? '#059669'
-                                                    : 'red'}">{$feedback[variant.id].message}</span
-                                            >
-                                        {/if}
-                                        {#if product.variants.filter((v) => v.id !== variant.id && v.color === variant.color && variant.color != null).length > 0}
+                                            <div style="display:flex;align-items:center;gap:0.4rem;">
+                                                <input
+                                                    type="color"
+                                                    value={$edits[variant.id]?.colorHex ??
+                                                        variant.colorHex ??
+                                                        "#000000"}
+                                                    on:input={(e) => {
+                                                        handleEdit(variant.id, "colorHex", e.currentTarget.value);
+                                                        handleEdit(variant.id, "color", e.currentTarget.value);
+                                                    }}
+                                                    title="Swatch color picker"
+                                                    style="width:36px;height:36px;padding:2px;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;flex-shrink:0;"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={$edits[variant.id]?.color ?? variant.color ?? ""}
+                                                    on:input={(e) => {
+                                                        const val = e.currentTarget.value
+                                                            .trim()
+                                                            .replace(/\b\w/g, (c) => c.toUpperCase());
+                                                        e.currentTarget.value = val;
+                                                        handleEdit(variant.id, "color", val);
+                                                        const hex = cssColorToHex(val);
+                                                        if (hex) handleEdit(variant.id, "colorHex", hex);
+                                                    }}
+                                                    placeholder="Color (CSS value)"
+                                                    class="edit-input color"
+                                                    style="flex:1;"
+                                                />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={$edits[variant.id]?.size ?? variant.size ?? ""}
+                                                on:input={(e) => handleEdit(variant.id, "size", e.currentTarget.value)}
+                                                placeholder="Size"
+                                                class="edit-input size"
+                                            />
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={$edits[variant.id]?.salePrice ?? variant.salePrice ?? ""}
+                                                on:input={(e) =>
+                                                    handleEdit(variant.id, "salePrice", e.currentTarget.value)}
+                                                placeholder="Price (USD)"
+                                                class="edit-input price"
+                                            />
                                             <button
-                                                class="save-btn sync-color-btn"
-                                                on:click={() => applyToSameColorVariants(product, variant)}
-                                                title="Apply color settings (and price if edited) to all other {product.variants.filter(
-                                                    (v) =>
-                                                        v.id !== variant.id &&
-                                                        v.color === variant.color &&
-                                                        variant.color != null,
-                                                ).length} variant(s) with the same base color"
+                                                class="save-btn"
+                                                on:click={() => saveVariantEdit(variant.id)}
+                                                disabled={!$edits[variant.id] ||
+                                                    (($edits[variant.id]?.color ?? variant.color) === variant.color &&
+                                                        ($edits[variant.id]?.colorHex ?? variant.colorHex) ===
+                                                            variant.colorHex &&
+                                                        ($edits[variant.id]?.displayColor ?? variant.displayColor) ===
+                                                            variant.displayColor &&
+                                                        ($edits[variant.id]?.size ?? variant.size) === variant.size &&
+                                                        ($edits[variant.id]?.salePrice ?? variant.salePrice) ==
+                                                            variant.salePrice)}
                                             >
-                                                Sync Color ({product.variants.filter(
-                                                    (v) =>
-                                                        v.id !== variant.id &&
-                                                        v.color === variant.color &&
-                                                        variant.color != null,
-                                                ).length})
+                                                Save
                                             </button>
-                                            {#if $feedback[variant.id + "-sync"]}
+                                            {#if $feedback[variant.id]}
                                                 <span
-                                                    style="margin-left:0.4rem;color:{$feedback[variant.id + '-sync']
-                                                        .type === 'success'
+                                                    style="margin-left:0.7rem;color:{$feedback[variant.id].type ===
+                                                    'success'
                                                         ? '#059669'
-                                                        : 'red'}">{$feedback[variant.id + "-sync"].message}</span
+                                                        : 'red'}">{$feedback[variant.id].message}</span
                                                 >
                                             {/if}
-                                        {/if}
+                                            {#if product.variants.filter((v) => v.id !== variant.id && v.color === variant.color && variant.color != null).length > 0}
+                                                <button
+                                                    class="save-btn sync-color-btn"
+                                                    on:click={() => applyToSameColorVariants(product, variant)}
+                                                    title="Apply color settings (and price if edited) to all other {product.variants.filter(
+                                                        (v) =>
+                                                            v.id !== variant.id &&
+                                                            v.color === variant.color &&
+                                                            variant.color != null,
+                                                    ).length} variant(s) with the same base color"
+                                                >
+                                                    Sync Color ({product.variants.filter(
+                                                        (v) =>
+                                                            v.id !== variant.id &&
+                                                            v.color === variant.color &&
+                                                            variant.color != null,
+                                                    ).length})
+                                                </button>
+                                                {#if $feedback[variant.id + "-sync"]}
+                                                    <span
+                                                        style="margin-left:0.4rem;color:{$feedback[variant.id + '-sync']
+                                                            .type === 'success'
+                                                            ? '#059669'
+                                                            : 'red'}">{$feedback[variant.id + "-sync"].message}</span
+                                                    >
+                                                {/if}
+                                            {/if}
+                                        </div>
                                     </div>
-                                </div>
+                                {/each}
                             {/each}
                         </div>
                     {/if}
@@ -846,6 +902,43 @@
     }
     .sync-color-btn:hover {
         background: #0e7490;
+    }
+    .color-group-header-row {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.35rem 0.8rem;
+        font-weight: 600;
+        font-size: 0.97rem;
+        border-radius: 8px;
+        background: var(--color-link-bg-hover);
+        margin-top: 0.4rem;
+        border: 1px solid var(--color-border);
+    }
+    .color-group-header-row:first-child {
+        margin-top: 0;
+    }
+    .color-swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1.5px solid var(--color-border);
+        flex-shrink: 0;
+        display: inline-block;
+    }
+    .color-group-label {
+        font-weight: 600;
+        color: var(--color-link-hover);
+    }
+    .color-group-count {
+        font-size: 0.88em;
+        color: #888;
+        font-weight: 400;
+    }
+    .variant-card--dirty {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
     }
     @media (max-width: 700px) {
         .variant-grid {
