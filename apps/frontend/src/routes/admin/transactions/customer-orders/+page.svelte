@@ -52,7 +52,7 @@
                         (order.customer?.phone || "").toLowerCase().includes(query) ||
                         (order.customerPhone || "").toLowerCase().includes(query) ||
                         order.id.toString().includes(query) ||
-                        (order.moneyHolder || "").toLowerCase().includes(query)
+                        (order.moneyHolder || "").toLowerCase().includes(query),
                 );
             }
             // Filter by status
@@ -82,7 +82,7 @@
                 return $dateSort === "newest" ? dateB - dateA : dateA - dateB;
             });
             return result;
-        }
+        },
     );
     const loadingTransactions = writable(false);
     const errorTransactions = writable(null);
@@ -125,7 +125,7 @@
     const itemsPerPage = writable(10);
     const currentPage = writable(1);
     const totalPages = derived([filteredOrders, itemsPerPage], ([$filteredOrders, $itemsPerPage]) =>
-        Math.ceil($filteredOrders.length / $itemsPerPage)
+        Math.ceil($filteredOrders.length / $itemsPerPage),
     );
 
     // Calculated paged results
@@ -135,7 +135,7 @@
             const startIndex = ($currentPage - 1) * $itemsPerPage;
             const endIndex = startIndex + $itemsPerPage;
             return $filteredOrders.slice(startIndex, endIndex);
-        }
+        },
     );
 
     let loggedInUser = "";
@@ -355,7 +355,7 @@
                 order.moneyCollected ? "Yes" : "No",
                 order.fulfillmentStatus || "",
                 `"${(order.notes || "").replace(/"/g, '""')}"`,
-            ].join(",")
+            ].join(","),
         );
 
         // Combine and download
@@ -377,13 +377,13 @@
             (sum, order) =>
                 sum +
                 (order.items ? order.items.reduce((itemSum, item) => itemSum + item.salePrice * item.quantity, 0) : 0),
-            0
+            0,
         );
 
         const countByStatus = {};
         fulfillmentStatusOptions.forEach((status) => {
             countByStatus[status.value] = $filteredOrders.filter(
-                (order) => order.fulfillmentStatus === status.value
+                (order) => order.fulfillmentStatus === status.value,
             ).length;
         });
 
@@ -393,7 +393,7 @@
                 (order.items
                     ? order.items.reduce((itemSum, item) => itemSum + (item.salePrice - item.cogs) * item.quantity, 0)
                     : 0),
-            0
+            0,
         );
 
         return {
@@ -1112,7 +1112,7 @@
                                                             {item.cogs
                                                                 ? formatCurrency(
                                                                       item.salePrice * item.quantity -
-                                                                          item.cogs * item.quantity
+                                                                          item.cogs * item.quantity,
                                                                   )
                                                                 : "-"}
                                                         </td>
@@ -1125,8 +1125,8 @@
                                                             {formatCurrency(
                                                                 order.items.reduce(
                                                                     (sum, item) => sum + item.salePrice * item.quantity,
-                                                                    0
-                                                                )
+                                                                    0,
+                                                                ),
                                                             )}
                                                         </strong>
                                                     </td>
@@ -1136,8 +1136,8 @@
                                                                 order.items.reduce(
                                                                     (sum, item) =>
                                                                         sum + (item.cogs || 0) * item.quantity,
-                                                                    0
-                                                                )
+                                                                    0,
+                                                                ),
                                                             )}
                                                         </strong>
                                                     </td>
@@ -1149,8 +1149,8 @@
                                                                         sum +
                                                                         (item.salePrice * item.quantity -
                                                                             (item.cogs || 0) * item.quantity),
-                                                                    0
-                                                                )
+                                                                    0,
+                                                                ),
                                                             )}
                                                         </strong>
                                                     </td>

@@ -6,7 +6,7 @@ const Papa = require("papaparse");
 const prisma = new PrismaClient();
 
 async function main() {
-    const filePath = path.resolve(__dirname, "ordersBatch5.csv");
+    const filePath = path.resolve(__dirname, "batch6.csv");
     console.log(`Reading CSV file from: ${filePath}`);
 
     const fileContent = fs.readFileSync(filePath, "utf8");
@@ -38,6 +38,9 @@ async function main() {
         "Tsering Dolkar": 11,
         "Ram's Clothing": 12,
         "G-Purple": 13,
+        "Xia Earrings": 14,
+        "douyin girl": 15,
+        "Zig Chung Mig Gu": 16,
     };
     const supplierNames = {
         "Bhod Thakchen": "bt",
@@ -53,6 +56,9 @@ async function main() {
         "Tsering Dolkar": "mm",
         "Ram's Clothing": "rc",
         "G-Purple": "gp",
+        "Xia Earrings": "xia",
+        "douyin girl": "dy",
+        "Zig Chung Mig Gu": "zig",
     };
 
     const categoryDict = {
@@ -114,14 +120,14 @@ async function main() {
 
     for (const batchNumber in batchGroups) {
         const batchItems = batchGroups[batchNumber];
-        const newBatchNumber = 5; // Since we're only processing batch 5 CSV here
+        const newBatchNumber = 6; //TODO: CHANGE THIS FOR OTHER BATCHES
 
         // Find or create PurchaseOrder for this batchNumber
         let purchaseOrder = await prisma.purchaseOrder.findFirst({
             where: { batchNumber: parseInt(newBatchNumber, 10) },
         });
 
-        let arrivalDate = new Date("2025-10-30 EST");
+        let arrivalDate = new Date("2026-3-2 EST");
         if (!purchaseOrder) {
             purchaseOrder = await prisma.purchaseOrder.create({
                 data: {
@@ -134,12 +140,12 @@ async function main() {
 
         for (const [index, item] of batchItems.entries()) {
             try {
-                if (!item["Style"] || !item["Category"] || !item["ORDER DATE"] || !item["Seller"]) {
+                if (!item["Style"] || !item["Category"] || !item["Order Date"] || !item["Seller"]) {
                     console.warn(
-                        `Skipping row ${index + 1} in batch ${newBatchNumber} due to missing required fields.`
+                        `Skipping row ${index + 1} in batch ${newBatchNumber} due to missing required fields.`,
                     );
                     console.warn(
-                        `Missing fields are: ${!item["Seller"] ? "Seller " : ""}${!item["Category"] ? "Category " : ""}${!item["SKU Main"] ? "SKU Main " : ""}${!item["SKU Specific"] ? "SKU Specific " : ""}${!item["ORDER DATE"] ? "ORDER DATE " : ""}`
+                        `Missing fields are: ${!item["Seller"] ? "Seller " : ""}${!item["Category"] ? "Category " : ""}${!item["SKU Main"] ? "SKU Main " : ""}${!item["SKU Specific"] ? "SKU Specific " : ""}${!item["Order Date"] ? "Order Date " : ""}`,
                     );
                     continue;
                 }
@@ -214,7 +220,7 @@ async function main() {
 
                 if (purchaseOrderItem) {
                     console.log(
-                        `Updating existing item for row ${index + 1} in batch ${newBatchNumber}: ${skuSpecific}`
+                        `Updating existing item for row ${index + 1} in batch ${newBatchNumber}: ${skuSpecific}`,
                     );
                     await prisma.purchaseOrderItem.update({
                         where: {
