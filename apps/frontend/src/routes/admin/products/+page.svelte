@@ -215,6 +215,64 @@
             showFeedback(product.id, "error", e instanceof Error ? e.message : String(e));
         }
     }
+
+    // Apply color settings from one variant to all other variants in the same product with the same base color.
+    // Also syncs salePrice if it has been edited on this variant.
+    async function applyToSameColorVariants(product, variant) {
+        let $edits;
+        edits.subscribe((v) => ($edits = v))();
+
+        if (variant.color == null) {
+            showFeedback(variant.id + "-sync", "error", "This variant has no base color set.");
+            return;
+        }
+
+        const editValues = $edits[variant.id] ?? {};
+        const syncData = {
+            displayColor: editValues.displayColor ?? variant.displayColor,
+            colorHex: editValues.colorHex ?? variant.colorHex,
+            color: editValues.color ?? variant.color,
+        };
+        // Only include salePrice if it was explicitly edited on this variant
+        if ("salePrice" in editValues) {
+            syncData.salePrice = editValues.salePrice;
+        }
+
+        const sameColorVariants = product.variants.filter((v) => v.id !== variant.id && v.color === variant.color);
+
+        if (sameColorVariants.length === 0) {
+            showFeedback(variant.id + "-sync", "error", "No other same-color variants found.");
+            return;
+        }
+
+        try {
+            await Promise.all(
+                sameColorVariants.map(async (v) => {
+                    const res = await apiFetch(`/api/variants/${v.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(syncData),
+                    });
+                    if (!res.ok) throw new Error(`Failed to update variant ${v.id}`);
+                }),
+            );
+            products.update((list) =>
+                list.map((p) =>
+                    p.id !== product.id
+                        ? p
+                        : {
+                              ...p,
+                              variants: p.variants.map((v) =>
+                                  sameColorVariants.some((sv) => sv.id === v.id) ? { ...v, ...syncData } : v,
+                              ),
+                          },
+                ),
+            );
+            showFeedback(variant.id + "-sync", "success", `Synced to ${sameColorVariants.length} variant(s)!`, 3000);
+        } catch (e) {
+            showFeedback(variant.id + "-sync", "error", e instanceof Error ? e.message : String(e));
+        }
+    }
 </script>
 
 <AdminHeader />
@@ -545,6 +603,33 @@
                                                     : 'red'}">{$feedback[variant.id].message}</span
                                             >
                                         {/if}
+                                        {#if product.variants.filter((v) => v.id !== variant.id && v.color === variant.color && variant.color != null).length > 0}
+                                            <button
+                                                class="save-btn sync-color-btn"
+                                                on:click={() => applyToSameColorVariants(product, variant)}
+                                                title="Apply color settings (and price if edited) to all other {product.variants.filter(
+                                                    (v) =>
+                                                        v.id !== variant.id &&
+                                                        v.color === variant.color &&
+                                                        variant.color != null,
+                                                ).length} variant(s) with the same base color"
+                                            >
+                                                Sync Color ({product.variants.filter(
+                                                    (v) =>
+                                                        v.id !== variant.id &&
+                                                        v.color === variant.color &&
+                                                        variant.color != null,
+                                                ).length})
+                                            </button>
+                                            {#if $feedback[variant.id + "-sync"]}
+                                                <span
+                                                    style="margin-left:0.4rem;color:{$feedback[variant.id + '-sync']
+                                                        .type === 'success'
+                                                        ? '#059669'
+                                                        : 'red'}">{$feedback[variant.id + "-sync"].message}</span
+                                                >
+                                            {/if}
+                                        {/if}
                                     </div>
                                 </div>
                             {/each}
@@ -754,6 +839,13 @@
         background: #d1d5db;
         color: #888;
         cursor: not-allowed;
+    }
+    .sync-color-btn {
+        background: #0891b2;
+        color: #fff;
+    }
+    .sync-color-btn:hover {
+        background: #0e7490;
     }
     @media (max-width: 700px) {
         .variant-grid {
