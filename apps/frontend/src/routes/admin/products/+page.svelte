@@ -112,7 +112,7 @@
                     list.map((p) => ({
                         ...p,
                         variants: p.variants.map((v) => (v.id === id ? { ...v, visable: !currentValue } : v)),
-                    }))
+                    })),
                 );
             }
             showFeedback(id + "-visable", "success", "Visibility updated!");
@@ -159,7 +159,7 @@
                 list.map((product) => ({
                     ...product,
                     variants: product.variants.map((v) => (v.id === variantId ? { ...v, ...$edits[variantId] } : v)),
-                }))
+                })),
             );
             edits.update((e) => {
                 const { [variantId]: _, ...rest } = e;
@@ -187,7 +187,7 @@
                         body: JSON.stringify({ salePrice: price }),
                     });
                     if (!res.ok) throw new Error(`Failed to update variant ${variantId}`);
-                })
+                }),
             );
             // Update local store
             products.update((list) =>
@@ -197,8 +197,8 @@
                               ...p,
                               variants: p.variants.map((v) => ({ ...v, salePrice: price })),
                           }
-                        : p
-                )
+                        : p,
+                ),
             );
             bulkPrice.update((bp) => ({ ...bp, [product.id]: "" }));
             showFeedback(product.id, "success", "All prices set!");
@@ -449,7 +449,7 @@
                                                             toggleVisable(
                                                                 "variant",
                                                                 variant.id,
-                                                                variant.visable ?? true
+                                                                variant.visable ?? true,
                                                             )}
                                                     />
                                                     <span style="color:#666;">Visible</span>
@@ -472,7 +472,7 @@
                                             Stock: {Array.isArray(variant.inventoryBatches)
                                                 ? variant.inventoryBatches.reduce(
                                                       (sum, b) => sum + (b.quantity ?? 0),
-                                                      0
+                                                      0,
                                                   )
                                                 : 0}
                                         </span>
@@ -486,13 +486,26 @@
                                             placeholder="Display Color"
                                             class="edit-input color"
                                         />
-                                        <input
-                                            type="text"
-                                            value={$edits[variant.id]?.color ?? variant.color ?? ""}
-                                            on:input={(e) => handleEdit(variant.id, "color", e.currentTarget.value)}
-                                            placeholder="Color"
-                                            class="edit-input color"
-                                        />
+                                        <div style="display:flex;align-items:center;gap:0.4rem;">
+                                            <input
+                                                type="color"
+                                                value={$edits[variant.id]?.colorHex ?? variant.colorHex ?? "#000000"}
+                                                on:input={(e) => {
+                                                    handleEdit(variant.id, "colorHex", e.currentTarget.value);
+                                                    handleEdit(variant.id, "color", e.currentTarget.value);
+                                                }}
+                                                title="Swatch color picker"
+                                                style="width:36px;height:36px;padding:2px;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;flex-shrink:0;"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={$edits[variant.id]?.color ?? variant.color ?? ""}
+                                                on:input={(e) => handleEdit(variant.id, "color", e.currentTarget.value)}
+                                                placeholder="Color (CSS value)"
+                                                class="edit-input color"
+                                                style="flex:1;"
+                                            />
+                                        </div>
                                         <input
                                             type="text"
                                             value={$edits[variant.id]?.size ?? variant.size ?? ""}
@@ -514,6 +527,8 @@
                                             on:click={() => saveVariantEdit(variant.id)}
                                             disabled={!$edits[variant.id] ||
                                                 (($edits[variant.id]?.color ?? variant.color) === variant.color &&
+                                                    ($edits[variant.id]?.colorHex ?? variant.colorHex) ===
+                                                        variant.colorHex &&
                                                     ($edits[variant.id]?.displayColor ?? variant.displayColor) ===
                                                         variant.displayColor &&
                                                     ($edits[variant.id]?.size ?? variant.size) === variant.size &&
