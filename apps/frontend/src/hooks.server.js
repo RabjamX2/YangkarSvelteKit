@@ -60,8 +60,43 @@ export const handle = async ({ event, resolve }) => {
                 if (response.ok) {
                     const data = await response.json();
 
-                    // We don't need to set cookies here anymore since the backend handles it
-                    // Just get the user and CSRF token from the response
+                    // Forward Set-Cookie headers from the backend to the browser.
+                    // Since this is a server-side fetch, the browser never sees the response
+                    // directly — we must relay the cookies via event.cookies.set().
+                    const setCookies =
+                        typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : [];
+                    for (const cookieStr of setCookies) {
+                        const parts = cookieStr.split(";").map((p) => p.trim());
+                        const eqIdx = parts[0].indexOf("=");
+                        const name = parts[0].slice(0, eqIdx).trim();
+                        const value = parts[0].slice(eqIdx + 1);
+                        const opts = { path: "/" };
+                        for (const part of parts.slice(1)) {
+                            const [k, ...vs] = part.split("=");
+                            switch (k.trim().toLowerCase()) {
+                                case "httponly":
+                                    opts.httpOnly = true;
+                                    break;
+                                case "secure":
+                                    opts.secure = true;
+                                    break;
+                                case "samesite":
+                                    opts.sameSite = vs.join("=").trim().toLowerCase();
+                                    break;
+                                case "max-age":
+                                    opts.maxAge = parseInt(vs.join("="));
+                                    break;
+                                case "domain":
+                                    opts.domain = vs.join("=").trim();
+                                    break;
+                                case "path":
+                                    opts.path = vs.join("=").trim();
+                                    break;
+                            }
+                        }
+                        event.cookies.set(name, value, opts);
+                    }
+
                     event.locals.user = data.user;
                     event.locals.csrfToken = data.csrfToken;
                 } else {

@@ -35,6 +35,9 @@ const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET || "change-me-reset-secret
 const ACCESS_TOKEN_EXPIRY = "2h"; // set to 2h for normal use
 const REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
 const RESET_TOKEN_EXPIRY = "10m"; // 10 minutes
+// Cookie max-ages in ms — must stay in sync with the JWT expiry strings above
+const ACCESS_TOKEN_MAXAGE_MS = 2 * 60 * 60 * 1000; // 2 hours
+const REFRESH_TOKEN_MAXAGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Rate limiting for authentication attempts
 const authLimiter = rateLimit({
@@ -195,7 +198,7 @@ const signup = asyncHandler(async (req, res) => {
         if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
             res.status(400);
             throw new Error(
-                "Password must contain at least one lowercase letter, one uppercase letter, and one number"
+                "Password must contain at least one lowercase letter, one uppercase letter, and one number",
             );
         }
     }
@@ -250,8 +253,8 @@ const signup = asyncHandler(async (req, res) => {
     });
 
     // Set cookies
-    const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
-    const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+    const accessMaxAge = ACCESS_TOKEN_MAXAGE_MS;
+    const refreshMaxAge = REFRESH_TOKEN_MAXAGE_MS;
 
     res.cookie("access_token", accessToken, getCookieOptions(accessMaxAge));
     res.cookie("refresh_token", refreshToken, getCookieOptions(refreshMaxAge));
@@ -290,8 +293,8 @@ const login = asyncHandler(async (req, res) => {
     });
 
     // Set cookies
-    const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
-    const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+    const accessMaxAge = ACCESS_TOKEN_MAXAGE_MS;
+    const refreshMaxAge = REFRESH_TOKEN_MAXAGE_MS;
 
     const accessOptions = getCookieOptions(accessMaxAge);
     const refreshOptions = getCookieOptions(refreshMaxAge);
@@ -318,7 +321,7 @@ const login = asyncHandler(async (req, res) => {
             env: process.env.NODE_ENV,
             frontEndUrl: process.env.FRONT_END_URL,
         },
-        "Setting auth cookies"
+        "Setting auth cookies",
     );
 
     res.cookie("access_token", accessToken, accessOptions);
@@ -358,7 +361,7 @@ const refreshToken = asyncHandler(async (req, res) => {
 
     try {
         console.log(
-            `DEBUG: Refresh token received: ${refreshToken.substring(0, 10)}... (length: ${refreshToken.length})`
+            `DEBUG: Refresh token received: ${refreshToken.substring(0, 10)}... (length: ${refreshToken.length})`,
         );
 
         // For tracking retry attempts if needed
@@ -485,8 +488,8 @@ const refreshToken = asyncHandler(async (req, res) => {
         })();
 
         // Set new cookies
-        const accessMaxAge = 15 * 60 * 1000; // 15 minutes in ms
-        const refreshMaxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+        const accessMaxAge = ACCESS_TOKEN_MAXAGE_MS;
+        const refreshMaxAge = REFRESH_TOKEN_MAXAGE_MS;
 
         const accessOptions = getCookieOptions(accessMaxAge);
         const refreshOptions = getCookieOptions(refreshMaxAge);
