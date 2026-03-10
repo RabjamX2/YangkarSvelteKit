@@ -3,18 +3,18 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
     plugins: [
-        sveltekit(),
         {
-            // heic2any is browser-only. Mark it external during the SSR build pass
-            // so SvelteKit's onwarn doesn't throw on the unresolved dynamic import.
-            // During the client build pass (options.ssr = false), it is bundled normally.
+            // Must be enforce: 'pre' so this runs before SvelteKit's vite-plugin-sveltekit-compile
+            // which also runs pre-enforce and has its own onwarn that throws on unresolved imports.
             name: "externalize-browser-only",
+            enforce: "pre",
             resolveId(id, _importer, options) {
                 if (id === "heic2any" && options?.ssr) {
                     return { id, external: true };
                 }
             },
         },
+        sveltekit(),
     ],
     resolve: {
         dedupe: ["fuzzysort"],
