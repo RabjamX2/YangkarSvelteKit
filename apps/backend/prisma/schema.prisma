@@ -340,6 +340,9 @@ model PromotionItem {
     productVariantId Int
     variant          ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
 
+    /// Order items that were sold under this promotion price
+    orderItems CustomerOrderItem[]
+
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
 
@@ -418,9 +421,14 @@ model CustomerOrderItem {
 
     isPreOrder Boolean @default(false)
 
-    discount Decimal?      @default(0)
-    orderId  Int
-    order    CustomerOrder @relation(fields: [orderId], references: [id])
+    discount Decimal? @default(0)
+
+    /// The promotion item that was active for this variant when the order was placed (if any)
+    promotionItemId Int?
+    promotionItem   PromotionItem? @relation(fields: [promotionItemId], references: [id], onDelete: SetNull)
+
+    orderId Int
+    order   CustomerOrder @relation(fields: [orderId], references: [id])
 
     productVariantId Int
     variant          ProductVariant @relation(fields: [productVariantId], references: [id])

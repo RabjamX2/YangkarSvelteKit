@@ -304,19 +304,26 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
         throw new Error("No items in order");
     }
 
-    // // Find or create customer
-    // let dbCustomer;
-    // if (customer?.email) {
-    //     dbCustomer = await prisma.customer.upsert({
-    //         where: { email: customer.email },
-    //         update: { name: customer.name, phone: customer.phone },
-    //         create: { email: customer.email, name: customer.name, phone: customer.phone },
-    //     });
-    // } else {
-    //     dbCustomer = await prisma.customer.create({
-    //         data: { email: `guest-${Date.now()}@guest.local`, name: customer?.name || "Guest", phone: customer?.phone },
-    //     });
-    // }
+    // Resolve the order date early so promotion lookup matches what gets stored
+    const orderDate = new Date();
+
+    // For each item, find the active PromotionItem (if any) covering this variant at orderDate
+    const resolvedItems = await Promise.all(
+        items.map(async (item) => {
+            const promoItem = await prisma.promotionItem.findFirst({
+                where: {
+                    productVariantId: item.productVariantId,
+                    promotion: {
+                        isActive: true,
+                        startDate: { lte: orderDate },
+                        endDate: { gte: orderDate },
+                    },
+                },
+                select: { id: true },
+            });
+            return { ...item, promotionItemId: promoItem?.id ?? null };
+        }),
+    );
 
     // Create order and items
     const order = await prisma.customerOrder.create({
@@ -327,11 +334,15 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
             paymentMethod,
             paymentStatus: paymentStatus || "PAID",
             fulfillmentStatus: fulfillmentStatus || "PICKED_UP",
+            orderDate,
             items: {
-                create: items.map((item) => ({
+                create: resolvedItems.map((item) => ({
                     variant: { connect: { id: item.productVariantId } },
                     quantity: item.quantity,
                     salePrice: item.salePrice,
+                    ...(item.promotionItemId != null
+                        ? { promotionItem: { connect: { id: item.promotionItemId } } }
+                        : {}),
                 })),
             },
         },
@@ -366,7 +377,8 @@ const createCustomerOrder = asyncHandler(async (req, res) => {
  */
 const createBulkCustomerOrders = asyncHandler(async (req, res) => {
     const userFromToken = req.user;
-    const { items, orderDate } = req.body;
+    const { items, orderDate: orderDateRaw } = req.body;
+    const orderDate = orderDateRaw ? new Date(orderDateRaw) : new Date();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400);
@@ -382,6 +394,18 @@ const createBulkCustomerOrders = asyncHandler(async (req, res) => {
             throw new Error("Each item must have a productVariantId");
         }
 
+        const promoItem = await prisma.promotionItem.findFirst({
+            where: {
+                productVariantId: item.productVariantId,
+                promotion: {
+                    isActive: true,
+                    startDate: { lte: orderDate },
+                    endDate: { gte: orderDate },
+                },
+            },
+            select: { id: true },
+        });
+
         // Create order with single item
         const order = await prisma.customerOrder.create({
             data: {
@@ -390,12 +414,13 @@ const createBulkCustomerOrders = asyncHandler(async (req, res) => {
                 paymentMethod: item.paymentMethod || "CASH",
                 paymentStatus: "PAID",
                 fulfillmentStatus: "PICKED_UP",
-                orderDate: orderDate ? new Date(orderDate) : new Date(),
+                orderDate,
                 items: {
                     create: {
                         variant: { connect: { id: item.productVariantId } },
                         quantity: item.quantity || 1,
                         salePrice: item.salePrice || 0,
+                        ...(promoItem ? { promotionItem: { connect: { id: promoItem.id } } } : {}),
                     },
                 },
             },
@@ -426,7 +451,7 @@ const createBulkCustomerOrders = asyncHandler(async (req, res) => {
 
     req.log.info(
         { event: "bulk_orders_created", orderCount: createdOrders.length, userId: userFromToken?.id },
-        "Bulk customer orders created"
+        "Bulk customer orders created",
     );
     res.status(201).json({ data: createdOrders, count: createdOrders.length });
 });

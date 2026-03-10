@@ -22,6 +22,7 @@
     const addItemForms = writable({}); // { [promoId]: { variantId, promotionPrice, resetKey } }
     const addProductForms = writable({}); // { [promoId]: { product, resetKey } }
     const addMode = writable({}); // { [promoId]: "variant" | "product" }
+    const promoStats = writable({}); // { [promoId]: { loading, data, error } }
 
     const newPromoForm = writable({
         show: false,
@@ -214,6 +215,7 @@
             },
         }));
         expanded.update((e) => ({ ...e, [promo.id]: true }));
+        fetchStats(promo.id);
     }
 
     function cancelEditing(id) {
@@ -276,6 +278,30 @@
                 ...(field === "promotionPrice" ? { isAutoPrice: false } : {}),
             },
         }));
+    }
+
+    // Toggle a promo card open/closed — fetches stats lazily on first open
+    function toggleExpand(promoId) {
+        expanded.update((e) => {
+            const nowOpen = !e[promoId];
+            if (nowOpen) fetchStats(promoId);
+            return { ...e, [promoId]: nowOpen };
+        });
+    }
+
+    async function fetchStats(promoId) {
+        // Don't re-fetch if already loaded or loading
+        const current = get(promoStats)[promoId];
+        if (current?.data || current?.loading) return;
+        promoStats.update((s) => ({ ...s, [promoId]: { loading: true, data: null, error: null } }));
+        try {
+            const res = await apiFetch(`/api/promotions/${promoId}/stats`);
+            if (!res.ok) throw new Error("Failed to load stats");
+            const json = await res.json();
+            promoStats.update((s) => ({ ...s, [promoId]: { loading: false, data: json, error: null } }));
+        } catch (err) {
+            promoStats.update((s) => ({ ...s, [promoId]: { loading: false, data: null, error: err.message } }));
+        }
     }
 
     // Returns variants of a product that aren't already in the promotion
@@ -575,9 +601,8 @@
                         class="promo-header"
                         role="button"
                         tabindex="0"
-                        on:click={() => expanded.update((e) => ({ ...e, [promo.id]: !e[promo.id] }))}
-                        on:keydown={(e) =>
-                            e.key === "Enter" && expanded.update((ex) => ({ ...ex, [promo.id]: !ex[promo.id] }))}
+                        on:click={() => toggleExpand(promo.id)}
+                        on:keydown={(e) => e.key === "Enter" && toggleExpand(promo.id)}
                     >
                         <span class="chevron">{$expanded[promo.id] ? "▼" : "▶"}</span>
                         <span class="promo-name">{promo.name}</span>
@@ -620,6 +645,67 @@
                                     </span>
                                 </div>
                             {/if}
+
+                            <!-- Sales statistics -->
+                            <div class="promo-stats-section">
+                                {#if $promoStats[promo.id]?.loading}
+                                    <span class="stats-loading">Loading statistics…</span>
+                                {:else if $promoStats[promo.id]?.data}
+                                    {@const stats = $promoStats[promo.id].data}
+                                    {#if stats.totalUnitsSold === 0}
+                                        <span class="stats-empty">No orders recorded for this promotion yet.</span>
+                                    {:else}
+                                        <div class="stats-strip">
+                                            <div class="stat-box">
+                                                <span class="stat-value">{stats.totalUnitsSold}</span>
+                                                <span class="stat-label"
+                                                    >unit{stats.totalUnitsSold !== 1 ? "s" : ""} sold</span
+                                                >
+                                            </div>
+                                            <div class="stat-box">
+                                                <span class="stat-value">{stats.uniqueOrders}</span>
+                                                <span class="stat-label"
+                                                    >order{stats.uniqueOrders !== 1 ? "s" : ""}</span
+                                                >
+                                            </div>
+                                            <div class="stat-box">
+                                                <span class="stat-value">${Number(stats.totalRevenue).toFixed(2)}</span>
+                                                <span class="stat-label">revenue</span>
+                                            </div>
+                                        </div>
+                                        {#if stats.byVariant.length > 1}
+                                            <details class="stats-breakdown">
+                                                <summary>Breakdown by variant</summary>
+                                                <table class="stats-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Color</th>
+                                                            <th>Size</th>
+                                                            <th>SKU</th>
+                                                            <th>Units</th>
+                                                            <th>Revenue</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {#each stats.byVariant as v}
+                                                            <tr>
+                                                                <td>{v.displayColor || "—"}</td>
+                                                                <td>{v.size || "—"}</td>
+                                                                <td
+                                                                    style="font-family: var(--font-mono); font-size: var(--font-size-xs);"
+                                                                    >{v.sku || "—"}</td
+                                                                >
+                                                                <td>{v.unitsSold}</td>
+                                                                <td>${Number(v.revenue).toFixed(2)}</td>
+                                                            </tr>
+                                                        {/each}
+                                                    </tbody>
+                                                </table>
+                                            </details>
+                                        {/if}
+                                    {/if}
+                                {/if}
+                            </div>
 
                             <!-- Edit section -->
                             {#if $editing[promo.id]}

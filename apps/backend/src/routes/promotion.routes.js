@@ -140,6 +140,72 @@ const deletePromotionItem = asyncHandler(async (req, res) => {
     res.json({ success: true });
 });
 
+// GET /api/promotions/:id/stats — sales statistics for a promotion
+const getPromotionStats = asyncHandler(async (req, res) => {
+    const promoId = parseInt(req.params.id);
+
+    // Fetch all order items that were attributed to this promotion
+    const orderItems = await prisma.customerOrderItem.findMany({
+        where: {
+            promotionItem: { promotionId: promoId },
+        },
+        select: {
+            id: true,
+            quantity: true,
+            salePrice: true,
+            orderId: true,
+            promotionItem: {
+                select: {
+                    id: true,
+                    promotionPrice: true,
+                    productVariantId: true,
+                    variant: {
+                        select: { displayColor: true, size: true, sku: true },
+                    },
+                },
+            },
+            order: {
+                select: { orderDate: true },
+            },
+        },
+    });
+
+    const uniqueOrders = new Set(orderItems.map((i) => i.orderId)).size;
+    const totalUnitsSold = orderItems.reduce((sum, i) => sum + i.quantity, 0);
+    const totalRevenue = orderItems.reduce((sum, i) => sum + parseFloat(i.salePrice) * i.quantity, 0);
+
+    // Breakdown by variant
+    const byVariantMap = new Map();
+    for (const oi of orderItems) {
+        const v = oi.promotionItem?.variant;
+        const key = oi.promotionItem?.productVariantId;
+        if (!key) continue;
+        if (!byVariantMap.has(key)) {
+            byVariantMap.set(key, {
+                variantId: key,
+                displayColor: v?.displayColor || "",
+                size: v?.size || "",
+                sku: v?.sku || "",
+                unitsSold: 0,
+                revenue: 0,
+            });
+        }
+        const entry = byVariantMap.get(key);
+        entry.unitsSold += oi.quantity;
+        entry.revenue += parseFloat(oi.salePrice) * oi.quantity;
+    }
+
+    res.json({
+        totalUnitsSold,
+        uniqueOrders,
+        totalRevenue: totalRevenue.toFixed(2),
+        byVariant: Array.from(byVariantMap.values()).map((v) => ({
+            ...v,
+            revenue: v.revenue.toFixed(2),
+        })),
+    });
+});
+
 // --- Route Registration ---
 router.get("/promotions", authenticateToken, getPromotions);
 router.post("/promotions", authenticateToken, createPromotion);
@@ -148,5 +214,6 @@ router.delete("/promotions/:id", authenticateToken, deletePromotion);
 router.post("/promotions/:id/items", authenticateToken, addPromotionItem);
 router.put("/promotions/:id/items/:itemId", authenticateToken, updatePromotionItem);
 router.delete("/promotions/:id/items/:itemId", authenticateToken, deletePromotionItem);
+router.get("/promotions/:id/stats", authenticateToken, getPromotionStats);
 
 export default router;
