@@ -5,38 +5,23 @@ name: Deploy Yangkar Website
 on:
     push:
         branches:
-            - main # Trigger this workflow on every push to the main branch
+            - main
 
 jobs:
     deploy-backend:
         name: Deploy Backend API
-        runs-on: ubuntu-latest
-        environment: production # Uses secrets from your 'production' environment
+        runs-on: ubuntu-24.04
+        environment: production
 
         steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v3
-              with:
-                  version: "10.13.1" # Version from your package.json
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20" # A stable, modern Node.js version
-                  cache: "pnpm"
-
-            - name: Install dependencies
-              run: pnpm install --no-frozen-lockfile
-
             - name: Deploy to Backend Server
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.BACKEND_SSH_HOST }}
                   username: ${{ secrets.BACKEND_SSH_USERNAME }}
                   password: ${{ secrets.BACKEND_SSH_PASSWORD }}
+                  script_stop: true
+                  command_timeout: 10m
                   script: |
                       set -e
                       export NVM_DIR="$HOME/.nvm"
@@ -44,59 +29,39 @@ jobs:
 
                       cd /home/yangkarbhoeche-api/htdocs/api.yangkarbhoeche.com/YangkarSvelteKit
 
-                      # Preserve .env and other ignored files, but force-discard tracked changes
+                      # Reset working tree to latest main, discarding any local changes
                       git fetch origin main
-                      git checkout -- .
                       git checkout main
+                      git reset --hard origin/main
 
-                      # Pull the latest code
-                      git pull origin main
+                      # Install dependencies (frozen to match committed lockfile)
+                      pnpm install --frozen-lockfile
 
-                      # Then install dependencies
-                      pnpm install --no-frozen-lockfile
-
-                      # Run migrations with the latest schema
+                      # Run database migrations
                       pnpm --filter backend exec prisma migrate deploy
 
-                      # Now generate Prisma client with the updated schema for production
-                      # Using the new --no-engine flag as recommended for production
+                      # Generate Prisma client (no engine needed in production)
                       pnpm --filter backend exec prisma generate --no-engine
 
-                      # Restart backend with updated environment, or start if not running
+                      # Restart backend, or start if not running
                       cd apps/backend
-                      pm2 restart backend --update-env || pm2 start src/index.js --name backend --update-env
-                      cd ../..
+                      pm2 restart backend --update-env || pm2 start src/index.js --name backend
 
     deploy-frontend:
         name: Deploy Frontend App
-        runs-on: ubuntu-latest
-        environment: production # Uses secrets from your 'production' environment
-        needs: deploy-backend # This job will wait for the backend deployment to succeed
+        runs-on: ubuntu-24.04
+        environment: production
+        needs: deploy-backend
 
         steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v3
-              with:
-                  version: "10.13.1" # Version from your package.json
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "pnpm"
-
-            - name: Install dependencies
-              run: pnpm install --no-frozen-lockfile
-
-            - name: Deploy and build on the server directly
+            - name: Deploy and build on the server
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.FRONTEND_SSH_HOST }}
                   username: ${{ secrets.FRONTEND_SSH_USERNAME }}
                   password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
+                  script_stop: true
+                  command_timeout: 15m
                   script: |
                       set -e
                       export NVM_DIR="$HOME/.nvm"
@@ -104,23 +69,19 @@ jobs:
 
                       cd /home/yangkarbhoeche/htdocs/yangkarbhoeche.com/YangkarSvelteKit
 
-                      # Preserve .env and other ignored files, but force-discard tracked changes
+                      # Reset working tree to latest main, discarding any local changes
                       git fetch origin main
-                      git checkout -- .
                       git checkout main
+                      git reset --hard origin/main
 
-                      # Pull the latest code
-                      git pull origin main
+                      # Install all dependencies (frozen to match committed lockfile)
+                      pnpm install --frozen-lockfile
 
-                      # Install all dependencies including dev dependencies
-                      pnpm install --no-frozen-lockfile
-
-                      # Build the frontend app directly on the server
+                      # Build the frontend app
                       NODE_ENV=production pnpm --filter frontend build
 
-                      # Restart the service with updated environment, or start if not running
+                      # Restart the service, or start if not running
                       cd apps/frontend
                       export PORT=5000
                       export PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com
                       pm2 restart frontend --update-env || pm2 start build/index.js --name frontend
-                      cd ../..

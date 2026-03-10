@@ -1190,7 +1190,7 @@
         if (isHeic) {
             heicConverting.set(true);
             error.set(null);
-            import("heic2any")
+            import(/* @vite-ignore */ "heic2any")
                 .then(({ default: heic2any }) => heic2any({ blob: file, toType: "image/jpeg", quality }))
                 .then((convertedBlob) => {
                     const reader = new FileReader();
