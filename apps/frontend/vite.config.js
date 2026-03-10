@@ -9,4 +9,7 @@ export default defineConfig({
     optimizeDeps: {
         include: ["fuzzysort"],
     },
+    ssr: {
+        external: ["heic2any"],
+    },
 });
