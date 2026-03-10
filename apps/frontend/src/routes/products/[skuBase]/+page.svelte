@@ -1,5 +1,6 @@
 <script>
     import { page } from "$app/stores";
+    import { fly } from "svelte/transition";
     import { addToCart } from "$lib/stores/cart.store.js";
 
     /** @type {import('./$types').PageData} */
@@ -107,8 +108,20 @@
 </div>
 
 {#if showToast}
-    <div class="toast">
-        <p>Added to cart!</p>
+    <div class="toast" in:fly={{ y: 16, duration: 250 }} out:fly={{ y: 16, duration: 200, opacity: 0 }}>
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+        >
+            <path d="M20 6L9 17l-5-5" />
+        </svg>
+        Added to cart
     </div>
 {/if}
 
@@ -167,7 +180,7 @@
 
     .selected-value {
         font-weight: normal;
-        color: #666;
+        color: var(--color-text-light);
     }
 
     .options {
@@ -180,15 +193,16 @@
         min-width: 50px;
         height: 50px;
         padding: 0.5rem;
-        border: 2px solid #ccc;
-        background-color: #fff;
+        border: 2px solid var(--color-border);
+        background-color: var(--color-bg);
+        color: var(--color-text);
         cursor: pointer;
         border-radius: 8px;
         transition: border-color 0.2s;
     }
 
     .option-button:hover {
-        border-color: #333;
+        border-color: var(--color-text);
     }
 
     .option-button.active {
@@ -248,38 +262,19 @@
 
     .toast {
         position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #333;
-        color: white;
-        padding: 1rem 2rem;
+        bottom: 24px;
+        right: 24px;
+        background-color: var(--color-text);
+        color: var(--color-bg);
+        padding: 0.75rem 1.25rem;
         border-radius: 8px;
-        z-index: 1000;
-        animation:
-            fadein 0.5s,
-            fadeout 0.5s 2.5s;
-    }
-
-    @keyframes fadein {
-        from {
-            bottom: 0;
-            opacity: 0;
-        }
-        to {
-            bottom: 20px;
-            opacity: 1;
-        }
-    }
-
-    @keyframes fadeout {
-        from {
-            bottom: 20px;
-            opacity: 1;
-        }
-        to {
-            bottom: 0;
-            opacity: 0;
-        }
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        pointer-events: none;
     }
 </style>

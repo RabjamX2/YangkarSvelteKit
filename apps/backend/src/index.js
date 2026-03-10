@@ -13,6 +13,7 @@ import transactionRoutes from "./routes/transaction.routes.js"; // Import transa
 import imageRoutes from "./routes/image.routes.js"; // Import image routes
 import sellerRoutes from "./routes/seller.routes.js"; // Import seller routes
 import promotionRoutes from "./routes/promotion.routes.js"; // Import promotion routes
+import orderRequestRoutes from "./routes/orderRequest.routes.js"; // Import order request routes
 
 // Import services
 import { maybeCleanupExpiredSessions, scheduleSessionCleanup } from "./services/sessionCleanup.js";
@@ -258,6 +259,8 @@ app.use("/api", imageRoutes);
 app.use("/api", sellerRoutes);
 // All promotion-related routes
 app.use("/api", promotionRoutes);
+// Online order request routes (cart submission)
+app.use("/api", orderRequestRoutes);
 
 // --- Centralized Error Handler ---
 // This should be the LAST middleware you use

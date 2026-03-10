@@ -408,6 +408,34 @@ model CustomerOrder {
     updatedAt DateTime @default(now()) @updatedAt
 }
 
+enum OnlineOrderStatus {
+    PENDING
+    ACCEPTED
+    REJECTED
+}
+
+/// An order request submitted by a customer from the website cart.
+/// Admins can review and accept or reject these.
+model OnlineOrderRequest {
+    id     Int               @id @default(autoincrement())
+    status OnlineOrderStatus @default(PENDING)
+
+    customerName      String?
+    customerEmail     String?
+    customerPhone     String?
+    customerInstagram String?
+    notes             String?
+
+    // Snapshot of cart items as JSON:
+    // [{ id, sku, skuBase, name, color, size, salePrice, imgUrl, quantity }]
+    items Json
+
+    adminNotes String?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+}
+
 model CustomerOrderItem {
     id        Int      @id @default(autoincrement())
     quantity  Int

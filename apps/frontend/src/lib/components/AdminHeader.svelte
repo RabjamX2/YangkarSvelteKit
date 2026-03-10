@@ -45,6 +45,11 @@
                     </a>
                 </div>
                 <div class="nav-item">
+                    <a class="nav-link" href="/admin/order-requests">
+                        <span class="nav-link-text">Order Requests</span>
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a class="nav-link" href="/admin/checkout">
                         <span class="nav-link-text">Checkout</span>
                     </a>
