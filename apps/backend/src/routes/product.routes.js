@@ -88,6 +88,9 @@ const getProducts = asyncHandler(async (req, res) => {
                 imgUrl: true,
                 salePrice: true,
                 size: true,
+                inventoryBatches: {
+                    select: { quantity: true },
+                },
             },
             orderBy: [{ color: "asc" }, { size: "asc" }],
         });
@@ -98,7 +101,11 @@ const getProducts = asyncHandler(async (req, res) => {
             if (!variantsByProduct[variant.productId]) {
                 variantsByProduct[variant.productId] = [];
             }
-            variantsByProduct[variant.productId].push(variant);
+            variantsByProduct[variant.productId].push({
+                ...variant,
+                stock: variant.inventoryBatches.reduce((sum, b) => sum + b.quantity, 0),
+                inventoryBatches: undefined,
+            });
         });
 
         // Add variants to each product and filter out products with no visible variants

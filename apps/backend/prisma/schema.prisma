@@ -154,6 +154,7 @@ model ProductVariant {
     customerOrderItems CustomerOrderItem[]
     stockChanges       StockChange[]
     inventoryBatches   InventoryBatch[]
+    promotionItems     PromotionItem[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
@@ -303,6 +304,46 @@ enum PaymentMethod {
     ZELLE
     VENMO
     OTHER
+}
+
+enum DiscountType {
+    PERCENTAGE // e.g. 20 = 20% off
+    FLAT // e.g. 5  = $5 off
+}
+
+/// A sale or discount event that can apply to multiple product variants.
+model Promotion {
+    id          Int      @id @default(autoincrement())
+    name        String // e.g., "Summer Sale", "Losar Special"
+    description String?
+    startDate   DateTime
+    endDate     DateTime
+    isActive    Boolean  @default(true)
+
+    discountType  DiscountType? // Optional default discount applied when adding variants
+    discountValue Decimal? // The amount or percentage (e.g. 20 for 20%, 5 for $5)
+
+    items PromotionItem[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+}
+
+/// Links a specific variant to a promotion with its discounted price.
+model PromotionItem {
+    id             Int     @id @default(autoincrement())
+    promotionPrice Decimal // The discounted price for this variant in this promotion
+
+    promotionId Int
+    promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+    productVariantId Int
+    variant          ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    @@unique([promotionId, productVariantId])
 }
 
 model CustomerOrder {

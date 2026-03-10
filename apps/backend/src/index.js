@@ -12,6 +12,7 @@ import cartRoutes from "./routes/cart.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js"; // Import transaction routes
 import imageRoutes from "./routes/image.routes.js"; // Import image routes
 import sellerRoutes from "./routes/seller.routes.js"; // Import seller routes
+import promotionRoutes from "./routes/promotion.routes.js"; // Import promotion routes
 
 // Import services
 import { maybeCleanupExpiredSessions, scheduleSessionCleanup } from "./services/sessionCleanup.js";
@@ -47,7 +48,7 @@ app.use(
             },
         },
         crossOriginEmbedderPolicy: false,
-    })
+    }),
 );
 
 // Helper to normalize IP addresses (handle IPv6 subnet isolation)
@@ -131,7 +132,7 @@ const authEndpointsLimiter = rateLimit({
             req.ip ||
                 (req.headers["x-forwarded-for"]
                     ? req.headers["x-forwarded-for"].split(",")[0].trim()
-                    : req.socket.remoteAddress)
+                    : req.socket.remoteAddress),
         ),
 });
 
@@ -218,7 +219,7 @@ app.use(
             "Cache-Control",
             "Pragma",
         ],
-    })
+    }),
 );
 
 // Parse JSON with size limits to prevent large payload attacks
@@ -242,7 +243,7 @@ app.use(
         }
         next(); // Always continue processing the request
     },
-    authRoutes
+    authRoutes,
 );
 
 // --- API Routes ---
@@ -255,6 +256,8 @@ app.use("/api", transactionRoutes); // Use transaction routes
 app.use("/api", imageRoutes);
 // All seller-related routes
 app.use("/api", sellerRoutes);
+// All promotion-related routes
+app.use("/api", promotionRoutes);
 
 // --- Centralized Error Handler ---
 // This should be the LAST middleware you use

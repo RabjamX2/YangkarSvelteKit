@@ -1,7 +1,7 @@
 <script>
     import { productStore } from "$lib/stores/product.store.js";
 
-    const { products, isLoading, hasMore, loadMore } = productStore;
+    const { products, filteredProducts, isLoading, hasMore, loadMore } = productStore;
 
     // Track selected variant for each product
     let selectedVariants = {};
@@ -26,7 +26,7 @@
                     loadMore();
                 }
             },
-            { rootMargin: "200px" } // Load next page when 200px from the bottom
+            { rootMargin: "200px" }, // Load next page when 200px from the bottom
         );
         observer.observe(node);
         return {
@@ -52,7 +52,7 @@
 </script>
 
 <div class="product-grid">
-    {#each $products as product (product.id)}
+    {#each $filteredProducts as product (product.id)}
         {#if product.variants && product.variants.filter((v) => v.visable !== false).length > 0}
             <div class="product-card">
                 <div class="product-card-media">

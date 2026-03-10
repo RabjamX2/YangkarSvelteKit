@@ -57,6 +57,7 @@
                     {#if showMoreTools}
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="/admin/sellers" on:click={closeDropdown}> Sellers </a>
+                            <a class="dropdown-item" href="/admin/promotions" on:click={closeDropdown}> Promotions </a>
                         </div>
                     {/if}
                 </div>

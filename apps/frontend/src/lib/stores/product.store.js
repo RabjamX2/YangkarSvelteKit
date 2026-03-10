@@ -15,10 +15,24 @@ function createProductStore() {
     const activeCategories = writable(new Set());
     const sortKey = writable("default");
     const allCategories = writable([]);
+    const hideOutOfStock = writable(true);
 
     // --- Derived Stores ---
     // These react to changes in the core state.
     const hasActiveFilters = derived(activeCategories, ($activeCategories) => $activeCategories.size > 0);
+
+    function getVariantStock(variant) {
+        if (typeof variant.stock === "number") return variant.stock;
+        if (Array.isArray(variant.inventoryBatches)) {
+            return variant.inventoryBatches.reduce((sum, b) => sum + (b.quantity ?? 0), 0);
+        }
+        return 0; // no stock data — treat as out of stock
+    }
+
+    const filteredProducts = derived([products, hideOutOfStock], ([$products, $hideOutOfStock]) => {
+        if (!$hideOutOfStock) return $products;
+        return $products.filter((p) => p.variants?.some((v) => v.visable !== false && getVariantStock(v) > 0));
+    });
 
     // --- Methods ---
 
@@ -26,11 +40,14 @@ function createProductStore() {
      * Initializes the store with data from the server load function.
      */
     function initialize(initialData) {
+        const cats = initialData.allCategories || [];
+        const urlCats = initialData.activeCategories || [];
         products.set(initialData.products || []);
         meta.set(initialData.meta || { currentPage: 1, totalPages: 1 });
-        allCategories.set(initialData.allCategories || []);
+        allCategories.set(cats);
         sortKey.set(initialData.sortKey || "default");
-        activeCategories.set(new Set(initialData.activeCategories || []));
+        // Default to all categories active when no URL filter is present
+        activeCategories.set(new Set(urlCats.length > 0 ? urlCats : cats.map((c) => c.name)));
         hasMore.set((initialData.meta?.currentPage || 1) < (initialData.meta?.totalPages || 1));
         isLoading.set(false);
     }
@@ -82,12 +99,14 @@ function createProductStore() {
     function applyFiltersAndSort() {
         const currentSortKey = get(sortKey);
         const currentActiveCategories = get(activeCategories);
+        const allCats = get(allCategories);
 
         const params = new URLSearchParams();
         params.set("page", "1"); // Always reset to page 1 when filters/sort change
         params.set("sort", currentSortKey);
 
-        if (currentActiveCategories.size > 0) {
+        // Only send category param if it's a subset — omitting it means "show all"
+        if (currentActiveCategories.size > 0 && currentActiveCategories.size < allCats.length) {
             params.set("category", Array.from(currentActiveCategories).join(","));
         }
 
@@ -105,6 +124,10 @@ function createProductStore() {
             } else {
                 set.add(categoryName);
             }
+            // If all deselected, reset to all categories
+            if (set.size === 0) {
+                get(allCategories).forEach((c) => set.add(c.name));
+            }
             return set;
         });
         applyFiltersAndSort();
@@ -117,6 +140,10 @@ function createProductStore() {
     function changeSort(newSortKey) {
         sortKey.set(newSortKey);
         applyFiltersAndSort();
+    }
+
+    function toggleHideOutOfStock() {
+        hideOutOfStock.update((v) => !v);
     }
 
     /**
@@ -182,6 +209,7 @@ function createProductStore() {
         // Make the stores available to components
         subscribe: products.subscribe,
         products,
+        filteredProducts,
         meta,
         isLoading,
         hasMore,
@@ -189,12 +217,14 @@ function createProductStore() {
         sortKey,
         allCategories,
         hasActiveFilters,
+        hideOutOfStock,
 
         // Make the methods available
         initialize,
         loadMore,
         toggleCategory,
         changeSort,
+        toggleHideOutOfStock,
 
         // New color/image management methods
         getProductColors,
