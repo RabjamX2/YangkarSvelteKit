@@ -1,4 +1,4 @@
-# .github/workflows/deploy.yml
+﻿# .github/workflows/deploy.yml
 
 name: Deploy Yangkar Website
 
@@ -38,6 +38,7 @@ jobs:
                   username: ${{ secrets.BACKEND_SSH_USERNAME }}
                   password: ${{ secrets.BACKEND_SSH_PASSWORD }}
                   script: |
+                      set -e
                       export NVM_DIR="$HOME/.nvm"
                       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
@@ -46,6 +47,7 @@ jobs:
                       # Preserve .env and other ignored files, but force-discard tracked changes
                       git fetch origin main
                       git checkout -- .
+                      git checkout main
 
                       # Pull the latest code
                       git pull origin main
@@ -96,6 +98,7 @@ jobs:
                   username: ${{ secrets.FRONTEND_SSH_USERNAME }}
                   password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
                   script: |
+                      set -e
                       export NVM_DIR="$HOME/.nvm"
                       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
@@ -104,6 +107,7 @@ jobs:
                       # Preserve .env and other ignored files, but force-discard tracked changes
                       git fetch origin main
                       git checkout -- .
+                      git checkout main
 
                       # Pull the latest code
                       git pull origin main
@@ -116,5 +120,7 @@ jobs:
 
                       # Restart the service with updated environment, or start if not running
                       cd apps/frontend
-                      pm2 restart frontend --update-env || PORT=5000 PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com pm2 start build/index.js --name frontend --update-env
+                      export PORT=5000
+                      export PUBLIC_BACKEND_URL=https://api.yangkarbhoeche.com
+                      pm2 restart frontend --update-env || pm2 start build/index.js --name frontend
                       cd ../..

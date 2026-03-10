@@ -110,7 +110,16 @@
 {#if showToast}
     <div class="toast" in:fly={{ y: 12, duration: 220 }} out:fly={{ y: 12, duration: 180, opacity: 0 }}>
         <span class="toast-icon">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
                 <path d="M20 6L9 17l-5-5" />
             </svg>
         </span>

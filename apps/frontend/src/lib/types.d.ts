@@ -12,6 +12,7 @@ export interface ProductWithVariants {
     id: number;
     skuBase: string;
     name: string;
+    displayName: string | null;
     notes: string | null;
     variants: ProductVariant[];
 }
