@@ -122,14 +122,14 @@ export function addToCart(product, variant, quantity = 1) {
 
         if (existingItemIndex > -1) {
             return arr.map((item, idx) =>
-                idx === existingItemIndex ? { ...item, quantity: item.quantity + quantity } : item
+                idx === existingItemIndex ? { ...item, quantity: item.quantity + quantity } : item,
             );
         } else {
             const newItem = {
                 id: variant.id, // Add variant ID for validation
                 sku: variant.sku,
                 skuBase: product.skuBase,
-                name: product.name,
+                name: product.displayName || product.name,
                 color: variant.color,
                 size: variant.size,
                 salePrice: variant.salePrice,

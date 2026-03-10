@@ -323,6 +323,9 @@ model Promotion {
     discountType  DiscountType? // Optional default discount applied when adding variants
     discountValue Decimal? // The amount or percentage (e.g. 20 for 20%, 5 for $5)
 
+    bannerVisible Boolean @default(false) // Show a sitewide banner for this promotion
+    bannerText    String? // Text displayed in the banner
+
     items PromotionItem[]
 
     createdAt DateTime @default(now())

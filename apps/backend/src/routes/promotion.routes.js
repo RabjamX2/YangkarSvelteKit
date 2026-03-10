@@ -56,7 +56,7 @@ const createPromotion = asyncHandler(async (req, res) => {
 // PUT /api/promotions/:id — update promotion metadata
 const updatePromotion = asyncHandler(async (req, res) => {
     const id = parseInt(req.params.id);
-    const allowed = ["name", "description", "startDate", "endDate", "isActive"];
+    const allowed = ["name", "description", "startDate", "endDate", "isActive", "bannerVisible", "bannerText"];
     const data = {};
 
     for (const key of allowed) {
@@ -76,6 +76,9 @@ const updatePromotion = asyncHandler(async (req, res) => {
     if ("discountValue" in req.body) {
         data.discountValue =
             req.body.discountValue != null && req.body.discountValue !== "" ? parseFloat(req.body.discountValue) : null;
+    }
+    if ("bannerText" in req.body) {
+        data.bannerText = req.body.bannerText || null;
     }
 
     const promotion = await prisma.promotion.update({
@@ -206,7 +209,24 @@ const getPromotionStats = asyncHandler(async (req, res) => {
     });
 });
 
+// GET /api/banners — public endpoint: returns promotions with bannerVisible: true
+const getActiveBanners = asyncHandler(async (req, res) => {
+    const now = new Date();
+    const banners = await prisma.promotion.findMany({
+        where: {
+            bannerVisible: true,
+            isActive: true,
+            startDate: { lte: now },
+            endDate: { gte: now },
+        },
+        select: { id: true, name: true, bannerText: true },
+        orderBy: { startDate: "asc" },
+    });
+    res.json(banners);
+});
+
 // --- Route Registration ---
+router.get("/banners", getActiveBanners);
 router.get("/promotions", authenticateToken, getPromotions);
 router.post("/promotions", authenticateToken, createPromotion);
 router.put("/promotions/:id", authenticateToken, updatePromotion);

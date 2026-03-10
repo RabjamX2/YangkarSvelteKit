@@ -40,18 +40,8 @@
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a class="nav-link" href="/admin/transactions/inventory-batches">
-                        <span class="nav-link-text">Inventory Batches</span>
-                    </a>
-                </div>
-                <div class="nav-item">
                     <a class="nav-link" href="/admin/order-requests">
                         <span class="nav-link-text">Order Requests</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="/admin/checkout">
-                        <span class="nav-link-text">Checkout</span>
                     </a>
                 </div>
                 <div class="nav-item dropdown">
@@ -61,6 +51,14 @@
                     </button>
                     {#if showMoreTools}
                         <div class="dropdown-menu">
+                            <a class="dropdown-item" href="/admin/checkout" on:click={closeDropdown}> Checkout </a>
+                            <a
+                                class="dropdown-item"
+                                href="/admin/transactions/inventory-batches"
+                                on:click={closeDropdown}
+                            >
+                                Inventory Batches
+                            </a>
                             <a class="dropdown-item" href="/admin/sellers" on:click={closeDropdown}> Sellers </a>
                             <a class="dropdown-item" href="/admin/promotions" on:click={closeDropdown}> Promotions </a>
                         </div>

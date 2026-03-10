@@ -35,19 +35,19 @@
 </script>
 
 <svelte:head>
-    <title>{data.product.name}</title>
+    <title>{data.product.displayName || data.product.name}</title>
 </svelte:head>
 
 <div class="product-detail-container">
     <div class="product-gallery">
         <img
             src={selectedVariant?.imgUrl || "/Placeholder4-5.png"}
-            alt="{data.product.name} - {selectedVariant?.color}"
+            alt="{data.product.displayName || data.product.name} - {selectedVariant?.color}"
         />
     </div>
 
     <div class="product-info">
-        <h1 class="product-title">{data.product.name}</h1>
+        <h1 class="product-title">{data.product.displayName || data.product.name}</h1>
 
         {#if selectedVariant}
             <p class="product-price">${selectedVariant.salePrice}</p>
@@ -108,19 +108,12 @@
 </div>
 
 {#if showToast}
-    <div class="toast" in:fly={{ y: 16, duration: 250 }} out:fly={{ y: 16, duration: 200, opacity: 0 }}>
-        <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-        >
-            <path d="M20 6L9 17l-5-5" />
-        </svg>
+    <div class="toast" in:fly={{ y: 12, duration: 220 }} out:fly={{ y: 12, duration: 180, opacity: 0 }}>
+        <span class="toast-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6L9 17l-5-5" />
+            </svg>
+        </span>
         Added to cart
     </div>
 {/if}
@@ -262,19 +255,33 @@
 
     .toast {
         position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background-color: var(--color-text);
-        color: var(--color-bg);
-        padding: 0.75rem 1.25rem;
-        border-radius: 8px;
+        bottom: 20px;
+        right: 20px;
+        background-color: #1f2937;
+        color: #f9fafb;
+        padding: 0.55rem 1rem 0.55rem 0.65rem;
+        border-radius: 999px;
         z-index: 2000;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
+        gap: 0.45rem;
+        font-size: 0.82rem;
         font-weight: 500;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        letter-spacing: 0.01em;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
         pointer-events: none;
+        white-space: nowrap;
+    }
+
+    .toast-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        background-color: #22c55e;
+        border-radius: 50%;
+        flex-shrink: 0;
+        color: #fff;
     }
 </style>

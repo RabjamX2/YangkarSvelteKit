@@ -18,11 +18,11 @@ export async function load({ url, fetch }) {
     }
 
     try {
-        // 3. Fetch the initial products and the list of all categories in parallel.
-        // This is more efficient than fetching them one after another.
-        const [productResponse, categoriesResponse] = await Promise.all([
+        // 3. Fetch products, categories, and active banners in parallel.
+        const [productResponse, categoriesResponse, bannersResponse] = await Promise.all([
             fetch(`${PUBLIC_BACKEND_URL}/api/products?${apiParams.toString()}`),
             fetch(`${PUBLIC_BACKEND_URL}/api/categories`),
+            fetch(`${PUBLIC_BACKEND_URL}/api/banners`),
         ]);
 
         if (!productResponse.ok || !categoriesResponse.ok) {
@@ -31,15 +31,16 @@ export async function load({ url, fetch }) {
 
         const productData = await productResponse.json();
         const allCategories = await categoriesResponse.json();
+        const banners = bannersResponse.ok ? await bannersResponse.json() : [];
 
         // 4. Return all the data the component needs to render.
         return {
             products: productData.data,
             meta: productData.meta,
-            allCategories: allCategories, // The full list for building filter buttons
-            sortKey: sort, // The currently active sort
-            // Convert the URL parameter string into an array of active categories
+            allCategories: allCategories,
+            sortKey: sort,
             activeCategories: categoriesParam ? categoriesParam.split(",") : [],
+            banners,
         };
     } catch (error) {
         console.error("Error in server load function:", error);
@@ -50,6 +51,7 @@ export async function load({ url, fetch }) {
             allCategories: [],
             sortKey: sort,
             activeCategories: [],
+            banners: [],
         };
     }
 }

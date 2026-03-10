@@ -212,6 +212,8 @@
                 isActive: promo.isActive,
                 discountType: promo.discountType || "",
                 discountValue: promo.discountValue != null ? String(promo.discountValue) : "",
+                bannerVisible: promo.bannerVisible ?? false,
+                bannerText: promo.bannerText || "",
             },
         }));
         expanded.update((e) => ({ ...e, [promo.id]: true }));
@@ -244,6 +246,8 @@
                     isActive: edit.isActive,
                     discountType: edit.discountType || null,
                     discountValue: edit.discountValue ? parseFloat(edit.discountValue) : null,
+                    bannerVisible: edit.bannerVisible,
+                    bannerText: edit.bannerText || null,
                 }),
             });
             if (!res.ok) throw new Error("Failed to update promotion");
@@ -619,6 +623,33 @@
                         <!-- Stop propagation so clicks on buttons don't toggle expand -->
                         <!-- svelte-ignore a11y-click-events-have-key-events -->
                         <div class="header-actions" role="presentation" on:click|stopPropagation>
+                            <label
+                                class="banner-toggle-inline"
+                                title={promo.bannerVisible
+                                    ? "Banner visible — click to hide"
+                                    : "Banner hidden — click to show"}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={promo.bannerVisible}
+                                    on:change={async (e) => {
+                                        const visible = e.target.checked;
+                                        const res = await apiFetch(`/api/promotions/${promo.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ bannerVisible: visible }),
+                                        });
+                                        if (res.ok) {
+                                            const updated = await res.json();
+                                            promotions.update((list) =>
+                                                list.map((p) => (p.id === promo.id ? { ...p, ...updated } : p)),
+                                            );
+                                        }
+                                    }}
+                                />
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Banner</span>
+                            </label>
                             <button class="btn btn-secondary btn-sm" on:click={() => startEditing(promo)}>Edit</button>
                             <button class="btn btn-danger btn-sm" on:click={() => deletePromotion(promo.id, promo.name)}
                                 >Delete</button
@@ -814,6 +845,38 @@
                                                         </span>
                                                     </div>
                                                 {/if}
+                                            </div>
+                                        </div>
+                                        <!-- Banner settings -->
+                                        <div class="form-row">
+                                            <div class="form-group" style="flex: 1">
+                                                <label class="form-label" for="edit-banner-text-{promo.id}"
+                                                    >Banner Text</label
+                                                >
+                                                <input
+                                                    id="edit-banner-text-{promo.id}"
+                                                    type="text"
+                                                    class="form-control"
+                                                    placeholder="e.g. 🎉 Losar Sale — 20% off everything!"
+                                                    value={$editing[promo.id].bannerText}
+                                                    on:input={(e) =>
+                                                        setEditField(promo.id, "bannerText", e.target.value)}
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="form-label" for="edit-banner-visible-{promo.id}">
+                                                    Show Banner
+                                                </label>
+                                                <label class="toggle-switch">
+                                                    <input
+                                                        id="edit-banner-visible-{promo.id}"
+                                                        type="checkbox"
+                                                        checked={$editing[promo.id].bannerVisible}
+                                                        on:change={(e) =>
+                                                            setEditField(promo.id, "bannerVisible", e.target.checked)}
+                                                    />
+                                                    <span class="toggle-slider"></span>
+                                                </label>
                                             </div>
                                         </div>
                                     </div>

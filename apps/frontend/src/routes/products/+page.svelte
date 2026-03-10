@@ -3,6 +3,7 @@
     import ProductFilters from "$lib/components/ProductFilters.svelte";
     import ProductSort from "$lib/components/ProductSort.svelte";
     import ProductGrid from "$lib/components/ProductGrid.svelte";
+    import PromoBanner from "$lib/components/PromoBanner.svelte";
 
     export let data;
 
@@ -17,6 +18,8 @@
 <svelte:head>
     <title>Products</title>
 </svelte:head>
+
+<PromoBanner banners={data.banners} />
 
 <div class="controls-row">
     <ProductFilters />
