@@ -1190,9 +1190,7 @@
         if (isHeic) {
             heicConverting.set(true);
             error.set(null);
-            // Use a variable so Rollup doesn't statically analyze this import
-            const _mod = "heic2any";
-            import(_mod)
+            import("heic2any")
                 .then(({ default: heic2any }) => heic2any({ blob: file, toType: "image/jpeg", quality }))
                 .then((convertedBlob) => {
                     const reader = new FileReader();
