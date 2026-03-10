@@ -6,6 +6,7 @@
     import { isCartOpen, toggleCart } from "$lib/stores/cart.store.js";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
+    import { page } from "$app/stores";
     import "./layout.css";
 
     export let data;
@@ -85,17 +86,33 @@
     <CartSidebar />
 {/if}
 
-<header class="header-section">
+<header class="header-section" class:no-border={$page.url.pathname.startsWith("/admin")}>
     <!-- <div class="header-mobile">
         <figure>
             <img class="logo" src="/Logo/Circle Logo - Only Logo.png" alt="Logo" />
         </figure>
     </div> -->
     <div class="main-header">
-        <figure class="header-logo">
+        <div class="main-header-left">
+            <a
+                class="instagram-link"
+                href="https://www.instagram.com/yangkarbhoeche/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow Yangkar on Instagram"
+            >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" stroke-width="2" />
+                    <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" />
+                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+                </svg>
+            </a>
+            <a class="header-text-link" href="/about">About Us</a>
+        </div>
+        <a href="/products" class="header-logo" aria-label="Go to homepage">
             <img class="logo logo-desktop" src="/Logo/Logo Text - English Long.png" alt="Yangkar Logo" />
             <img class="logo logo-mobile" src="/Logo/Circle Logo - Only Logo.png" alt="Yangkar Logo" />
-        </figure>
+        </a>
         <div class="main-header-right">
             <div class="user-dropdown" class:open={dropdownOpen}>
                 {#if data.user || $auth.user}
@@ -198,32 +215,34 @@
             </button>
         </div>
     </div>
-    <div class="header-nav">
-        <nav class="nav">
-            <div class="nav-list">
-                <div class="nav-item">
-                    <a class="nav-link" href="/products?sort=default&category=Chupa%2CWonju">
-                        <span class="nav-link-text">Clothing</span>
-                    </a>
-                </div>
-                <!-- <div class="nav-item">
+    {#if !$page.url.pathname.startsWith("/admin")}
+        <div class="header-nav">
+            <nav class="nav">
+                <div class="nav-list">
+                    <div class="nav-item">
+                        <a class="nav-link" href="/products?sort=default&category=Chupa%2CWonju">
+                            <span class="nav-link-text">Clothing</span>
+                        </a>
+                    </div>
+                    <!-- <div class="nav-item">
                     <a class="nav-link" href="/products/Accessories">
                         <span class="nav-link-text">Accessories</span>
                     </a>
                 </div> -->
-                <div class="nav-item">
-                    <a class="nav-link" href="/products?sort=default&category=Jewelry">
-                        <span class="nav-link-text">Jewelry</span>
-                    </a>
+                    <div class="nav-item">
+                        <a class="nav-link" href="/products?sort=default&category=Jewelry">
+                            <span class="nav-link-text">Jewelry</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a class="nav-link" href="/products?sort=default&category=Phone+Cases">
+                            <span class="nav-link-text">Phone Cases</span>
+                        </a>
+                    </div>
                 </div>
-                <div class="nav-item">
-                    <a class="nav-link" href="/products?sort=default&category=Phone+Cases">
-                        <span class="nav-link-text">Phone Cases</span>
-                    </a>
-                </div>
-            </div>
-        </nav>
-    </div>
+            </nav>
+        </div>
+    {/if}
 </header>
 
 <main>

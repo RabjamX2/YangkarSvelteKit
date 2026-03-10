@@ -85,13 +85,13 @@
     border-bottom: none;
 }
 
-:root {
+.admin-container {
     --table-zebra: #f9fafb;
     --table-expanded-bg: #eef2ff;
     --variant-th-bg: #f3f4f6;
     --variant-td-border: #f3f4f6;
 }
-.dark {
+.dark .admin-container {
     --table-zebra: #23272e;
     --table-expanded-bg: #2d3652;
     --variant-th-bg: #23272e;

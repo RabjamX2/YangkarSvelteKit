@@ -1,5 +1,11 @@
 /* Image Upload styles - Modern UI with Dark Mode support */
-:root {
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.25rem;
+    color: var(--color-text);
+
+    /* Scoped design tokens — only apply within the image upload page */
     --color-primary: #4f46e5;
     --color-primary-rgb: 79, 70, 229;
     --color-primary-hover: #4338ca;
@@ -26,8 +32,8 @@
     --transition-speed: 0.2s;
 }
 
-/* Dark mode variables */
-.dark {
+/* Dark mode variables — scoped to the page container */
+.dark .container {
     --color-primary: #6366f1;
     --color-primary-rgb: 99, 102, 241;
     --color-primary-hover: #818cf8;
@@ -50,13 +56,6 @@
     --color-success-rgb: 52, 211, 153;
     --color-success-light: #064e3b;
     --color-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1.25rem;
-    color: var(--color-text);
 }
 
 .page-title {

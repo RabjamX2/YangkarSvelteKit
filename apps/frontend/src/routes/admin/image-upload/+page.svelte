@@ -1579,9 +1579,9 @@
     <title>Product Image Upload | Admin</title>
 </svelte:head>
 
-<div class="container">
-    <AdminHeader />
+<AdminHeader />
 
+<div class="container">
     <div class="panel">
         <h1 class="page-title">Upload Product Variant Images</h1>
         <p class="page-description">

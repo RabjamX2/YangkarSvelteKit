@@ -77,6 +77,7 @@
 
 <style>
     .header-nav {
+        margin-top: 5px;
         width: 100%;
         background: var(--color-nav-bg);
         /* border-top: 1px solid var(--color-border);

@@ -154,6 +154,59 @@ html {
     transform: scale(0.95);
 }
 
+.instagram-link {
+    background: var(--color-user-badge-bg);
+    border: none;
+    height: 36px;
+    width: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-user-badge);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.instagram-link:hover {
+    background: var(--color-link-bg-hover);
+    color: var(--color-link-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.instagram-link:active {
+    transform: scale(0.95);
+}
+
+.header-text-link {
+    background: var(--color-user-badge-bg);
+    color: var(--color-user-badge);
+    text-decoration: none;
+    height: 36px;
+    padding: 0 0.875rem;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-medium);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    white-space: nowrap;
+}
+
+.header-text-link:hover {
+    background: var(--color-link-bg-hover);
+    color: var(--color-link-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header-text-link:active {
+    transform: scale(0.95);
+}
+
 /* Header Section Layout */
 .header-section {
     display: flex;
@@ -172,6 +225,10 @@ html {
     font-weight: var(--font-weight-medium);
 }
 
+.header-section.no-border {
+    border-bottom: none;
+}
+
 .main-header {
     display: flex;
     align-items: center;
@@ -182,23 +239,26 @@ html {
     position: relative; /* Set positioning context for the logo */
     padding-top: 10px;
     min-height: 40px; /* Ensure header has a consistent height */
+    margin-bottom: 5px;
 }
 
 .main-header-left {
+    position: absolute;
+    left: 0;
     display: flex;
-    flex: 1;
-    justify-content: flex-start;
     align-items: center;
+    padding-left: 1rem;
 }
 
 .header-logo {
-    position: absolute; /* Take logo out of flex flow */
-    left: 50%; /* Position the left edge at the center */
-    transform: translateX(-50%); /* Shift the logo left by half its own width */
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10; /* Ensure logo is above other elements */
+    z-index: 10;
+    text-decoration: none;
 }
 
 .header-logo .logo {
