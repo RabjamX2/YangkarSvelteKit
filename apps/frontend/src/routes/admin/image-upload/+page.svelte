@@ -1190,24 +1190,20 @@
         if (isHeic) {
             heicConverting.set(true);
             error.set(null);
-            // import.meta.env.SSR is replaced with a boolean literal at build time,
-            // so Rollup dead-code eliminates this entire branch in the SSR bundle.
-            if (!import.meta.env.SSR) {
-                import("heic2any")
-                    .then(({ default: heic2any }) => heic2any({ blob: file, toType: "image/jpeg", quality }))
-                    .then((convertedBlob) => {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            heicConverting.set(false);
-                            initCropperWithDataUrl(e.target.result);
-                        };
-                        reader.readAsDataURL(convertedBlob);
-                    })
-                    .catch((err) => {
+            import("heic2any")
+                .then(({ default: heic2any }) => heic2any({ blob: file, toType: "image/jpeg", quality }))
+                .then((convertedBlob) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
                         heicConverting.set(false);
-                        error.set("Failed to convert HEIC image: " + err.message);
-                    });
-            }
+                        initCropperWithDataUrl(e.target.result);
+                    };
+                    reader.readAsDataURL(convertedBlob);
+                })
+                .catch((err) => {
+                    heicConverting.set(false);
+                    error.set("Failed to convert HEIC image: " + err.message);
+                });
         } else {
             const reader = new FileReader();
             reader.onload = (e) => initCropperWithDataUrl(e.target.result);
