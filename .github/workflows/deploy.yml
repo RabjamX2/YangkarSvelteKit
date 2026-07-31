@@ -18,10 +18,13 @@ jobs:
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.BACKEND_SSH_HOST }}
+                                      port: ${{ secrets.BACKEND_SSH_PORT || 22 }}
                   username: ${{ secrets.BACKEND_SSH_USERNAME }}
                   password: ${{ secrets.BACKEND_SSH_PASSWORD }}
                   script_stop: true
+                                    timeout: 120s
                   command_timeout: 10m
+                                    debug: true
                   script: |
                       set -e
                       export NVM_DIR="$HOME/.nvm"
@@ -58,10 +61,13 @@ jobs:
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.FRONTEND_SSH_HOST }}
+                                      port: ${{ secrets.FRONTEND_SSH_PORT || 22 }}
                   username: ${{ secrets.FRONTEND_SSH_USERNAME }}
                   password: ${{ secrets.FRONTEND_SSH_PASSWORD }}
                   script_stop: true
+                                    timeout: 120s
                   command_timeout: 15m
+                                    debug: true
                   script: |
                       set -e
                       export NVM_DIR="$HOME/.nvm"
